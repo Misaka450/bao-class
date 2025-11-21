@@ -20,7 +20,7 @@ init.get('/progress-data', async (c) => {
         if (!studentsCount || studentsCount.count < 5) {
             // Create students
             for (let i = 1; i <= 10; i++) {
-                await c.env.DB.prepare('INSERT INTO students (name, student_number, class_id) VALUES (?, ?, ?)')
+                await c.env.DB.prepare('INSERT INTO students (name, student_id, class_id) VALUES (?, ?, ?)')
                     .bind(`学生${i}`, `20240${i}`, cls.id)
                     .run()
             }
@@ -30,9 +30,9 @@ init.get('/progress-data', async (c) => {
         // 3. Check if we have any courses
         let courses = await c.env.DB.prepare('SELECT * FROM courses').all<{ id: number, name: string }>()
         if (courses.results.length === 0) {
-            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('语文').run()
-            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('数学').run()
-            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('英语').run()
+            await c.env.DB.prepare('INSERT INTO courses (name, grade) VALUES (?, ?)').bind('语文', 1).run()
+            await c.env.DB.prepare('INSERT INTO courses (name, grade) VALUES (?, ?)').bind('数学', 1).run()
+            await c.env.DB.prepare('INSERT INTO courses (name, grade) VALUES (?, ?)').bind('英语', 1).run()
             courses = await c.env.DB.prepare('SELECT * FROM courses').all<{ id: number, name: string }>()
         }
 
@@ -127,9 +127,9 @@ init.get('/seed-all-exams', async (c) => {
         let courses = await c.env.DB.prepare('SELECT * FROM courses').all<{ id: number, name: string }>()
         if (courses.results.length === 0) {
             // Create default courses if none exist
-            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('语文').run()
-            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('数学').run()
-            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('英语').run()
+            await c.env.DB.prepare('INSERT INTO courses (name, grade) VALUES (?, ?)').bind('语文', 1).run()
+            await c.env.DB.prepare('INSERT INTO courses (name, grade) VALUES (?, ?)').bind('数学', 1).run()
+            await c.env.DB.prepare('INSERT INTO courses (name, grade) VALUES (?, ?)').bind('英语', 1).run()
             courses = await c.env.DB.prepare('SELECT * FROM courses').all<{ id: number, name: string }>()
         }
 

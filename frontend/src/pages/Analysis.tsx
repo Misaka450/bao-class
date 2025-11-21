@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Select, Button, Typography, message, List, Row, Col } from 'antd';
-import { BulbOutlined, UserOutlined, TeamOutlined, WarningOutlined, FallOutlined, RiseOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { BulbOutlined, UserOutlined, TeamOutlined, WarningOutlined, FallOutlined, RiseOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
+
 import { useAuthStore } from '../store/authStore';
 
 const { Paragraph, Text } = Typography;
@@ -23,8 +23,9 @@ export default function Analysis() {
     const [classSummary, setClassSummary] = useState<string>('');
     const [studentAdvice, setStudentAdvice] = useState<string>('');
     const [focusGroup, setFocusGroup] = useState<FocusGroupData | null>(null);
+    const [focusGroupExpanded, setFocusGroupExpanded] = useState<boolean>(true); // 新增：控制展开/收起
     const token = useAuthStore((state) => state.token);
-    const navigate = useNavigate();
+
 
     useEffect(() => {
         fetchClasses();
@@ -162,12 +163,20 @@ export default function Analysis() {
                     icon={<TeamOutlined />}
                     onClick={handleFocusAnalysis}
                     loading={loading}
-                    style={{ marginBottom: 16 }}
+                    style={{ marginBottom: 16, marginRight: 8 }}
                 >
                     识别重点群体
                 </Button>
-
                 {focusGroup && (
+                    <Button
+                        icon={focusGroupExpanded ? <UpOutlined /> : <DownOutlined />}
+                        onClick={() => setFocusGroupExpanded(!focusGroupExpanded)}
+                    >
+                        {focusGroupExpanded ? '收起' : '展开'}
+                    </Button>
+                )}
+
+                {focusGroup && focusGroupExpanded && (
                     <Row gutter={[16, 16]}>
                         <Col xs={24} md={8}>
                             <Card type="inner" title={<><WarningOutlined style={{ color: '#faad14' }} /> 临界生 (Critical)</>} size="small">
