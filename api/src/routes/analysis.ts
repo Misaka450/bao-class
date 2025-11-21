@@ -36,23 +36,43 @@ analysis.get('/class/summary/:classId', async (c) => {
             return c.json({ error: 'No data available' }, 404)
         }
 
-        // Generate AI summary using Workers AI
-        const prompt = `作为一名资深教师，请根据以下班级成绩数据生成一份简洁的总结报告：
+        // Calculate pass rate
+        const passRateResult = await c.env.DB.prepare(`
+            SELECT 
+                COUNT(CASE WHEN s.score >= 60 THEN 1 END) as pass_count,
+                COUNT(*) as total_count
+            FROM scores s
+            JOIN students st ON s.student_id = st.id
+            JOIN exams e ON s.exam_id = e.id
+            WHERE st.class_id = ? AND e.exam_date >= date('now', '-30 days')
+        `).bind(classId).first()
+
+        const passRate = passRateResult && passRateResult.total_count
+            ? ((passRateResult.pass_count as number) / (passRateResult.total_count as number) * 100).toFixed(1) + '%'
+            : 'N/A'
+
+        // Generate AI summary using Workers AI (Llama 3)
+        const prompt = `作为一名资深教师，请根据以下班级成绩数据生成一份简洁的总结报告。请使用 Markdown 格式，包含"整体表现"、"优势分析"、"改进建议"三个部分。
+
 班级：${stats.class_name}
 学生总数：${stats.total_students}
 平均分：${Number(stats.average_score || 0).toFixed(2)}
+及格率：${passRate}
 最高分：${stats.highest_score}
 最低分：${stats.lowest_score}
 
 请分析班级的整体表现，指出优势和需要改进的地方。`
 
-        const aiResponse = await c.env.AI.run('@cf/meta/llama-2-7b-chat-int8', {
-            prompt: prompt
+        const aiResponse = await c.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+            messages: [
+                { role: 'system', content: '你是一名经验丰富的教育专家，擅长数据分析和教学指导。请用中文回答，格式清晰，语气专业且鼓励性。' },
+                { role: 'user', content: prompt }
+            ]
         })
 
         return c.json({
             stats,
-            summary: aiResponse.response || '暂无 AI 分析'
+            summary: (aiResponse as any).response || '暂无 AI 分析'
         })
     } catch (error) {
         console.error('AI summary error:', error)
@@ -86,15 +106,42 @@ analysis.get('/student/advice/:studentId', async (c) => {
             return c.json({ error: 'Student not found' }, 404)
         }
 
-        const prompt = `作为一名教育专家，请为以下学生提供个性化的学习建议：
+        // Get recent exam history for trend analysis
+        const recentExams = await c.env.DB.prepare(`
+            SELECT e.name, s.score, e.exam_date
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            WHERE s.student_id = ?
+            ORDER BY e.exam_date DESC
+            LIMIT 5
+        `).bind(studentId).all()
+
+        const exams = recentExams.results as any[]
+        let trendDescription = "数据不足以判断趋势"
+
+        if (exams.length >= 2) {
+            const latest = exams[0].score
+            const previous = exams[1].score
+            const diff = latest - previous
+            if (diff > 5) trendDescription = `近期成绩显著进步（最新比上次提高 ${diff} 分）`
+            else if (diff < -5) trendDescription = `近期成绩有下滑趋势（最新比上次下降 ${Math.abs(diff)} 分）`
+            else trendDescription = "近期成绩保持稳定"
+        }
+
+        const prompt = `作为一名教育专家，请为以下学生提供个性化的学习建议。请使用 Markdown 格式，包含"学情诊断"、"学科分析"、"行动计划"三个部分。
+
 学生姓名：${student.name}
 平均成绩：${Number(student.average_score || 0).toFixed(2)}
-各科成绩：${student.subject_scores}
+近期趋势：${trendDescription}
+各科成绩概览：${student.subject_scores}
 
-请分析学生的学习情况，给出具体的改进建议和学习方法。`
+请结合学生的具体成绩和趋势，给出具体的改进建议和学习方法。`
 
-        const aiResponse = await c.env.AI.run('@cf/meta/llama-2-7b-chat-int8', {
-            prompt: prompt
+        const aiResponse = await c.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+            messages: [
+                { role: 'system', content: '你是一名亲切的导师，擅长发现学生的潜力并给出具体可执行的建议。请用中文回答，使用 Markdown 格式。' },
+                { role: 'user', content: prompt }
+            ]
         })
 
         return c.json({
@@ -102,8 +149,10 @@ analysis.get('/student/advice/:studentId', async (c) => {
                 name: student.name,
                 average_score: student.average_score
             },
-            advice: aiResponse.response || '暂无个性化建议'
+            advice: (aiResponse as any).response || '暂无个性化建议'
         })
+
+
     } catch (error) {
         console.error('AI advice error:', error)
         return c.json({ error: 'Failed to generate advice' }, 500)
@@ -220,6 +269,10 @@ analysis.get('/class/focus/:classId', async (c) => {
     const classId = c.req.param('classId')
 
     try {
+        // Get latest exam for specific analysis
+        const latestExam = await c.env.DB.prepare('SELECT id FROM exams ORDER BY exam_date DESC LIMIT 1').first()
+        const examId = latestExam?.id
+
         // 1. Critical Students (Borderline Pass/Fail or Excellent)
         // 58-60 (Danger of failing), 88-90 (Close to excellent)
         const criticalStudents = await c.env.DB.prepare(`
@@ -264,10 +317,38 @@ analysis.get('/class/focus/:classId', async (c) => {
             HAVING score_diff > 20
         `).bind(classId).all()
 
+        // 4. Imbalanced Students (Total Rank Top 50% BUT has failed subject)
+        // Simplified: Total Score > Class Avg BUT has score < 60
+        const imbalancedStudents = await c.env.DB.prepare(`
+            SELECT DISTINCT st.id, st.name, 'imbalanced' as type,
+                   s.score as failed_score, c.name as subject
+            FROM students st
+            JOIN scores s ON st.id = s.student_id
+            JOIN courses c ON s.course_id = c.id
+            WHERE st.class_id = ?
+            AND s.exam_id = ?
+            AND s.score < 60
+            AND st.id IN (
+                SELECT student_id 
+                FROM scores 
+                WHERE exam_id = ? 
+                GROUP BY student_id 
+                HAVING SUM(score) > (
+                    SELECT AVG(total) FROM (
+                        SELECT SUM(score) as total 
+                        FROM scores 
+                        WHERE exam_id = ? 
+                        GROUP BY student_id
+                    )
+                )
+            )
+        `).bind(classId, examId || 0, examId || 0, examId || 0).all()
+
         return c.json({
             critical: criticalStudents.results,
             regressing: regressingStudents.results,
-            fluctuating: fluctuatingStudents.results
+            fluctuating: fluctuatingStudents.results,
+            imbalanced: imbalancedStudents.results
         })
     } catch (error) {
         console.error('Focus group error:', error)

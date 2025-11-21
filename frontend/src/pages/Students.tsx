@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useAuthStore } from '../store/authStore';
 
@@ -17,6 +18,7 @@ interface Class {
 }
 
 export default function Students() {
+    const navigate = useNavigate();
     const [students, setStudents] = useState<Student[]>([]);
     const [classes, setClasses] = useState<Class[]>([]);
     const [loading, setLoading] = useState(false);
@@ -140,6 +142,13 @@ export default function Students() {
             width: 150,
             render: (_, record) => (
                 <Space>
+                    <Button
+                        type="link"
+                        icon={<UserOutlined />}
+                        onClick={() => navigate(`/student/${record.id}`)}
+                    >
+                        档案
+                    </Button>
                     <Button
                         type="link"
                         icon={<EditOutlined />}

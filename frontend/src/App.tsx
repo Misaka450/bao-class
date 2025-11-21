@@ -14,7 +14,10 @@ import Import from './pages/Import';
 import Analysis from './pages/Analysis';
 import SubjectAnalysis from './pages/SubjectAnalysis';
 import SubjectComparison from './pages/SubjectComparison';
+import ClassAnalysis from './pages/ClassAnalysis';
+import ManagementAlerts from './pages/ManagementAlerts';
 import ScoresList from './pages/ScoresList';
+import StudentProfile from './pages/StudentProfile';
 import { lightTheme } from './theme';
 import './modern-style.css';
 
@@ -42,11 +45,14 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/classes" element={<Classes />} />
                     <Route path="/students" element={<Students />} />
+                    <Route path="/student/:id" element={<StudentProfile />} />
                     <Route path="/courses" element={<Courses />} />
                     <Route path="/exams" element={<Exams />} />
                     <Route path="/scores" element={<ScoreEntry />} />
                     <Route path="/import" element={<Import />} />
                     <Route path="/analysis" element={<Analysis />} />
+                    <Route path="/analysis/class" element={<ClassAnalysis />} />
+                    <Route path="/analysis/alerts" element={<ManagementAlerts />} />
                     <Route path="/analysis/subject" element={<SubjectAnalysis />} />
                     <Route path="/analysis/comparison" element={<SubjectComparison />} />
                     <Route path="/scores-list" element={<ScoresList />} />

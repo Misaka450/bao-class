@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, Select, Button, Typography, message, List, Row, Col } from 'antd';
 import { BulbOutlined, UserOutlined, TeamOutlined, WarningOutlined, FallOutlined, RiseOutlined, UpOutlined, DownOutlined } from '@ant-design/icons';
+import ReactMarkdown from 'react-markdown';
 
 import { useAuthStore } from '../store/authStore';
 
-const { Paragraph, Text } = Typography;
+const { Text } = Typography;
 
 interface Class { id: number; name: string; }
 interface Student { id: number; name: string; }
@@ -23,7 +24,7 @@ export default function Analysis() {
     const [classSummary, setClassSummary] = useState<string>('');
     const [studentAdvice, setStudentAdvice] = useState<string>('');
     const [focusGroup, setFocusGroup] = useState<FocusGroupData | null>(null);
-    const [focusGroupExpanded, setFocusGroupExpanded] = useState<boolean>(true); // 新增：控制展开/收起
+    const [focusGroupExpanded, setFocusGroupExpanded] = useState<boolean>(true);
     const token = useAuthStore((state) => state.token);
 
 
@@ -147,9 +148,9 @@ export default function Analysis() {
                 </Button>
                 {classSummary && (
                     <Card type="inner" style={{ background: '#f9fafb' }}>
-                        <Paragraph style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {classSummary}
-                        </Paragraph>
+                        <div className="prose max-w-none">
+                            <ReactMarkdown>{classSummary}</ReactMarkdown>
+                        </div>
                     </Card>
                 )}
             </Card>
@@ -270,9 +271,9 @@ export default function Analysis() {
                 </Button>
                 {studentAdvice && (
                     <Card type="inner" style={{ background: '#f9fafb' }}>
-                        <Paragraph style={{ whiteSpace: 'pre-wrap', margin: 0 }}>
-                            {studentAdvice}
-                        </Paragraph>
+                        <div className="prose max-w-none">
+                            <ReactMarkdown>{studentAdvice}</ReactMarkdown>
+                        </div>
                     </Card>
                 )}
             </Card>

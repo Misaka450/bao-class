@@ -107,8 +107,24 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {
             key: 'analysis-group',
             icon: <BulbOutlined style={{ color: '#ef4444', fontSize: '18px' }} />, // Red
-            label: <span style={{ fontWeight: 500 }}>AI 分析</span>,
+            label: <span style={{ fontWeight: 500 }}>数据分析</span>,
             children: [
+                {
+                    key: '/analysis/class',
+                    label: '班级成绩走势',
+                    onClick: () => {
+                        navigate('/analysis/class');
+                        if (isMobile) setMobileDrawerVisible(false);
+                    },
+                },
+                {
+                    key: '/analysis/alerts',
+                    label: '管理预警',
+                    onClick: () => {
+                        navigate('/analysis/alerts');
+                        if (isMobile) setMobileDrawerVisible(false);
+                    },
+                },
                 {
                     key: '/analysis',
                     label: 'AI 智能分析',
