@@ -116,12 +116,7 @@ export default function Analysis() {
                     <p style={{ margin: '4px 0 0 0', color: '#666' }}>基于 AI 的成绩分析与学习建议</p>
                 </div>
                 <div>
-                    <Button onClick={() => navigate('/analysis/subject')} style={{ marginRight: 8 }}>
-                        学生学科分析
-                    </Button>
-                    <Button onClick={() => navigate('/analysis/comparison')}>
-                        学科横向对比
-                    </Button>
+                    {/* Buttons removed as they are now in the sidebar */}
                 </div>
             </div>
 

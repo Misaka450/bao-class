@@ -217,7 +217,8 @@ stats.get('/scores-list', async (c) => {
                 co.name as course_name,
                 sc.score,
                 e.id as exam_id,
-                e.name as exam_name
+                e.name as exam_name,
+                (SELECT SUM(score) FROM scores WHERE exam_id = e.id AND student_id = s.id) as exam_total
             FROM students s
             JOIN classes c ON s.class_id = c.id
             LEFT JOIN scores sc ON s.id = sc.student_id
@@ -260,16 +261,14 @@ stats.get('/scores-list', async (c) => {
                     student_number: row.student_number,
                     class_name: row.class_name,
                     scores: {},
-                    total: 0
+                    total: row.exam_total || 0
                 })
             }
 
             const student = studentsMap.get(studentKey)
             if (row.course_name && row.score !== null) {
                 student.scores[row.course_name] = row.score
-                if (!courseId) {
-                    student.total += row.score
-                }
+                // Total is already set from exam_total
             }
         }
 
@@ -481,6 +480,32 @@ stats.get('/exam/:examId/progress', async (c) => {
     } catch (error) {
         console.error('Progress error:', error)
         return c.json({ improved: [], declined: [] })
+    }
+})
+
+// Get student score history (for trend chart)
+stats.get('/student/:studentId', async (c) => {
+    const studentId = c.req.param('studentId')
+
+    try {
+        const history = await c.env.DB.prepare(`
+            SELECT 
+                e.name as exam_name,
+                e.exam_date,
+                AVG(s.score) as score,
+                100 as full_score
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            WHERE s.student_id = ?
+            GROUP BY e.id, e.name, e.exam_date
+            ORDER BY e.exam_date DESC
+            LIMIT 10
+        `).bind(studentId).all()
+
+        return c.json(history.results)
+    } catch (error) {
+        console.error('Student history error:', error)
+        return c.json({ error: 'Failed to get student history' }, 500)
     }
 })
 

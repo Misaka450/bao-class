@@ -2827,7 +2827,8 @@ stats.get("/scores-list", async (c) => {
                 co.name as course_name,
                 sc.score,
                 e.id as exam_id,
-                e.name as exam_name
+                e.name as exam_name,
+                (SELECT SUM(score) FROM scores WHERE exam_id = e.id AND student_id = s.id) as exam_total
             FROM students s
             JOIN classes c ON s.class_id = c.id
             LEFT JOIN scores sc ON s.id = sc.student_id
@@ -2860,15 +2861,12 @@ stats.get("/scores-list", async (c) => {
           student_number: row.student_number,
           class_name: row.class_name,
           scores: {},
-          total: 0
+          total: row.exam_total || 0
         });
       }
       const student = studentsMap.get(studentKey);
       if (row.course_name && row.score !== null) {
         student.scores[row.course_name] = row.score;
-        if (!courseId) {
-          student.total += row.score;
-        }
       }
     }
     const studentsList = Array.from(studentsMap.values());
@@ -3030,6 +3028,28 @@ stats.get("/exam/:examId/progress", async (c) => {
   } catch (error) {
     console.error("Progress error:", error);
     return c.json({ improved: [], declined: [] });
+  }
+});
+stats.get("/student/:studentId", async (c) => {
+  const studentId = c.req.param("studentId");
+  try {
+    const history = await c.env.DB.prepare(`
+            SELECT 
+                e.name as exam_name,
+                e.exam_date,
+                AVG(s.score) as score,
+                100 as full_score
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            WHERE s.student_id = ?
+            GROUP BY e.id, e.name, e.exam_date
+            ORDER BY e.exam_date DESC
+            LIMIT 10
+        `).bind(studentId).all();
+    return c.json(history.results);
+  } catch (error) {
+    console.error("Student history error:", error);
+    return c.json({ error: "Failed to get student history" }, 500);
   }
 });
 var stats_default = stats;
@@ -35940,6 +35960,52 @@ init.get("/progress-data", async (c) => {
     return c.json({ error: String(error) }, 500);
   }
 });
+init.get("/seed-all-exams", async (c) => {
+  try {
+    const exams2 = await c.env.DB.prepare("SELECT * FROM exams").all();
+    let courses2 = await c.env.DB.prepare("SELECT * FROM courses").all();
+    if (courses2.results.length === 0) {
+      await c.env.DB.prepare("INSERT INTO courses (name) VALUES (?)").bind("\u8BED\u6587").run();
+      await c.env.DB.prepare("INSERT INTO courses (name) VALUES (?)").bind("\u6570\u5B66").run();
+      await c.env.DB.prepare("INSERT INTO courses (name) VALUES (?)").bind("\u82F1\u8BED").run();
+      courses2 = await c.env.DB.prepare("SELECT * FROM courses").all();
+    }
+    let totalInserted = 0;
+    const logs = [];
+    for (const exam of exams2.results) {
+      const students2 = await c.env.DB.prepare("SELECT id FROM students WHERE class_id = ?").bind(exam.class_id).all();
+      if (students2.results.length === 0) {
+        logs.push(`Exam ${exam.name} (ID: ${exam.id}) skipped: No students in class ${exam.class_id}`);
+        continue;
+      }
+      for (const course of courses2.results) {
+        const examCourse = await c.env.DB.prepare("SELECT * FROM exam_courses WHERE exam_id = ? AND course_id = ?").bind(exam.id, course.id).first();
+        if (!examCourse) {
+          await c.env.DB.prepare("INSERT INTO exam_courses (exam_id, course_id, full_score) VALUES (?, ?, ?)").bind(exam.id, course.id, 100).run();
+        }
+        for (const student of students2.results) {
+          const existingScore = await c.env.DB.prepare("SELECT id FROM scores WHERE exam_id = ? AND course_id = ? AND student_id = ?").bind(exam.id, course.id, student.id).first();
+          if (!existingScore) {
+            const baseScore = 75;
+            const variance = Math.floor(Math.random() * 30) - 15;
+            let score = baseScore + variance;
+            const rand = Math.random();
+            if (rand > 0.9) score += 15;
+            if (rand < 0.1) score -= 20;
+            score = Math.max(0, Math.min(100, score));
+            await c.env.DB.prepare("INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)").bind(student.id, exam.id, course.id, score).run();
+            totalInserted++;
+          }
+        }
+      }
+      logs.push(`Exam ${exam.name} (ID: ${exam.id}) processed.`);
+    }
+    return c.json({ message: "All exams seeded successfully", totalInserted, logs });
+  } catch (error) {
+    console.error("Seed all exams error:", error);
+    return c.json({ error: String(error) }, 500);
+  }
+});
 var init_default = init;
 
 // src/routes/debug.ts
@@ -35962,7 +36028,332 @@ debug.get("/inspect", async (c) => {
     return c.json({ error: String(error) }, 500);
   }
 });
+debug.get("/inspect-student/:id", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const student = await c.env.DB.prepare("SELECT * FROM students WHERE id = ?").bind(id).first();
+    if (!student) return c.json({ error: "Student not found" }, 404);
+    const scores2 = await c.env.DB.prepare(`
+            SELECT s.*, c.name as course_name, e.name as exam_name, e.id as exam_id
+            FROM scores s
+            JOIN courses c ON s.course_id = c.id
+            JOIN exams e ON s.exam_id = e.id
+            WHERE s.student_id = ?
+            ORDER BY e.id, c.name
+        `).bind(id).all();
+    return c.json({
+      student,
+      scores: scores2.results,
+      total_scores: scores2.results.length
+    });
+  } catch (error) {
+    return c.json({ error: String(error) }, 500);
+  }
+});
+debug.get("/check-duplicates", async (c) => {
+  try {
+    const duplicates = await c.env.DB.prepare(`
+            SELECT 
+                student_id, 
+                exam_id, 
+                course_id,
+                COUNT(*) as count
+            FROM scores
+            GROUP BY student_id, exam_id, course_id
+            HAVING COUNT(*) > 1
+        `).all();
+    return c.json({
+      has_duplicates: duplicates.results.length > 0,
+      duplicate_count: duplicates.results.length,
+      duplicates: duplicates.results
+    });
+  } catch (error) {
+    return c.json({ error: String(error) }, 500);
+  }
+});
+debug.get("/student-by-name/:name", async (c) => {
+  const name = c.req.param("name");
+  try {
+    const student = await c.env.DB.prepare("SELECT * FROM students WHERE name = ?").bind(name).first();
+    if (!student) return c.json({ error: "Student not found" }, 404);
+    const scores2 = await c.env.DB.prepare(`
+            SELECT s.*, c.name as course_name, e.name as exam_name, e.id as exam_id
+            FROM scores s
+            JOIN courses c ON s.course_id = c.id
+            JOIN exams e ON s.exam_id = e.id
+            WHERE s.student_id = ?
+            ORDER BY e.id, c.name
+        `).bind(student.id).all();
+    const byExam = {};
+    for (const score of scores2.results) {
+      if (!byExam[score.exam_id]) {
+        byExam[score.exam_id] = {
+          exam_name: score.exam_name,
+          exam_id: score.exam_id,
+          scores: [],
+          total: 0
+        };
+      }
+      byExam[score.exam_id].scores.push({
+        course: score.course_name,
+        score: score.score
+      });
+      byExam[score.exam_id].total += score.score;
+    }
+    return c.json({
+      student,
+      by_exam: byExam,
+      all_scores: scores2.results
+    });
+  } catch (error) {
+    return c.json({ error: String(error) }, 500);
+  }
+});
+debug.get("/courses", async (c) => {
+  try {
+    const courses2 = await c.env.DB.prepare("SELECT * FROM courses ORDER BY id").all();
+    return c.json(courses2.results);
+  } catch (error) {
+    return c.json({ error: String(error) }, 500);
+  }
+});
+debug.post("/clean-duplicate-courses", async (c) => {
+  try {
+    const courses2 = await c.env.DB.prepare("SELECT * FROM courses ORDER BY id").all();
+    const coursesData = courses2.results;
+    const seenNames = /* @__PURE__ */ new Map();
+    const toDelete = [];
+    for (const course of coursesData) {
+      if (seenNames.has(course.name)) {
+        toDelete.push(course.id);
+      } else {
+        seenNames.set(course.name, course.id);
+      }
+    }
+    for (const courseId of toDelete) {
+      await c.env.DB.prepare("DELETE FROM scores WHERE course_id = ?").bind(courseId).run();
+      await c.env.DB.prepare("DELETE FROM exam_courses WHERE course_id = ?").bind(courseId).run();
+    }
+    for (const courseId of toDelete) {
+      await c.env.DB.prepare("DELETE FROM courses WHERE id = ?").bind(courseId).run();
+    }
+    return c.json({
+      message: "Cleaned duplicate courses",
+      deleted_course_ids: toDelete,
+      kept_courses: Array.from(seenNames.entries())
+    });
+  } catch (error) {
+    return c.json({ error: String(error) }, 500);
+  }
+});
 var debug_default = debug;
+
+// src/routes/analysis.ts
+var analysis = new Hono2();
+analysis.get("/class/summary/:classId", async (c) => {
+  const classId = c.req.param("classId");
+  try {
+    const stats2 = await c.env.DB.prepare(`
+      SELECT 
+        c.name as class_name,
+        COUNT(DISTINCT s.student_id) as total_students,
+        AVG(s.score) as average_score,
+        MAX(s.score) as highest_score,
+        MIN(s.score) as lowest_score
+      FROM classes c
+      JOIN students st ON c.id = st.class_id
+      JOIN scores s ON st.id = s.student_id
+      JOIN exams e ON s.exam_id = e.id
+      WHERE c.id = ? AND e.exam_date >= date('now', '-30 days')
+      GROUP BY c.id, c.name
+    `).bind(classId).first();
+    if (!stats2) {
+      return c.json({ error: "No data available" }, 404);
+    }
+    const prompt = `\u4F5C\u4E3A\u4E00\u540D\u8D44\u6DF1\u6559\u5E08\uFF0C\u8BF7\u6839\u636E\u4EE5\u4E0B\u73ED\u7EA7\u6210\u7EE9\u6570\u636E\u751F\u6210\u4E00\u4EFD\u7B80\u6D01\u7684\u603B\u7ED3\u62A5\u544A\uFF1A
+\u73ED\u7EA7\uFF1A${stats2.class_name}
+\u5B66\u751F\u603B\u6570\uFF1A${stats2.total_students}
+\u5E73\u5747\u5206\uFF1A${Number(stats2.average_score || 0).toFixed(2)}
+\u6700\u9AD8\u5206\uFF1A${stats2.highest_score}
+\u6700\u4F4E\u5206\uFF1A${stats2.lowest_score}
+
+\u8BF7\u5206\u6790\u73ED\u7EA7\u7684\u6574\u4F53\u8868\u73B0\uFF0C\u6307\u51FA\u4F18\u52BF\u548C\u9700\u8981\u6539\u8FDB\u7684\u5730\u65B9\u3002`;
+    const aiResponse = await c.env.AI.run("@cf/meta/llama-2-7b-chat-int8", {
+      prompt
+    });
+    return c.json({
+      stats: stats2,
+      summary: aiResponse.response || "\u6682\u65E0 AI \u5206\u6790"
+    });
+  } catch (error) {
+    console.error("AI summary error:", error);
+    return c.json({
+      error: "Failed to generate summary",
+      details: error instanceof Error ? error.message : "\u672A\u77E5\u9519\u8BEF"
+    }, 500);
+  }
+});
+analysis.get("/student/advice/:studentId", async (c) => {
+  const studentId = c.req.param("studentId");
+  try {
+    const student = await c.env.DB.prepare(`
+      SELECT 
+        st.name,
+        AVG(s.score) as average_score,
+        GROUP_CONCAT(co.name || ':' || s.score) as subject_scores
+      FROM students st
+      JOIN scores s ON st.id = s.student_id
+      JOIN exams e ON s.exam_id = e.id
+      JOIN courses co ON e.course_id = co.id
+      WHERE st.id = ?
+      GROUP BY st.id, st.name
+    `).bind(studentId).first();
+    if (!student) {
+      return c.json({ error: "Student not found" }, 404);
+    }
+    const prompt = `\u4F5C\u4E3A\u4E00\u540D\u6559\u80B2\u4E13\u5BB6\uFF0C\u8BF7\u4E3A\u4EE5\u4E0B\u5B66\u751F\u63D0\u4F9B\u4E2A\u6027\u5316\u7684\u5B66\u4E60\u5EFA\u8BAE\uFF1A
+\u5B66\u751F\u59D3\u540D\uFF1A${student.name}
+\u5E73\u5747\u6210\u7EE9\uFF1A${Number(student.average_score || 0).toFixed(2)}
+\u5404\u79D1\u6210\u7EE9\uFF1A${student.subject_scores}
+
+\u8BF7\u5206\u6790\u5B66\u751F\u7684\u5B66\u4E60\u60C5\u51B5\uFF0C\u7ED9\u51FA\u5177\u4F53\u7684\u6539\u8FDB\u5EFA\u8BAE\u548C\u5B66\u4E60\u65B9\u6CD5\u3002`;
+    const aiResponse = await c.env.AI.run("@cf/meta/llama-2-7b-chat-int8", {
+      prompt
+    });
+    return c.json({
+      student: {
+        name: student.name,
+        average_score: student.average_score
+      },
+      advice: aiResponse.response || "\u6682\u65E0\u4E2A\u6027\u5316\u5EFA\u8BAE"
+    });
+  } catch (error) {
+    console.error("AI advice error:", error);
+    return c.json({ error: "Failed to generate advice" }, 500);
+  }
+});
+analysis.get("/weakpoints/:classId", async (c) => {
+  const classId = c.req.param("classId");
+  try {
+    const weakStudents = await c.env.DB.prepare(`
+      SELECT 
+        st.id,
+        st.name,
+        AVG(s.score) as average_score,
+        COUNT(CASE WHEN s.score < 60 THEN 1 END) as fail_count
+      FROM students st
+      JOIN scores s ON st.id = s.student_id
+      JOIN exams e ON s.exam_id = e.id
+      WHERE st.class_id = ?
+      GROUP BY st.id, st.name
+      HAVING average_score < 70 OR fail_count > 0
+      ORDER BY average_score ASC
+      LIMIT 20
+    `).bind(classId).all();
+    return c.json(weakStudents.results);
+  } catch (error) {
+    console.error("Weakpoints error:", error);
+    return c.json({ error: "Failed to identify weak points" }, 500);
+  }
+});
+analysis.get("/student/radar/:studentId", async (c) => {
+  const studentId = c.req.param("studentId");
+  try {
+    const studentScores = await c.env.DB.prepare(`
+            SELECT 
+                c.name as subject,
+                s.score,
+                s.exam_id,
+                e.class_id
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            JOIN courses c ON e.course_id = c.id
+            WHERE s.student_id = ?
+            GROUP BY c.id
+            ORDER BY e.exam_date DESC
+        `).bind(studentId).all();
+    if (!studentScores.results.length) {
+      return c.json([]);
+    }
+    const radarData = [];
+    for (const record of studentScores.results) {
+      const stats2 = await c.env.DB.prepare(`
+                SELECT 
+                    AVG(score) as avg_score,
+                    COUNT(score) as count,
+                    SUM((score - (SELECT AVG(score) FROM scores WHERE exam_id = ?)) * (score - (SELECT AVG(score) FROM scores WHERE exam_id = ?))) as sum_sq_diff
+                FROM scores 
+                WHERE exam_id = ?
+            `).bind(record.exam_id, record.exam_id, record.exam_id, record.exam_id).first();
+      if (!stats2) continue;
+      const avg = Number(stats2.avg_score);
+      const count = Number(stats2.count);
+      const variance = count > 1 ? Number(stats2.sum_sq_diff) / count : 0;
+      const stdDev = Math.sqrt(variance);
+      const zScore = stdDev === 0 ? 0 : (Number(record.score) - avg) / stdDev;
+      radarData.push({
+        subject: record.subject,
+        score: record.score,
+        classAvg: parseFloat(avg.toFixed(2)),
+        zScore: parseFloat(zScore.toFixed(2)),
+        fullMark: 100
+        // Assuming 100 for normalization if needed
+      });
+    }
+    return c.json(radarData);
+  } catch (error) {
+    console.error("Radar analysis error:", error);
+    return c.json({ error: "Failed to generate radar analysis" }, 500);
+  }
+});
+analysis.get("/class/focus/:classId", async (c) => {
+  const classId = c.req.param("classId");
+  try {
+    const criticalStudents = await c.env.DB.prepare(`
+            SELECT DISTINCT st.id, st.name, 'critical' as type, s.score, c.name as subject
+            FROM students st
+            JOIN scores s ON st.id = s.student_id
+            JOIN exams e ON s.exam_id = e.id
+            JOIN courses c ON e.course_id = c.id
+            WHERE st.class_id = ? 
+            AND e.exam_date >= date('now', '-30 days')
+            AND ((s.score BETWEEN 58 AND 59.9) OR (s.score BETWEEN 88 AND 89.9))
+        `).bind(classId).all();
+    const regressingStudents = await c.env.DB.prepare(`
+            SELECT st.id, st.name, 'regressing' as type, 
+                   (AVG(s.score) - (
+                       SELECT s2.score 
+                       FROM scores s2 
+                       JOIN exams e2 ON s2.exam_id = e2.id 
+                       WHERE s2.student_id = st.id 
+                       ORDER BY e2.exam_date DESC LIMIT 1
+                   )) as drop_amount
+            FROM students st
+            JOIN scores s ON st.id = s.student_id
+            WHERE st.class_id = ?
+            GROUP BY st.id
+            HAVING drop_amount > 10
+        `).bind(classId).all();
+    const fluctuatingStudents = await c.env.DB.prepare(`
+            SELECT st.id, st.name, 'fluctuating' as type,
+                   (MAX(s.score) - MIN(s.score)) as score_diff
+            FROM students st
+            JOIN scores s ON st.id = s.student_id
+            WHERE st.class_id = ?
+            GROUP BY st.id
+            HAVING score_diff > 20
+        `).bind(classId).all();
+    return c.json({
+      critical: criticalStudents.results,
+      regressing: regressingStudents.results,
+      fluctuating: fluctuatingStudents.results
+    });
+  } catch (error) {
+    console.error("Focus group error:", error);
+    return c.json({ error: "Failed to generate focus group" }, 500);
+  }
+});
+var analysis_default = analysis;
 
 // src/index.ts
 var app = new Hono2();
@@ -35983,6 +36374,7 @@ app.route("/api/courses", courses_default);
 app.route("/api/exams", exams_default);
 app.route("/api/scores", scores_default);
 app.route("/api/stats", stats_default);
+app.route("/api/analysis", analysis_default);
 app.route("/api/reports", reports_default);
 app.route("/api/import", import_default);
 app.route("/api/init", init_default);

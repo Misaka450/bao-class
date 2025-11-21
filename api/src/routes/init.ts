@@ -118,4 +118,80 @@ init.get('/progress-data', async (c) => {
     }
 })
 
+init.get('/seed-all-exams', async (c) => {
+    try {
+        // 1. Get all exams
+        const exams = await c.env.DB.prepare('SELECT * FROM exams').all<{ id: number, class_id: number, name: string }>()
+
+        // 2. Get all courses
+        let courses = await c.env.DB.prepare('SELECT * FROM courses').all<{ id: number, name: string }>()
+        if (courses.results.length === 0) {
+            // Create default courses if none exist
+            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('语文').run()
+            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('数学').run()
+            await c.env.DB.prepare('INSERT INTO courses (name) VALUES (?)').bind('英语').run()
+            courses = await c.env.DB.prepare('SELECT * FROM courses').all<{ id: number, name: string }>()
+        }
+
+        let totalInserted = 0
+        const logs: string[] = []
+
+        for (const exam of exams.results) {
+            // Get students in this exam's class
+            const students = await c.env.DB.prepare('SELECT id FROM students WHERE class_id = ?').bind(exam.class_id).all<{ id: number }>()
+
+            if (students.results.length === 0) {
+                logs.push(`Exam ${exam.name} (ID: ${exam.id}) skipped: No students in class ${exam.class_id}`)
+                continue
+            }
+
+            // Ensure exam_courses exist
+            for (const course of courses.results) {
+                const examCourse = await c.env.DB.prepare('SELECT * FROM exam_courses WHERE exam_id = ? AND course_id = ?')
+                    .bind(exam.id, course.id)
+                    .first()
+
+                if (!examCourse) {
+                    await c.env.DB.prepare('INSERT INTO exam_courses (exam_id, course_id, full_score) VALUES (?, ?, ?)')
+                        .bind(exam.id, course.id, 100)
+                        .run()
+                }
+
+                // Check and add scores for each student
+                for (const student of students.results) {
+                    const existingScore = await c.env.DB.prepare('SELECT id FROM scores WHERE exam_id = ? AND course_id = ? AND student_id = ?')
+                        .bind(exam.id, course.id, student.id)
+                        .first()
+
+                    if (!existingScore) {
+                        // Generate a realistic score
+                        // Base score around 75, with deviation
+                        const baseScore = 75
+                        const variance = Math.floor(Math.random() * 30) - 15 // -15 to +15
+                        let score = baseScore + variance
+
+                        // Add some randomness for "excellent" or "failing" students
+                        const rand = Math.random()
+                        if (rand > 0.9) score += 15 // Excellent
+                        if (rand < 0.1) score -= 20 // Failing
+
+                        score = Math.max(0, Math.min(100, score))
+
+                        await c.env.DB.prepare('INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)')
+                            .bind(student.id, exam.id, course.id, score)
+                            .run()
+                        totalInserted++
+                    }
+                }
+            }
+            logs.push(`Exam ${exam.name} (ID: ${exam.id}) processed.`)
+        }
+
+        return c.json({ message: 'All exams seeded successfully', totalInserted, logs })
+    } catch (error) {
+        console.error('Seed all exams error:', error)
+        return c.json({ error: String(error) }, 500)
+    }
+})
+
 export default init

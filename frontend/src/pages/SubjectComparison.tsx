@@ -13,7 +13,9 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export default function SubjectComparison() {
     const [exams, setExams] = useState<Exam[]>([]);
+    const [courses, setCourses] = useState<{ id: number; name: string }[]>([]);
     const [selectedExamId, setSelectedExamId] = useState<string>('');
+    const [selectedCourseId, setSelectedCourseId] = useState<string>('');
     const [comparisonData, setComparisonData] = useState<ComparisonData[]>([]);
     const [distributionData, setDistributionData] = useState<DistributionData[]>([]);
     const [loading, setLoading] = useState(false);
@@ -21,13 +23,14 @@ export default function SubjectComparison() {
 
     useEffect(() => {
         fetchExams();
+        fetchCourses();
     }, []);
 
     useEffect(() => {
         if (selectedExamId) {
-            fetchAnalysisData(selectedExamId);
+            fetchAnalysisData(selectedExamId, selectedCourseId);
         }
-    }, [selectedExamId]);
+    }, [selectedExamId, selectedCourseId]);
 
     const fetchExams = async () => {
         try {
@@ -42,18 +45,36 @@ export default function SubjectComparison() {
         }
     };
 
-    const fetchAnalysisData = async (examId: string) => {
+    const fetchCourses = async () => {
+        try {
+            const res = await fetch('http://localhost:8787/api/courses', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            setCourses(data);
+        } catch (error) {
+            message.error('获取课程列表失败');
+        }
+    };
+
+    const fetchAnalysisData = async (examId: string, courseId: string) => {
         setLoading(true);
         try {
             // Fetch Class Comparison
-            const compRes = await fetch(`http://localhost:8787/api/stats/comparison/classes?examId=${examId}`, {
+            let compUrl = `http://localhost:8787/api/stats/comparison/classes?examId=${examId}`;
+            if (courseId) compUrl += `&courseId=${courseId}`;
+
+            const compRes = await fetch(compUrl, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const compJson = await compRes.json();
             setComparisonData(compJson);
 
             // Fetch Score Distribution
-            const distRes = await fetch(`http://localhost:8787/api/stats/exam/${examId}/distribution`, {
+            let distUrl = `http://localhost:8787/api/stats/exam/${examId}/distribution`;
+            if (courseId) distUrl += `?courseId=${courseId}`;
+
+            const distRes = await fetch(distUrl, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const distJson = await distRes.json();
@@ -73,18 +94,33 @@ export default function SubjectComparison() {
                     <Title level={2} style={{ margin: 0 }}>学科横向对比</Title>
                     <p style={{ margin: '4px 0 0 0', color: '#666' }}>多维度对比各班级考试成绩差异</p>
                 </div>
-                <Select
-                    value={selectedExamId}
-                    onChange={setSelectedExamId}
-                    style={{ width: 200 }}
-                    placeholder="选择考试"
-                >
-                    {exams.map((exam) => (
-                        <Select.Option key={exam.id} value={exam.id}>
-                            {exam.name}
-                        </Select.Option>
-                    ))}
-                </Select>
+                <div style={{ display: 'flex', gap: 16 }}>
+                    <Select
+                        value={selectedExamId}
+                        onChange={setSelectedExamId}
+                        style={{ width: 200 }}
+                        placeholder="选择考试"
+                    >
+                        {exams.map((exam) => (
+                            <Select.Option key={exam.id} value={exam.id}>
+                                {exam.name}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                    <Select
+                        value={selectedCourseId}
+                        onChange={setSelectedCourseId}
+                        style={{ width: 150 }}
+                        placeholder="所有科目"
+                        allowClear
+                    >
+                        {courses.map((course) => (
+                            <Select.Option key={course.id} value={course.id}>
+                                {course.name}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                </div>
             </div>
 
             <Spin spinning={loading}>

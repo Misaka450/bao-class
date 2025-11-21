@@ -8,11 +8,23 @@ import students from './routes/students';
 import courses from './routes/courses';
 import exams from './routes/exams';
 import scores from './routes/scores';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { Env } from './types';
+import { cacheMiddleware } from './middleware/cache';
+import auth from './routes/auth';
+import classes from './routes/classes';
+import students from './routes/students';
+import courses from './routes/courses';
+import exams from './routes/exams';
+import scores from './routes/scores';
 import stats from './routes/stats';
 import reports from './routes/reports';
 import importRoute from './routes/import';
 import init from './routes/init';
 import debug from './routes/debug';
+
+import analysis from './routes/analysis';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -42,6 +54,7 @@ app.route('/api/courses', courses);
 app.route('/api/exams', exams);
 app.route('/api/scores', scores);
 app.route('/api/stats', stats);
+app.route('/api/analysis', analysis);
 app.route('/api/reports', reports);
 app.route('/api/import', importRoute);
 app.route('/api/init', init);

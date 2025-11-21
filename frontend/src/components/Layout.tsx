@@ -71,10 +71,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             onClick: () => navigate('/scores-list'),
         },
         {
-            key: '/analysis',
+            key: 'analysis-group',
             icon: <BulbOutlined style={{ color: '#ef4444', fontSize: '18px' }} />, // Red
             label: <span style={{ fontWeight: 500 }}>AI 分析</span>,
-            onClick: () => navigate('/analysis'),
+            children: [
+                {
+                    key: '/analysis',
+                    label: 'AI 智能分析',
+                    onClick: () => navigate('/analysis'),
+                },
+                {
+                    key: '/analysis/subject',
+                    label: '学生学科分析',
+                    onClick: () => navigate('/analysis/subject'),
+                },
+                {
+                    key: '/analysis/comparison',
+                    label: '学科横向对比',
+                    onClick: () => navigate('/analysis/comparison'),
+                },
+            ],
         },
     ];
 
