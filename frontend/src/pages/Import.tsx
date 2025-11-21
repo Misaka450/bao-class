@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Card, Tabs, Button, Upload, message, Alert, Table } from 'antd';
+import { useState, useEffect } from 'react';
+import { Card, Tabs, Button, Upload, message, Alert, Table, Select, Form } from 'antd';
 import { DownloadOutlined, UploadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload/interface';
 import { useAuthStore } from '../store/authStore';
@@ -8,20 +8,71 @@ export default function Import() {
     const [activeTab, setActiveTab] = useState('students');
     const [uploading, setUploading] = useState(false);
     const [result, setResult] = useState<any>(null);
+    const [classes, setClasses] = useState<any[]>([]);
+    const [exams, setExams] = useState<any[]>([]);
+    const [selectedClass, setSelectedClass] = useState<string>();
+    const [selectedExam, setSelectedExam] = useState<string>();
+
     const token = useAuthStore((state) => state.token);
+
+    useEffect(() => {
+        fetchClasses();
+        fetchExams();
+    }, []);
+
+    const fetchClasses = async () => {
+        try {
+            const res = await fetch('http://localhost:8787/api/classes', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            setClasses(data);
+        } catch (error) {
+            console.error('Failed to fetch classes', error);
+        }
+    };
+
+    const fetchExams = async () => {
+        try {
+            const res = await fetch('http://localhost:8787/api/exams', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            setExams(data);
+        } catch (error) {
+            console.error('Failed to fetch exams', error);
+        }
+    };
 
     const handleDownloadTemplate = async (type: string) => {
         try {
-            const res = await fetch(`http://localhost:8787/api/import/template/${type}`, {
+            let url = `http://localhost:8787/api/import/template/${type}`;
+
+            if (type === 'scores') {
+                if (!selectedClass || !selectedExam) {
+                    message.warning('请先选择班级和考试');
+                    return;
+                }
+                url += `?classId=${selectedClass}&examId=${selectedExam}`;
+            }
+
+            const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` },
             });
+
+            if (!res.ok) {
+                const text = await res.text();
+                message.error(text || '模板下载失败');
+                return;
+            }
+
             const blob = await res.blob();
-            const url = window.URL.createObjectURL(blob);
+            const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url;
+            a.href = downloadUrl;
             a.download = `${type}_import_template.xlsx`;
             a.click();
-            window.URL.revokeObjectURL(url);
+            window.URL.revokeObjectURL(downloadUrl);
             message.success('模板下载成功');
         } catch (error) {
             message.error('模板下载失败');
@@ -29,12 +80,20 @@ export default function Import() {
     };
 
     const handleUpload = async (file: RcFile) => {
+        if (activeTab === 'scores' && !selectedExam) {
+            message.warning('请先选择考试');
+            return false;
+        }
+
         setUploading(true);
         setResult(null);
 
         try {
             const formData = new FormData();
             formData.append('file', file);
+            if (activeTab === 'scores' && selectedExam) {
+                formData.append('examId', selectedExam);
+            }
 
             const res = await fetch(`http://localhost:8787/api/import/${activeTab}`, {
                 method: 'POST',
@@ -45,8 +104,10 @@ export default function Import() {
             const data = await res.json();
             setResult(data);
 
-            if (data.success || data.failed === 0) {
+            if (data.success || (data.failed === 0 && data.total > 0)) {
                 message.success('导入成功！');
+            } else if (data.error) {
+                message.error(data.error);
             } else {
                 message.warning('部分数据导入失败，请查看详情');
             }
@@ -143,23 +204,55 @@ export default function Import() {
                 <div>
                     <Alert
                         message="导入说明"
-                        description="请先下载模板文件，按照模板格式填写成绩数据，然后上传导入。支持 .xlsx 格式文件。"
+                        description="1. 选择班级和考试下载模板（模板会自动包含该班级学生和考试科目）。 2. 填写分数。 3. 选择对应考试上传文件。"
                         type="info"
                         showIcon
                         style={{ marginBottom: 24 }}
                     />
 
                     <Card title="步骤 1: 下载模板" style={{ marginBottom: 16 }}>
+                        <Form layout="inline" style={{ marginBottom: 16 }}>
+                            <Form.Item label="选择班级" required>
+                                <Select
+                                    style={{ width: 200 }}
+                                    placeholder="请选择班级"
+                                    value={selectedClass}
+                                    onChange={setSelectedClass}
+                                    options={classes.map(c => ({ label: c.name, value: c.id }))}
+                                />
+                            </Form.Item>
+                            <Form.Item label="选择考试" required>
+                                <Select
+                                    style={{ width: 200 }}
+                                    placeholder="请选择考试"
+                                    value={selectedExam}
+                                    onChange={setSelectedExam}
+                                    options={exams.map(e => ({ label: e.name, value: e.id }))}
+                                />
+                            </Form.Item>
+                        </Form>
                         <Button
                             type="primary"
                             icon={<DownloadOutlined />}
                             onClick={() => handleDownloadTemplate('scores')}
+                            disabled={!selectedClass || !selectedExam}
                         >
                             下载成绩导入模板
                         </Button>
                     </Card>
 
                     <Card title="步骤 2: 上传文件">
+                        <div style={{ marginBottom: 16 }}>
+                            <span style={{ marginRight: 8, color: 'red' }}>*</span>
+                            <span style={{ marginRight: 8 }}>确认归属考试:</span>
+                            <Select
+                                style={{ width: 200 }}
+                                placeholder="请选择考试"
+                                value={selectedExam}
+                                onChange={setSelectedExam}
+                                options={exams.map(e => ({ label: e.name, value: e.id }))}
+                            />
+                        </div>
                         <Upload.Dragger
                             name="file"
                             accept=".xlsx,.xls"
