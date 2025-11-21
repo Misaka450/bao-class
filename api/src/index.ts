@@ -10,6 +10,9 @@ import exams from './routes/exams';
 import scores from './routes/scores';
 import stats from './routes/stats';
 import reports from './routes/reports';
+import importRoute from './routes/import';
+import init from './routes/init';
+import debug from './routes/debug';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -40,5 +43,8 @@ app.route('/api/exams', exams);
 app.route('/api/scores', scores);
 app.route('/api/stats', stats);
 app.route('/api/reports', reports);
+app.route('/api/import', importRoute);
+app.route('/api/init', init);
+app.route('/api/debug', debug);
 
 export default app;

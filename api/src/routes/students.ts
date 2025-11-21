@@ -49,8 +49,17 @@ students.put('/:id', async (c) => {
 
 students.delete('/:id', async (c) => {
     const id = c.req.param('id')
-    const { success } = await c.env.DB.prepare('DELETE FROM students WHERE id = ?').bind(id).run()
-    return success ? c.json({ message: 'Student deleted' }) : c.json({ error: 'Failed to delete student' }, 500)
+    try {
+        // First delete associated scores
+        await c.env.DB.prepare('DELETE FROM scores WHERE student_id = ?').bind(id).run()
+
+        // Then delete the student
+        const { success } = await c.env.DB.prepare('DELETE FROM students WHERE id = ?').bind(id).run()
+        return success ? c.json({ message: 'Student deleted' }) : c.json({ error: 'Failed to delete student' }, 500)
+    } catch (error) {
+        console.error('Delete student error:', error)
+        return c.json({ error: 'Failed to delete student' }, 500)
+    }
 })
 
 export default students

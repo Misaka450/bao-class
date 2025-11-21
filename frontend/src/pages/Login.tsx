@@ -11,7 +11,7 @@ interface LoginForm {
 
 export default function Login() {
     const navigate = useNavigate();
-    const setAuth = useAuthStore((state) => state.setAuth);
+    const login = useAuthStore((state) => state.login);
     const [loading, setLoading] = useState(false);
 
     const onFinish = async (values: LoginForm) => {
@@ -30,7 +30,7 @@ export default function Login() {
             }
 
             const data = await res.json();
-            setAuth(data.token, data.user);
+            login(data.user, data.token);
             message.success('登录成功！');
             navigate('/dashboard');
         } catch (error) {

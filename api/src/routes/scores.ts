@@ -1,5 +1,4 @@
 import { Hono } from 'hono'
-import { Score } from '../db/types'
 
 type Bindings = {
     DB: D1Database
@@ -7,67 +6,100 @@ type Bindings = {
 
 const scores = new Hono<{ Bindings: Bindings }>()
 
-// Get scores for a specific exam and class
+// Get scores for a specific exam (all courses) and class
 scores.get('/', async (c) => {
     const examId = c.req.query('exam_id')
     const classId = c.req.query('class_id')
+    const courseId = c.req.query('course_id')
 
     if (!examId || !classId) {
         return c.json({ error: 'Exam ID and Class ID are required' }, 400)
     }
 
-    // Get all students in the class and their scores for the exam (if any)
-    const { results } = await c.env.DB.prepare(`
-    SELECT s.id as student_id, s.name, s.student_id as student_code, sc.score, sc.id as score_id
-    FROM students s
-    LEFT JOIN scores sc ON s.id = sc.student_id AND sc.exam_id = ?
-    WHERE s.class_id = ?
-    ORDER BY s.student_id ASC
-  `).bind(examId, classId).all()
+    try {
+        let query = `
+            SELECT 
+                s.id as student_id, 
+                s.name, 
+                s.student_id as student_code,
+                c.id as course_id,
+                c.name as course_name,
+                sc.score, 
+                sc.id as score_id
+            FROM students s
+            CROSS JOIN exam_courses ec
+            JOIN courses c ON ec.course_id = c.id
+            LEFT JOIN scores sc ON s.id = sc.student_id 
+                AND sc.exam_id = ec.exam_id 
+                AND sc.course_id = ec.course_id
+            WHERE s.class_id = ? 
+                AND ec.exam_id = ?
+        `
 
-    return c.json(results)
+        const params: any[] = [classId, examId]
+
+        if (courseId) {
+            query += ` AND c.id = ?`
+            params.push(courseId)
+        }
+
+        query += ` ORDER BY s.student_id ASC, c.name ASC`
+
+        const { results } = await c.env.DB.prepare(query).bind(...params).all()
+        return c.json(results)
+    } catch (error) {
+        console.error('Get scores error:', error)
+        return c.json({ error: 'Failed to get scores' }, 500)
+    }
 })
 
 // Batch update/insert scores
 scores.post('/batch', async (c) => {
-    const { exam_id, scores: scoreList } = await c.req.json<{ exam_id: number, scores: { student_id: number, score: number }[] }>()
+    const { exam_id, course_id, scores: scoreList } = await c.req.json<{
+        exam_id: number,
+        course_id: number,
+        scores: { student_id: number, score: number }[]
+    }>()
 
-    if (!exam_id || !Array.isArray(scoreList)) {
-        return c.json({ error: 'Invalid data format' }, 400)
+    if (!exam_id || !course_id || !Array.isArray(scoreList)) {
+        return c.json({ error: 'exam_id, course_id, and scores array are required' }, 400)
     }
 
-    const stmt = c.env.DB.prepare(`
-    INSERT INTO scores (student_id, exam_id, score, updated_at)
-    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-    ON CONFLICT(id) DO UPDATE SET score = excluded.score, updated_at = CURRENT_TIMESTAMP
-  `)
+    try {
+        for (const item of scoreList) {
+            // Check if score exists
+            const existing = await c.env.DB.prepare(
+                'SELECT id FROM scores WHERE student_id = ? AND exam_id = ? AND course_id = ?'
+            ).bind(item.student_id, exam_id, course_id).first()
 
-    // Note: D1 doesn't support ON CONFLICT UPDATE for non-unique keys easily without a unique index on (student_id, exam_id).
-    // We should ensure there is a unique constraint or handle it differently.
-    // For now, let's assume we first delete old scores or use a better upsert strategy if we had a unique index.
-    // Actually, let's check if we have a unique index on scores(student_id, exam_id). The schema didn't explicitly say UNIQUE.
-    // Let's use a transaction to delete and insert, or check if exists.
-    // Better approach for now: Check if score exists, if so update, else insert.
-    // Or simpler: use `INSERT OR REPLACE` if we had a unique constraint.
-
-    // Let's try to do it one by one for simplicity in this environment, or use batch if supported.
-    // Since we don't have a unique constraint on (student_id, exam_id) in the provided schema, we need to be careful.
-    // Let's first check if we should add a unique constraint. It makes sense.
-    // For now, I will implement a check-and-update loop.
-
-    const results = []
-    for (const item of scoreList) {
-        // Check if score exists
-        const existing = await c.env.DB.prepare('SELECT id FROM scores WHERE student_id = ? AND exam_id = ?').bind(item.student_id, exam_id).first()
-
-        if (existing) {
-            await c.env.DB.prepare('UPDATE scores SET score = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').bind(item.score, existing.id).run()
-        } else {
-            await c.env.DB.prepare('INSERT INTO scores (student_id, exam_id, score) VALUES (?, ?, ?)').bind(item.student_id, exam_id, item.score).run()
+            if (existing) {
+                await c.env.DB.prepare(
+                    'UPDATE scores SET score = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+                ).bind(item.score, existing.id).run()
+            } else {
+                await c.env.DB.prepare(
+                    'INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)'
+                ).bind(item.student_id, exam_id, course_id, item.score).run()
+            }
         }
-    }
 
-    return c.json({ message: 'Scores updated successfully' })
+        return c.json({ message: 'Scores updated successfully' })
+    } catch (error) {
+        console.error('Batch update scores error:', error)
+        return c.json({ error: 'Failed to update scores' }, 500)
+    }
+})
+
+// Delete a score
+scores.delete('/:id', async (c) => {
+    const id = c.req.param('id')
+
+    try {
+        const { success } = await c.env.DB.prepare('DELETE FROM scores WHERE id = ?').bind(id).run()
+        return success ? c.json({ message: 'Score deleted' }) : c.json({ error: 'Failed to delete score' }, 500)
+    } catch (error) {
+        return c.json({ error: 'Failed to delete score' }, 500)
+    }
 })
 
 export default scores

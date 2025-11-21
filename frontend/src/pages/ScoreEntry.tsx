@@ -1,42 +1,54 @@
 import { useEffect, useState } from 'react';
-import { Save, Loader2 } from 'lucide-react';
+import { message, Card, Select, Table, Button, InputNumber, Row, Col, Spin } from 'antd';
+import { SaveOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
+
+interface ExamCourse {
+    course_id: number;
+    course_name: string;
+    full_score: number;
+}
 
 interface Exam {
     id: number;
     name: string;
     class_id: number;
-    course_name: string;
     class_name: string;
+    courses: ExamCourse[];
 }
 
 interface StudentScore {
     student_id: number;
     name: string;
     student_code: string;
+    course_id: number;
+    course_name: string;
     score: number | null;
     score_id: number | null;
 }
 
 export default function ScoreEntry() {
     const [exams, setExams] = useState<Exam[]>([]);
-    const [selectedExamId, setSelectedExamId] = useState<number | ''>('');
+    const [selectedExamId, setSelectedExamId] = useState<string>('');
+    const [selectedCourseId, setSelectedCourseId] = useState<string>('');
     const [students, setStudents] = useState<StudentScore[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
     const token = useAuthStore((state) => state.token);
+
+    const selectedExam = exams.find(e => e.id.toString() === selectedExamId);
 
     useEffect(() => {
         fetchExams();
     }, []);
 
     useEffect(() => {
-        if (selectedExamId) {
-            fetchScores(Number(selectedExamId));
+        if (selectedExamId && selectedCourseId) {
+            fetchScores();
         } else {
             setStudents([]);
         }
-    }, [selectedExamId]);
+    }, [selectedExamId, selectedCourseId]);
 
     const fetchExams = async () => {
         try {
@@ -46,37 +58,35 @@ export default function ScoreEntry() {
             const data = await res.json();
             setExams(data);
         } catch (error) {
-            console.error('Failed to fetch exams', error);
+            message.error('获取考试列表失败');
         }
     };
 
-    const fetchScores = async (examId: number) => {
+    const fetchScores = async () => {
+        if (!selectedExam) return;
+
         setLoading(true);
         try {
-            const exam = exams.find(e => e.id === examId);
-            if (!exam) return;
-
-            const res = await fetch(`http://localhost:8787/api/scores?exam_id=${examId}&class_id=${exam.class_id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            const res = await fetch(
+                `http://localhost:8787/api/scores?exam_id=${selectedExamId}&class_id=${selectedExam.class_id}&course_id=${selectedCourseId}`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
             const data = await res.json();
             setStudents(data);
         } catch (error) {
-            console.error('Failed to fetch scores', error);
+            message.error('获取成绩数据失败');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleScoreChange = (studentId: number, value: string) => {
-        const numValue = value === '' ? null : Number(value);
+    const handleScoreChange = (studentId: number, value: number | null) => {
         setStudents(students.map(s =>
-            s.student_id === studentId ? { ...s, score: numValue } : s
+            s.student_id === studentId ? { ...s, score: value } : s
         ));
     };
 
     const handleSave = async () => {
-        if (!selectedExamId) return;
         setSaving(true);
         try {
             const scoresToSave = students
@@ -94,109 +104,139 @@ export default function ScoreEntry() {
                 },
                 body: JSON.stringify({
                     exam_id: Number(selectedExamId),
+                    course_id: Number(selectedCourseId),
                     scores: scoresToSave
                 }),
             });
 
-            alert('成绩保存成功！');
-            fetchScores(Number(selectedExamId));
+            message.success('成绩保存成功！');
+            fetchScores();
         } catch (error) {
-            console.error('Failed to save scores', error);
-            alert('保存失败，请重试');
+            message.error('保存失败，请重试');
         } finally {
             setSaving(false);
         }
     };
 
+    const columns = [
+        {
+            title: '学号',
+            dataIndex: 'student_code',
+            key: 'student_code',
+            width: 120,
+        },
+        {
+            title: '姓名',
+            dataIndex: 'name',
+            key: 'name',
+            width: 120,
+        },
+        {
+            title: '分数',
+            dataIndex: 'score',
+            key: 'score',
+            width: 120,
+            render: (_: any, record: StudentScore) => (
+                <InputNumber
+                    min={0}
+                    max={selectedExam?.courses.find(c => c.course_id.toString() === selectedCourseId)?.full_score || 100}
+                    step={0.5}
+                    value={record.score}
+                    onChange={(value) => handleScoreChange(record.student_id, value)}
+                    placeholder="-"
+                    style={{ width: '100%' }}
+                />
+            ),
+        },
+    ];
+
     return (
-        <div className="max-w-4xl mx-auto">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">成绩录入</h1>
-                    <p className="text-gray-500 mt-1">批量录入班级考试成绩</p>
-                </div>
-                <div className="w-64">
-                    <select
-                        value={selectedExamId}
-                        onChange={(e) => setSelectedExamId(Number(e.target.value))}
-                        className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
-                    >
-                        <option value="">选择考试...</option>
-                        {exams.map((exam) => (
-                            <option key={exam.id} value={exam.id}>
-                                {exam.name} - {exam.class_name} ({exam.course_name})
-                            </option>
-                        ))}
-                    </select>
-                </div>
+        <div>
+            <div style={{ marginBottom: 24 }}>
+                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>成绩录入</h2>
+                <p style={{ margin: '4px 0 0 0', color: '#666' }}>
+                    批量录入班级考试成绩（选择考试和科目后开始录入）
+                </p>
             </div>
 
-            {selectedExamId && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <Card style={{ marginBottom: 16 }}>
+                <Row gutter={16}>
+                    <Col span={12}>
+                        <div style={{ marginBottom: 8, fontWeight: 500 }}>选择考试</div>
+                        <Select
+                            value={selectedExamId}
+                            onChange={(value) => {
+                                setSelectedExamId(value);
+                                setSelectedCourseId(''); // 重置科目选择
+                            }}
+                            style={{ width: '100%' }}
+                            placeholder="请选择考试"
+                            allowClear
+                        >
+                            {exams.map((exam) => (
+                                <Select.Option key={exam.id} value={exam.id.toString()}>
+                                    {exam.name} - {exam.class_name}
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </Col>
+                    <Col span={12}>
+                        <div style={{ marginBottom: 8, fontWeight: 500 }}>选择科目</div>
+                        <Select
+                            value={selectedCourseId}
+                            onChange={setSelectedCourseId}
+                            style={{ width: '100%' }}
+                            placeholder={selectedExamId ? "请选择科目" : "请先选择考试"}
+                            disabled={!selectedExamId}
+                            allowClear
+                        >
+                            {selectedExam?.courses.map((course) => (
+                                <Select.Option key={course.course_id} value={course.course_id.toString()}>
+                                    {course.course_name} (满分: {course.full_score})
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </Col>
+                </Row>
+            </Card>
+
+            {selectedExamId && selectedCourseId ? (
+                <Card>
                     {loading ? (
-                        <div className="p-12 text-center text-gray-500">
-                            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2" />
-                            加载学生名单...
+                        <div style={{ textAlign: 'center', padding: 60 }}>
+                            <Spin size="large" />
+                            <p style={{ marginTop: 16, color: '#666' }}>加载学生成绩...</p>
                         </div>
                     ) : (
                         <>
-                            <div className="max-h-[600px] overflow-y-auto">
-                                <table className="w-full text-left">
-                                    <thead className="bg-gray-50 border-b border-gray-100 sticky top-0">
-                                        <tr>
-                                            <th className="px-6 py-4 text-sm font-semibold text-gray-600">学号</th>
-                                            <th className="px-6 py-4 text-sm font-semibold text-gray-600">姓名</th>
-                                            <th className="px-6 py-4 text-sm font-semibold text-gray-600">分数</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {students.map((student) => (
-                                            <tr key={student.student_id} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-6 py-4 text-gray-500">{student.student_code}</td>
-                                                <td className="px-6 py-4 font-medium text-gray-900">{student.name}</td>
-                                                <td className="px-6 py-2">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max="100"
-                                                        step="0.5"
-                                                        value={student.score ?? ''}
-                                                        onChange={(e) => handleScoreChange(student.student_id, e.target.value)}
-                                                        className="w-24 px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                                                        placeholder="-"
-                                                    />
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {students.length === 0 && (
-                                            <tr>
-                                                <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
-                                                    该班级暂无学生
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                            <div className="p-4 border-t border-gray-100 bg-gray-50 flex justify-end">
-                                <button
+                            <Table
+                                columns={columns}
+                                dataSource={students}
+                                rowKey="student_id"
+                                pagination={{ pageSize: 20, showTotal: (total) => `共 ${total} 名学生` }}
+                                locale={{ emptyText: '该班级暂无学生' }}
+                            />
+                            <div style={{ marginTop: 16, textAlign: 'right' }}>
+                                <Button
+                                    type="primary"
+                                    icon={<SaveOutlined />}
                                     onClick={handleSave}
-                                    disabled={saving || students.length === 0}
-                                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg flex items-center hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                                    loading={saving}
+                                    disabled={students.length === 0}
+                                    size="large"
                                 >
-                                    {saving ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Save className="w-5 h-5 mr-2" />}
                                     保存成绩
-                                </button>
+                                </Button>
                             </div>
                         </>
                     )}
-                </div>
-            )}
-
-            {!selectedExamId && (
-                <div className="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                    <p className="text-gray-500">请先选择一场考试开始录入成绩</p>
-                </div>
+                </Card>
+            ) : (
+                <Card>
+                    <div style={{ textAlign: 'center', padding: 60, color: '#999' }}>
+                        <p>请先选择考试和科目开始录入成绩</p>
+                    </div>
+                </Card>
             )}
         </div>
     );

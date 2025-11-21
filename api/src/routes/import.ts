@@ -11,16 +11,16 @@ const importRoute = new Hono<{ Bindings: Bindings }>()
 importRoute.get('/template/students', (c) => {
     // Create a sample workbook with headers
     const ws = XLSX.utils.aoa_to_sheet([
-        ['姓名', '学号', '班级ID'],
-        ['张三', 'S001', '1'],
-        ['李四', 'S002', '1']
+        ['姓名', '班级', '性别'],
+        ['张三', '一年级1班', '男'],
+        ['李四', '一年级1班', '女']
     ])
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, '学生数据')
 
     // Generate Excel file
-    const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+    const excelBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
 
     return new Response(excelBuffer, {
         headers: {
@@ -49,8 +49,8 @@ importRoute.post('/students', async (c) => {
         // Convert to JSON
         const data = XLSX.utils.sheet_to_json(worksheet) as Array<{
             '姓名': string
-            '学号': string
-            '班级ID': number
+            '班级': string
+            '性别'?: string
         }>
 
         let successCount = 0
@@ -61,9 +61,40 @@ importRoute.post('/students', async (c) => {
         for (let i = 0; i < data.length; i++) {
             const row = data[i]
             try {
+                // Find class ID by name
+                const classResult = await c.env.DB.prepare(
+                    'SELECT id FROM classes WHERE name = ?'
+                ).bind(row['班级']).first()
+
+                if (!classResult) {
+                    errors.push(`第 ${i + 2} 行: 班级 "${row['班级']}" 不存在`)
+                    errorCount++
+                    continue
+                }
+
+                const classId = classResult.id as number
+
+                // Generate student ID (e.g., S001, S002)
+                const countResult = await c.env.DB.prepare(
+                    'SELECT COUNT(*) as count FROM students'
+                ).first()
+                const count = (countResult?.count as number) || 0
+                const studentId = `S${String(count + 1).padStart(3, '0')}`
+
+                // Check if student with same name already exists in this class
+                const existingStudent = await c.env.DB.prepare(
+                    'SELECT id FROM students WHERE name = ? AND class_id = ?'
+                ).bind(row['姓名'], classId).first()
+
+                if (existingStudent) {
+                    errors.push(`第 ${i + 2} 行: 学生 "${row['姓名']}" 在班级 "${row['班级']}" 中已存在`)
+                    errorCount++
+                    continue
+                }
+
                 await c.env.DB.prepare(
-                    'INSERT INTO students (name, student_id, class_id) VALUES (?, ?, ?)'
-                ).bind(row['姓名'], row['学号'], row['班级ID']).run()
+                    'INSERT INTO students (name, student_id, class_id, gender) VALUES (?, ?, ?, ?)'
+                ).bind(row['姓名'], studentId, classId, row['性别'] || null).run()
                 successCount++
             } catch (error) {
                 errorCount++
@@ -88,16 +119,16 @@ importRoute.post('/students', async (c) => {
 importRoute.get('/template/scores', (c) => {
     // Create a sample workbook with headers
     const ws = XLSX.utils.aoa_to_sheet([
-        ['学号', '考试ID', '分数'],
-        ['S001', '1', '85'],
-        ['S002', '1', '92']
+        ['姓名', '班级', '考试', '科目', '分数'],
+        ['张三', '一年级1班', '期中考试', '语文', '85'],
+        ['李四', '一年级1班', '期中考试', '语文', '92']
     ])
 
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, ws, '成绩数据')
 
     // Generate Excel file
-    const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' })
+    const excelBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' })
 
     return new Response(excelBuffer, {
         headers: {
@@ -125,8 +156,10 @@ importRoute.post('/scores', async (c) => {
 
         // Convert to JSON
         const data = XLSX.utils.sheet_to_json(worksheet) as Array<{
-            '学号': string
-            '考试ID': number
+            '姓名': string
+            '班级': string
+            '考试': string
+            '科目': string
             '分数': number
         }>
 
@@ -138,32 +171,71 @@ importRoute.post('/scores', async (c) => {
         for (let i = 0; i < data.length; i++) {
             const row = data[i]
             try {
-                // First, get student ID from student_id
+                // Find class ID by name
+                const classResult = await c.env.DB.prepare(
+                    'SELECT id FROM classes WHERE name = ?'
+                ).bind(row['班级']).first()
+
+                if (!classResult) {
+                    errors.push(`第 ${i + 2} 行: 班级 "${row['班级']}" 不存在`)
+                    errorCount++
+                    continue
+                }
+
+                const classId = classResult.id as number
+
+                // Find student by name and class
                 const student = await c.env.DB.prepare(
-                    'SELECT id FROM students WHERE student_id = ?'
-                ).bind(row['学号']).first()
+                    'SELECT id FROM students WHERE name = ? AND class_id = ?'
+                ).bind(row['姓名'], classId).first()
 
                 if (!student) {
                     errorCount++
-                    errors.push(`第 ${i + 2} 行: 找不到学号 ${row['学号']} 的学生`)
+                    errors.push(`第 ${i + 2} 行: 找不到班级 "${row['班级']}" 中的学生 "${row['姓名']}"`)
                     continue
                 }
+
+                // Find course by name
+                const courseResult = await c.env.DB.prepare(
+                    'SELECT id FROM courses WHERE name = ?'
+                ).bind(row['科目']).first()
+
+                if (!courseResult) {
+                    errors.push(`第 ${i + 2} 行: 科目 "${row['科目']}" 不存在`)
+                    errorCount++
+                    continue
+                }
+
+                const courseId = courseResult.id as number
+
+                // Find exam by name and course
+                const examResult = await c.env.DB.prepare(
+                    'SELECT id FROM exams WHERE name = ? AND course_id = ? AND class_id = ?'
+                ).bind(row['考试'], courseId, classId).first()
+
+                if (!examResult) {
+                    errors.push(`第 ${i + 2} 行: 找不到班级 "${row['班级']}" 的 "${row['科目']}" 科目的 "${row['考试']}" 考试`)
+                    errorCount++
+                    continue
+                }
+
+                const examId = examResult.id as number
 
                 // Check if score already exists
                 const existing = await c.env.DB.prepare(
                     'SELECT id FROM scores WHERE student_id = ? AND exam_id = ?'
-                ).bind(student.id, row['考试ID']).first()
+                ).bind(student.id, examId).first()
 
                 if (existing) {
                     // Update existing score
                     await c.env.DB.prepare(
                         'UPDATE scores SET score = ? WHERE student_id = ? AND exam_id = ?'
-                    ).bind(row['分数'], student.id, row['考试ID']).run()
+                    ).bind(row['分数'], student.id, examId).run()
                 } else {
                     // Insert new score
                     await c.env.DB.prepare(
                         'INSERT INTO scores (student_id, exam_id, score) VALUES (?, ?, ?)'
-                    ).bind(student.id, row['考试ID'], row['分数']).run()
+                    ).bind(student.id, examId, row['分数']).run()
                 }
                 successCount++
             } catch (error) {

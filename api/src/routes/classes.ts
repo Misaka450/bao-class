@@ -36,8 +36,34 @@ classes.put('/:id', async (c) => {
 
 classes.delete('/:id', async (c) => {
     const id = c.req.param('id')
-    const { success } = await c.env.DB.prepare('DELETE FROM classes WHERE id = ?').bind(id).run()
-    return success ? c.json({ message: 'Class deleted' }) : c.json({ error: 'Failed to delete class' }, 500)
+
+    try {
+        // 1. Delete all scores for students in this class
+        await c.env.DB.prepare(`
+            DELETE FROM scores 
+            WHERE student_id IN (SELECT id FROM students WHERE class_id = ?)
+        `).bind(id).run()
+
+        // 2. Delete all students in this class
+        await c.env.DB.prepare('DELETE FROM students WHERE class_id = ?').bind(id).run()
+
+        // 3. Delete all scores for exams in this class (cleanup any remaining scores linked to exams of this class)
+        await c.env.DB.prepare(`
+            DELETE FROM scores 
+            WHERE exam_id IN (SELECT id FROM exams WHERE class_id = ?)
+        `).bind(id).run()
+
+        // 4. Delete all exams in this class (exam_courses cascade)
+        await c.env.DB.prepare('DELETE FROM exams WHERE class_id = ?').bind(id).run()
+
+        // 5. Finally delete the class
+        const { success } = await c.env.DB.prepare('DELETE FROM classes WHERE id = ?').bind(id).run()
+
+        return success ? c.json({ message: 'Class deleted' }) : c.json({ error: 'Failed to delete class' }, 500)
+    } catch (error) {
+        console.error('Delete class error:', error)
+        return c.json({ error: 'Failed to delete class' }, 500)
+    }
 })
 
 export default classes

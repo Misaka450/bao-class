@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message, Row, Col } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useAuthStore } from '../store/authStore';
 
@@ -23,6 +23,8 @@ export default function Students() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [form] = Form.useForm();
+    const [searchText, setSearchText] = useState('');
+    const [filterClassId, setFilterClassId] = useState<string>('');
     const token = useAuthStore((state) => state.token);
 
     useEffect(() => {
@@ -172,9 +174,41 @@ export default function Students() {
                 </Button>
             </div>
 
+            {/* Search and Filter Section */}
+            <Row gutter={16} style={{ marginBottom: 16 }}>
+                <Col span={8}>
+                    <Input
+                        placeholder="搜索姓名或学号"
+                        prefix={<SearchOutlined />}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                        allowClear
+                    />
+                </Col>
+                <Col span={8}>
+                    <Select
+                        placeholder="筛选班级"
+                        value={filterClassId}
+                        onChange={setFilterClassId}
+                        style={{ width: '100%' }}
+                        allowClear
+                    >
+                        {classes.map((cls) => (
+                            <Select.Option key={cls.id} value={cls.id.toString()}>{cls.name}</Select.Option>
+                        ))}
+                    </Select>
+                </Col>
+            </Row>
+
             <Table
                 columns={columns}
-                dataSource={students}
+                dataSource={students.filter(student => {
+                    const matchesSearch = searchText === '' ||
+                        student.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                        student.student_id.toLowerCase().includes(searchText.toLowerCase());
+                    const matchesClass = filterClassId === '' || student.class_id.toString() === filterClassId;
+                    return matchesSearch && matchesClass;
+                })}
                 rowKey="id"
                 loading={loading}
                 pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 条` }}

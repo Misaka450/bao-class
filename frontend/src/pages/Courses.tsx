@@ -86,6 +86,18 @@ export default function Courses() {
         }
     };
 
+    const getGradeName = (grade: number) => {
+        const mapping: Record<number, string> = {
+            1: '一年级',
+            2: '二年级',
+            3: '三年级',
+            4: '四年级',
+            5: '五年级',
+            6: '六年级',
+        };
+        return mapping[grade] || `${grade}年级`;
+    };
+
     const columns: ColumnsType<Course> = [
         {
             title: 'ID',
@@ -103,6 +115,7 @@ export default function Courses() {
             dataIndex: 'grade',
             key: 'grade',
             width: 100,
+            render: (grade) => getGradeName(grade),
         },
         {
             title: '操作',

@@ -134,4 +134,131 @@ analysis.get('/weakpoints/:classId', async (c) => {
     }
 })
 
+// Student Radar Analysis (Z-score)
+analysis.get('/student/radar/:studentId', async (c) => {
+    const studentId = c.req.param('studentId')
+
+    try {
+        // Get student's latest scores for each course
+        const studentScores = await c.env.DB.prepare(`
+            SELECT 
+                c.name as subject,
+                s.score,
+                s.exam_id,
+                e.class_id
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            JOIN courses c ON e.course_id = c.id
+            WHERE s.student_id = ?
+            GROUP BY c.id
+            ORDER BY e.exam_date DESC
+        `).bind(studentId).all()
+
+        if (!studentScores.results.length) {
+            return c.json([])
+        }
+
+        const radarData = []
+
+        for (const record of studentScores.results) {
+            // Calculate class stats for this exam to compute Z-score
+            // SQLite doesn't have STDDEV by default, so we calculate it manually or approximate
+            const stats = await c.env.DB.prepare(`
+                SELECT 
+                    AVG(score) as avg_score,
+                    COUNT(score) as count,
+                    SUM((score - (SELECT AVG(score) FROM scores WHERE exam_id = ?)) * (score - (SELECT AVG(score) FROM scores WHERE exam_id = ?))) as sum_sq_diff
+                FROM scores 
+                WHERE exam_id = ?
+            `).bind(record.exam_id, record.exam_id, record.exam_id, record.exam_id).first()
+
+            if (!stats) continue;
+
+            const avg = Number(stats.avg_score)
+            const count = Number(stats.count)
+            // Variance = sum_sq_diff / count
+            // StdDev = Sqrt(Variance)
+            const variance = count > 1 ? (Number(stats.sum_sq_diff) / count) : 0
+            const stdDev = Math.sqrt(variance)
+
+            // Z-score = (Score - Avg) / StdDev
+            // If StdDev is 0 (all scores same), Z-score is 0
+            const zScore = stdDev === 0 ? 0 : (Number(record.score) - avg) / stdDev
+
+            radarData.push({
+                subject: record.subject,
+                score: record.score,
+                classAvg: parseFloat(avg.toFixed(2)),
+                zScore: parseFloat(zScore.toFixed(2)),
+                fullMark: 100 // Assuming 100 for normalization if needed
+            })
+        }
+
+        return c.json(radarData)
+    } catch (error) {
+        console.error('Radar analysis error:', error)
+        return c.json({ error: 'Failed to generate radar analysis' }, 500)
+    }
+})
+
+// Class Focus Group Analysis
+analysis.get('/class/focus/:classId', async (c) => {
+    const classId = c.req.param('classId')
+
+    try {
+        // 1. Critical Students (Borderline Pass/Fail or Excellent)
+        // 58-60 (Danger of failing), 88-90 (Close to excellent)
+        const criticalStudents = await c.env.DB.prepare(`
+            SELECT DISTINCT st.id, st.name, 'critical' as type, s.score, c.name as subject
+            FROM students st
+            JOIN scores s ON st.id = s.student_id
+            JOIN exams e ON s.exam_id = e.id
+            JOIN courses c ON e.course_id = c.id
+            WHERE st.class_id = ? 
+            AND e.exam_date >= date('now', '-30 days')
+            AND ((s.score BETWEEN 58 AND 59.9) OR (s.score BETWEEN 88 AND 89.9))
+        `).bind(classId).all()
+
+        // 2. Regressing Students (Rank dropped significantly)
+        // This is complex in SQL, simplified: compare average score of last 2 exams
+        // For now, let's just find students whose latest exam score is significantly lower than their average
+        const regressingStudents = await c.env.DB.prepare(`
+            SELECT st.id, st.name, 'regressing' as type, 
+                   (AVG(s.score) - (
+                       SELECT s2.score 
+                       FROM scores s2 
+                       JOIN exams e2 ON s2.exam_id = e2.id 
+                       WHERE s2.student_id = st.id 
+                       ORDER BY e2.exam_date DESC LIMIT 1
+                   )) as drop_amount
+            FROM students st
+            JOIN scores s ON st.id = s.student_id
+            WHERE st.class_id = ?
+            GROUP BY st.id
+            HAVING drop_amount > 10
+        `).bind(classId).all()
+
+        // 3. Fluctuating Students (High Variance)
+        // Using difference between Max and Min score as a simple proxy for variance/fluctuation
+        const fluctuatingStudents = await c.env.DB.prepare(`
+            SELECT st.id, st.name, 'fluctuating' as type,
+                   (MAX(s.score) - MIN(s.score)) as score_diff
+            FROM students st
+            JOIN scores s ON st.id = s.student_id
+            WHERE st.class_id = ?
+            GROUP BY st.id
+            HAVING score_diff > 20
+        `).bind(classId).all()
+
+        return c.json({
+            critical: criticalStudents.results,
+            regressing: regressingStudents.results,
+            fluctuating: fluctuatingStudents.results
+        })
+    } catch (error) {
+        console.error('Focus group error:', error)
+        return c.json({ error: 'Failed to generate focus group' }, 500)
+    }
+})
+
 export default analysis

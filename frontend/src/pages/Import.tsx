@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Card, Tabs, Button, Upload, message, Alert, Table } from 'antd';
 import { DownloadOutlined, UploadOutlined, FileExcelOutlined } from '@ant-design/icons';
-import type { UploadFile, RcFile } from 'antd/es/upload/interface';
+import type { RcFile } from 'antd/es/upload/interface';
 import { useAuthStore } from '../store/authStore';
 
 export default function Import() {

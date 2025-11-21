@@ -1,17 +1,25 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, DatePicker, Space, Popconfirm, message } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, DatePicker, Space, Popconfirm, message, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
 import { useAuthStore } from '../store/authStore';
 
+interface ExamCourse {
+    id?: number;
+    course_id: number;
+    course_name?: string;
+    full_score: number;
+}
+
 interface Exam {
     id: number;
     name: string;
-    course_id: number;
     class_id: number;
+    class_name?: string;
     exam_date: string;
-    full_score: number;
+    description?: string;
+    courses: ExamCourse[];
 }
 
 interface Course {
@@ -60,7 +68,15 @@ export default function Exams() {
             const res = await fetch('http://localhost:8787/api/courses', {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setCourses(await res.json());
+            const data = await res.json();
+            // 去重课程（根据课程名称）
+            const uniqueCourses = data.reduce((acc: Course[], course: Course) => {
+                if (!acc.find(c => c.name === course.name)) {
+                    acc.push(course);
+                }
+                return acc;
+            }, []);
+            setCourses(uniqueCourses);
         } catch (error) {
             console.error(error);
         }
@@ -80,14 +96,18 @@ export default function Exams() {
     const handleAdd = () => {
         setEditingExam(null);
         form.resetFields();
+        form.setFieldsValue({ course_ids: [] });
         setIsModalOpen(true);
     };
 
     const handleEdit = (record: Exam) => {
         setEditingExam(record);
         form.setFieldsValue({
-            ...record,
+            name: record.name,
+            class_id: record.class_id,
             exam_date: record.exam_date ? dayjs(record.exam_date) : null,
+            description: record.description,
+            course_ids: record.courses.map(c => c.course_id),
         });
         setIsModalOpen(true);
     };
@@ -108,8 +128,14 @@ export default function Exams() {
     const handleSubmit = async (values: any) => {
         try {
             const data = {
-                ...values,
+                name: values.name,
+                class_id: values.class_id,
                 exam_date: values.exam_date ? values.exam_date.format('YYYY-MM-DD') : null,
+                description: values.description,
+                courses: values.course_ids.map((courseId: number) => ({
+                    course_id: courseId,
+                    full_score: 100 // 默认满分100
+                }))
             };
 
             const url = editingExam
@@ -138,19 +164,25 @@ export default function Exams() {
         { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
         { title: '考试名称', dataIndex: 'name', key: 'name' },
         {
-            title: '课程',
-            dataIndex: 'course_id',
-            key: 'course_id',
-            render: (id) => courses.find((c) => c.id === id)?.name || id,
+            title: '包含科目',
+            dataIndex: 'courses',
+            key: 'courses',
+            render: (courses: ExamCourse[]) => (
+                <>
+                    {courses.map((c) => (
+                        <Tag key={c.course_id} color="blue">
+                            {c.course_name}
+                        </Tag>
+                    ))}
+                </>
+            ),
         },
         {
             title: '班级',
-            dataIndex: 'class_id',
-            key: 'class_id',
-            render: (id) => classes.find((c) => c.id === id)?.name || id,
+            dataIndex: 'class_name',
+            key: 'class_name',
         },
         { title: '考试日期', dataIndex: 'exam_date', key: 'exam_date' },
-        { title: '满分', dataIndex: 'full_score', key: 'full_score', width: 80 },
         {
             title: '操作',
             key: 'action',
@@ -180,7 +212,7 @@ export default function Exams() {
             <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>考试管理</h2>
-                    <p style={{ margin: '4px 0 0 0', color: '#666' }}>管理所有考试信息</p>
+                    <p style={{ margin: '4px 0 0 0', color: '#666' }}>管理所有考试信息（支持多科目）</p>
                 </div>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
                     添加考试
@@ -204,14 +236,7 @@ export default function Exams() {
             >
                 <Form form={form} onFinish={handleSubmit} layout="vertical">
                     <Form.Item label="考试名称" name="name" rules={[{ required: true, message: '请输入考试名称' }]}>
-                        <Input placeholder="例如：期中考试" />
-                    </Form.Item>
-                    <Form.Item label="课程" name="course_id" rules={[{ required: true, message: '请选择课程' }]}>
-                        <Select placeholder="请选择课程">
-                            {courses.map((c) => (
-                                <Select.Option key={c.id} value={c.id}>{c.name}</Select.Option>
-                            ))}
-                        </Select>
+                        <Input placeholder="例如：2024年秋季期中考试" />
                     </Form.Item>
                     <Form.Item label="班级" name="class_id" rules={[{ required: true, message: '请选择班级' }]}>
                         <Select placeholder="请选择班级">
@@ -220,11 +245,27 @@ export default function Exams() {
                             ))}
                         </Select>
                     </Form.Item>
+                    <Form.Item
+                        label="包含科目"
+                        name="course_ids"
+                        rules={[{ required: true, message: '请至少选择一个科目' }]}
+                        tooltip="一次考试可以包含多个科目"
+                    >
+                        <Select
+                            mode="multiple"
+                            placeholder="请选择科目（可多选）"
+                            maxTagCount="responsive"
+                        >
+                            {courses.map((c) => (
+                                <Select.Option key={c.id} value={c.id}>{c.name}</Select.Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
                     <Form.Item label="考试日期" name="exam_date" rules={[{ required: true, message: '请选择考试日期' }]}>
                         <DatePicker style={{ width: '100%' }} />
                     </Form.Item>
-                    <Form.Item label="满分" name="full_score" rules={[{ required: true, message: '请输入满分' }]}>
-                        <Input type="number" placeholder="例如：100" />
+                    <Form.Item label="备注说明" name="description">
+                        <Input.TextArea rows={3} placeholder="例如：一年级1班期中考试" />
                     </Form.Item>
                     <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
                         <Space>

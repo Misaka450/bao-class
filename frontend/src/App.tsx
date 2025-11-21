@@ -1,4 +1,4 @@
-import { ConfigProvider, theme } from 'antd';
+import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
@@ -12,6 +12,11 @@ import Exams from './pages/Exams';
 import ScoreEntry from './pages/ScoreEntry';
 import Import from './pages/Import';
 import Analysis from './pages/Analysis';
+import SubjectAnalysis from './pages/SubjectAnalysis';
+import SubjectComparison from './pages/SubjectComparison';
+import ScoresList from './pages/ScoresList';
+import { lightTheme } from './theme';
+import './modern-style.css';
 
 function PrivateRoute({ children }: { children: React.ReactElement }) {
   const token = useAuthStore((state) => state.token);
@@ -22,12 +27,7 @@ function App() {
   return (
     <ConfigProvider
       locale={zhCN}
-      theme={{
-        token: {
-          colorPrimary: '#667eea',
-          borderRadius: 8,
-        },
-      }}
+      theme={lightTheme}
     >
       <BrowserRouter>
         <Routes>
@@ -47,6 +47,9 @@ function App() {
                     <Route path="/scores" element={<ScoreEntry />} />
                     <Route path="/import" element={<Import />} />
                     <Route path="/analysis" element={<Analysis />} />
+                    <Route path="/analysis/subject" element={<SubjectAnalysis />} />
+                    <Route path="/analysis/comparison" element={<SubjectComparison />} />
+                    <Route path="/scores-list" element={<ScoresList />} />
                   </Routes>
                 </Layout>
               </PrivateRoute>
