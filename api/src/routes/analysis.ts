@@ -139,65 +139,75 @@ analysis.get('/student/radar/:studentId', async (c) => {
     const studentId = c.req.param('studentId')
 
     try {
-        // Get student's latest scores for each course
-        const studentScores = await c.env.DB.prepare(`
-            SELECT 
-                c.name as subject,
-                s.score,
-                s.exam_id,
-                e.class_id
-            FROM scores s
-            JOIN exams e ON s.exam_id = e.id
-            JOIN courses c ON e.course_id = c.id
-            WHERE s.student_id = ?
-            GROUP BY c.id
-            ORDER BY e.exam_date DESC
-        `).bind(studentId).all()
-
-        if (!studentScores.results.length) {
-            return c.json([])
+        // 获取学生所在班级
+        const student = await c.env.DB.prepare('SELECT class_id FROM students WHERE id = ?').bind(studentId).first()
+        if (!student) {
+            return c.json({ error: 'Student not found' }, 404)
         }
+
+        // 获取所有课程
+        const courses = await c.env.DB.prepare('SELECT id, name FROM courses').all()
 
         const radarData = []
 
-        for (const record of studentScores.results) {
-            // Calculate class stats for this exam to compute Z-score
-            // SQLite doesn't have STDDEV by default, so we calculate it manually or approximate
+        for (const course of courses.results as any[]) {
+            // 获取学生该科目的最新成绩
+            const studentScore = await c.env.DB.prepare(`
+                SELECT s.score, s.exam_id
+                FROM scores s
+                JOIN exam_courses ec ON s.exam_id = ec.exam_id AND ec.course_id = s.course_id
+                JOIN exams e ON s.exam_id = e.id
+                WHERE s.student_id = ? AND s.course_id = ?
+                ORDER BY e.exam_date DESC
+                LIMIT 1
+            `).bind(studentId, course.id).first()
+
+            if (!studentScore) continue
+
+            // 计算该考试该科目的班级统计数据(用于Z-Score)
             const stats = await c.env.DB.prepare(`
                 SELECT 
-                    AVG(score) as avg_score,
-                    COUNT(score) as count,
-                    SUM((score - (SELECT AVG(score) FROM scores WHERE exam_id = ?)) * (score - (SELECT AVG(score) FROM scores WHERE exam_id = ?))) as sum_sq_diff
-                FROM scores 
-                WHERE exam_id = ?
-            `).bind(record.exam_id, record.exam_id, record.exam_id, record.exam_id).first()
+                    AVG(s.score) as avg_score,
+                    COUNT(s.score) as count
+                FROM scores s
+                JOIN students st ON s.student_id = st.id
+                WHERE s.exam_id = ? 
+                AND s.course_id = ?
+                AND st.class_id = ?
+            `).bind(studentScore.exam_id, course.id, student.class_id).first()
 
-            if (!stats) continue;
+            if (!stats || !stats.count) continue
 
+            // 计算标准差
+            const variance = await c.env.DB.prepare(`
+                SELECT 
+                    SUM((s.score - ?) * (s.score - ?)) / ? as variance
+                FROM scores s
+                JOIN students st ON s.student_id = st.id
+                WHERE s.exam_id = ? 
+                AND s.course_id = ?
+                AND st.class_id = ?
+            `).bind(stats.avg_score, stats.avg_score, stats.count, studentScore.exam_id, course.id, student.class_id).first()
+
+            const stdDev = variance && variance.variance !== null ? Math.sqrt(Number(variance.variance)) : 0
             const avg = Number(stats.avg_score)
-            const count = Number(stats.count)
-            // Variance = sum_sq_diff / count
-            // StdDev = Sqrt(Variance)
-            const variance = count > 1 ? (Number(stats.sum_sq_diff) / count) : 0
-            const stdDev = Math.sqrt(variance)
 
-            // Z-score = (Score - Avg) / StdDev
-            // If StdDev is 0 (all scores same), Z-score is 0
-            const zScore = stdDev === 0 ? 0 : (Number(record.score) - avg) / stdDev
+            // 计算Z-Score
+            const zScore = stdDev === 0 ? 0 : (Number(studentScore.score) - avg) / stdDev
 
             radarData.push({
-                subject: record.subject,
-                score: record.score,
+                subject: course.name,
+                score: studentScore.score,
                 classAvg: parseFloat(avg.toFixed(2)),
                 zScore: parseFloat(zScore.toFixed(2)),
-                fullMark: 100 // Assuming 100 for normalization if needed
+                fullMark: 100
             })
         }
 
         return c.json(radarData)
     } catch (error) {
         console.error('Radar analysis error:', error)
-        return c.json({ error: 'Failed to generate radar analysis' }, 500)
+        return c.json({ error: 'Failed to generate radar analysis', details: String(error) }, 500)
     }
 })
 

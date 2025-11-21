@@ -119,17 +119,17 @@ export default function SubjectAnalysis() {
                         </Card>
                     </Col>
                     <Col xs={24} md={12}>
-                        <Card title="近期成绩走势">
+                        <Card title="总分走势">
                             {trendData.length > 0 ? (
                                 <div style={{ height: 400 }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={trendData}>
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis dataKey="exam_name" />
-                                            <YAxis domain={[0, 100]} />
+                                            <YAxis domain={[0, 300]} />
                                             <Tooltip />
                                             <Legend />
-                                            <Line type="monotone" dataKey="score" stroke="#82ca9d" name="分数" />
+                                            <Line type="monotone" dataKey="score" stroke="#82ca9d" name="总分" />
                                         </LineChart>
                                     </ResponsiveContainer>
                                 </div>

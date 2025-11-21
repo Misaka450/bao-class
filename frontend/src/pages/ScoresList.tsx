@@ -160,6 +160,11 @@ export default function ScoresList() {
             key: subject,
             width: 80,
             render: (score: number) => score || '-',
+            sorter: (a: ScoreData, b: ScoreData) => {
+                const scoreA = a.scores[subject] || 0;
+                const scoreB = b.scores[subject] || 0;
+                return scoreA - scoreB;
+            },
         })),
         // Only show total column when not filtering by a single course
         ...(!selectedCourseId ? [{

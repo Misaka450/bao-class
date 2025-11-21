@@ -2813,6 +2813,65 @@ stats.get("/exam/:examId/distribution", async (c) => {
     return c.json({ error: "Failed to get distribution" }, 500);
   }
 });
+stats.get("/comparison/classes", async (c) => {
+  const examId = c.req.query("examId");
+  const courseId = c.req.query("courseId");
+  if (!examId) {
+    return c.json({ error: "examId is required" }, 400);
+  }
+  try {
+    let query;
+    let params;
+    if (courseId) {
+      query = `
+                SELECT 
+                    cl.id,
+                    cl.name,
+                    AVG(s.score) as average_score,
+                    CAST(SUM(CASE WHEN s.score >= 60 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
+                    CAST(SUM(CASE WHEN s.score >= 90 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as excellent_rate
+                FROM classes cl
+                JOIN students st ON cl.id = st.class_id
+                JOIN scores s ON st.id = s.student_id
+                WHERE s.exam_id = ? AND s.course_id = ?
+                GROUP BY cl.id, cl.name
+                ORDER BY average_score DESC
+            `;
+      params = [examId, courseId];
+    } else {
+      query = `
+                SELECT 
+                    cl.id,
+                    cl.name,
+                    AVG(total_score) as average_score,
+                    CAST(SUM(CASE WHEN total_score >= 180 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
+                    CAST(SUM(CASE WHEN total_score >= 270 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as excellent_rate
+                FROM classes cl
+                JOIN students st ON cl.id = st.class_id
+                JOIN (
+                    SELECT student_id, SUM(score) as total_score
+                    FROM scores
+                    WHERE exam_id = ?
+                    GROUP BY student_id
+                ) s ON st.id = s.student_id
+                GROUP BY cl.id, cl.name
+                ORDER BY average_score DESC
+            `;
+      params = [examId];
+    }
+    const result = await c.env.DB.prepare(query).bind(...params).all();
+    return c.json(result.results.map((r) => ({
+      id: r.id,
+      name: r.name,
+      average_score: parseFloat(Number(r.average_score || 0).toFixed(2)),
+      pass_rate: parseFloat(Number(r.pass_rate || 0).toFixed(2)),
+      excellent_rate: parseFloat(Number(r.excellent_rate || 0).toFixed(2))
+    })));
+  } catch (error) {
+    console.error("Class comparison error:", error);
+    return c.json({ error: "Failed to get class comparison" }, 500);
+  }
+});
 stats.get("/scores-list", async (c) => {
   const classId = c.req.query("classId");
   const examId = c.req.query("examId");
@@ -3037,8 +3096,8 @@ stats.get("/student/:studentId", async (c) => {
             SELECT 
                 e.name as exam_name,
                 e.exam_date,
-                AVG(s.score) as score,
-                100 as full_score
+                SUM(s.score) as score,
+                300 as full_score
             FROM scores s
             JOIN exams e ON s.exam_id = e.id
             WHERE s.student_id = ?
@@ -36259,51 +36318,58 @@ analysis.get("/weakpoints/:classId", async (c) => {
 analysis.get("/student/radar/:studentId", async (c) => {
   const studentId = c.req.param("studentId");
   try {
-    const studentScores = await c.env.DB.prepare(`
-            SELECT 
-                c.name as subject,
-                s.score,
-                s.exam_id,
-                e.class_id
-            FROM scores s
-            JOIN exams e ON s.exam_id = e.id
-            JOIN courses c ON e.course_id = c.id
-            WHERE s.student_id = ?
-            GROUP BY c.id
-            ORDER BY e.exam_date DESC
-        `).bind(studentId).all();
-    if (!studentScores.results.length) {
-      return c.json([]);
+    const student = await c.env.DB.prepare("SELECT class_id FROM students WHERE id = ?").bind(studentId).first();
+    if (!student) {
+      return c.json({ error: "Student not found" }, 404);
     }
+    const courses2 = await c.env.DB.prepare("SELECT id, name FROM courses").all();
     const radarData = [];
-    for (const record of studentScores.results) {
+    for (const course of courses2.results) {
+      const studentScore = await c.env.DB.prepare(`
+                SELECT s.score, s.exam_id
+                FROM scores s
+                JOIN exam_courses ec ON s.exam_id = ec.exam_id AND ec.course_id = s.course_id
+                JOIN exams e ON s.exam_id = e.id
+                WHERE s.student_id = ? AND s.course_id = ?
+                ORDER BY e.exam_date DESC
+                LIMIT 1
+            `).bind(studentId, course.id).first();
+      if (!studentScore) continue;
       const stats2 = await c.env.DB.prepare(`
                 SELECT 
-                    AVG(score) as avg_score,
-                    COUNT(score) as count,
-                    SUM((score - (SELECT AVG(score) FROM scores WHERE exam_id = ?)) * (score - (SELECT AVG(score) FROM scores WHERE exam_id = ?))) as sum_sq_diff
-                FROM scores 
-                WHERE exam_id = ?
-            `).bind(record.exam_id, record.exam_id, record.exam_id, record.exam_id).first();
-      if (!stats2) continue;
+                    AVG(s.score) as avg_score,
+                    COUNT(s.score) as count
+                FROM scores s
+                JOIN students st ON s.student_id = st.id
+                WHERE s.exam_id = ? 
+                AND s.course_id = ?
+                AND st.class_id = ?
+            `).bind(studentScore.exam_id, course.id, student.class_id).first();
+      if (!stats2 || !stats2.count) continue;
+      const variance = await c.env.DB.prepare(`
+                SELECT 
+                    SUM((s.score - ?) * (s.score - ?)) / ? as variance
+                FROM scores s
+                JOIN students st ON s.student_id = st.id
+                WHERE s.exam_id = ? 
+                AND s.course_id = ?
+                AND st.class_id = ?
+            `).bind(stats2.avg_score, stats2.avg_score, stats2.count, studentScore.exam_id, course.id, student.class_id).first();
+      const stdDev = variance && variance.variance !== null ? Math.sqrt(Number(variance.variance)) : 0;
       const avg = Number(stats2.avg_score);
-      const count = Number(stats2.count);
-      const variance = count > 1 ? Number(stats2.sum_sq_diff) / count : 0;
-      const stdDev = Math.sqrt(variance);
-      const zScore = stdDev === 0 ? 0 : (Number(record.score) - avg) / stdDev;
+      const zScore = stdDev === 0 ? 0 : (Number(studentScore.score) - avg) / stdDev;
       radarData.push({
-        subject: record.subject,
-        score: record.score,
+        subject: course.name,
+        score: studentScore.score,
         classAvg: parseFloat(avg.toFixed(2)),
         zScore: parseFloat(zScore.toFixed(2)),
         fullMark: 100
-        // Assuming 100 for normalization if needed
       });
     }
     return c.json(radarData);
   } catch (error) {
     console.error("Radar analysis error:", error);
-    return c.json({ error: "Failed to generate radar analysis" }, 500);
+    return c.json({ error: "Failed to generate radar analysis", details: String(error) }, 500);
   }
 });
 analysis.get("/class/focus/:classId", async (c) => {
