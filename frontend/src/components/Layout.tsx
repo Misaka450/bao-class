@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Layout as AntLayout, Menu, Button, Dropdown, Avatar } from 'antd';
+import { useState, useEffect } from 'react';
+import { Layout as AntLayout, Menu, Button, Dropdown, Avatar, Drawer, Grid } from 'antd';
 import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
@@ -16,31 +16,53 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 
 const { Header, Sider, Content } = AntLayout;
+const { useBreakpoint } = Grid;
 
 export default function Layout({ children }: { children: React.ReactNode }) {
     const [collapsed, setCollapsed] = useState(false);
+    const [mobileDrawerVisible, setMobileDrawerVisible] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout } = useAuthStore();
+    const screens = useBreakpoint();
+
+    // 判断是否为移动设备（宽度 < 768px）
+    const isMobile = !screens.md;
+
+    // 监听屏幕尺寸变化，移动端自动关闭 Drawer
+    useEffect(() => {
+        if (!isMobile && mobileDrawerVisible) {
+            setMobileDrawerVisible(false);
+        }
+    }, [isMobile, mobileDrawerVisible]);
 
     const menuItems: MenuProps['items'] = [
         {
             key: '/dashboard',
             icon: <DashboardOutlined style={{ color: '#3b82f6', fontSize: '18px' }} />, // Blue
             label: <span style={{ fontWeight: 500 }}>仪表盘</span>,
-            onClick: () => navigate('/dashboard'),
+            onClick: () => {
+                navigate('/dashboard');
+                if (isMobile) setMobileDrawerVisible(false);
+            },
         },
         {
             key: '/classes',
             icon: <TeamOutlined style={{ color: '#10b981', fontSize: '18px' }} />, // Emerald
             label: <span style={{ fontWeight: 500 }}>班级管理</span>,
-            onClick: () => navigate('/classes'),
+            onClick: () => {
+                navigate('/classes');
+                if (isMobile) setMobileDrawerVisible(false);
+            },
         },
         {
             key: '/students',
             icon: <UserOutlined style={{ color: '#f59e0b', fontSize: '18px' }} />, // Amber
             label: <span style={{ fontWeight: 500 }}>学生管理</span>,
-            onClick: () => navigate('/students'),
+            onClick: () => {
+                navigate('/students');
+                if (isMobile) setMobileDrawerVisible(false);
+            },
         },
         {
             key: 'teaching',
@@ -50,17 +72,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {
                     key: '/courses',
                     label: '课程管理',
-                    onClick: () => navigate('/courses'),
+                    onClick: () => {
+                        navigate('/courses');
+                        if (isMobile) setMobileDrawerVisible(false);
+                    },
                 },
                 {
                     key: '/exams',
                     label: '考试管理',
-                    onClick: () => navigate('/exams'),
+                    onClick: () => {
+                        navigate('/exams');
+                        if (isMobile) setMobileDrawerVisible(false);
+                    },
                 },
                 {
                     key: '/import',
                     label: '数据导入',
-                    onClick: () => navigate('/import'),
+                    onClick: () => {
+                        navigate('/import');
+                        if (isMobile) setMobileDrawerVisible(false);
+                    },
                 },
             ],
         },
@@ -68,7 +99,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             key: '/scores-list',
             icon: <TableOutlined style={{ color: '#ec4899', fontSize: '18px' }} />, // Pink
             label: <span style={{ fontWeight: 500 }}>成绩清单</span>,
-            onClick: () => navigate('/scores-list'),
+            onClick: () => {
+                navigate('/scores-list');
+                if (isMobile) setMobileDrawerVisible(false);
+            },
         },
         {
             key: 'analysis-group',
@@ -78,17 +112,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {
                     key: '/analysis',
                     label: 'AI 智能分析',
-                    onClick: () => navigate('/analysis'),
+                    onClick: () => {
+                        navigate('/analysis');
+                        if (isMobile) setMobileDrawerVisible(false);
+                    },
                 },
                 {
                     key: '/analysis/subject',
                     label: '学生学科分析',
-                    onClick: () => navigate('/analysis/subject'),
+                    onClick: () => {
+                        navigate('/analysis/subject');
+                        if (isMobile) setMobileDrawerVisible(false);
+                    },
                 },
                 {
                     key: '/analysis/comparison',
                     label: '学科横向对比',
-                    onClick: () => navigate('/analysis/comparison'),
+                    onClick: () => {
+                        navigate('/analysis/comparison');
+                        if (isMobile) setMobileDrawerVisible(false);
+                    },
                 },
             ],
         },
@@ -106,51 +149,85 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         },
     ];
 
+    // 侧边栏内容组件
+    const SidebarContent = () => (
+        <>
+            <div
+                style={{
+                    height: 80,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: isMobile ? 18 : 20,
+                    fontWeight: 700,
+                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    color: 'transparent',
+                    letterSpacing: '0.5px',
+                }}
+            >
+                {collapsed && !isMobile ? '成绩' : '成绩管理系统'}
+            </div>
+            <Menu
+                mode="inline"
+                selectedKeys={[location.pathname]}
+                items={menuItems}
+                style={{ borderRight: 0, background: 'transparent' }}
+            />
+        </>
+    );
+
     return (
         <AntLayout style={{ minHeight: '100vh' }}>
-            <Sider trigger={null} collapsible collapsed={collapsed} width={260} className="modern-sidebar">
-                <div
-                    style={{
-                        height: 80,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 20,
-                        fontWeight: 700,
-                        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                        backgroundClip: 'text',
-                        WebkitBackgroundClip: 'text',
-                        color: 'transparent',
-                        letterSpacing: '0.5px',
-                    }}
+            {/* 桌面端：固定侧边栏 */}
+            {!isMobile && (
+                <Sider trigger={null} collapsible collapsed={collapsed} width={260} className="modern-sidebar">
+                    <SidebarContent />
+                </Sider>
+            )}
+
+            {/* 移动端：抽屉式侧边栏 */}
+            {isMobile && (
+                <Drawer
+                    placement="left"
+                    open={mobileDrawerVisible}
+                    onClose={() => setMobileDrawerVisible(false)}
+                    width={260}
+                    styles={{ body: { padding: 0, background: '#fff' } }}
+                    className="modern-sidebar"
                 >
-                    {collapsed ? '成绩' : '成绩管理系统'}
-                </div>
-                <Menu
-                    mode="inline"
-                    selectedKeys={[location.pathname]}
-                    items={menuItems}
-                    style={{ borderRight: 0, background: 'transparent' }}
-                />
-            </Sider>
+                    <SidebarContent />
+                </Drawer>
+            )}
+
             <AntLayout style={{ background: '#f8fafc' }}>
-                <Header className="glass-header" style={{ padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Header className="glass-header" style={{
+                    padding: isMobile ? '0 16px' : '0 24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                }}>
                     <Button
                         type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        onClick={() => setCollapsed(!collapsed)}
+                        icon={
+                            isMobile
+                                ? <MenuUnfoldOutlined />
+                                : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
+                        }
+                        onClick={() => isMobile ? setMobileDrawerVisible(true) : setCollapsed(!collapsed)}
                         style={{ fontSize: 16, width: 64, height: 64, color: '#1e293b' }}
                     />
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                         <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#1e293b' }}>
-                            <Avatar icon={<UserOutlined />} style={{ marginRight: 8, backgroundColor: '#6366f1' }} />
-                            <span style={{ fontWeight: 500 }}>{user?.name || user?.username}</span>
+                            <Avatar icon={<UserOutlined />} style={{ marginRight: isMobile ? 0 : 8, backgroundColor: '#6366f1' }} />
+                            {!isMobile && <span style={{ fontWeight: 500 }}>{user?.name || user?.username}</span>}
                         </div>
                     </Dropdown>
                 </Header>
                 <Content
                     style={{
-                        margin: '24px',
+                        margin: isMobile ? '16px' : '24px',
                         padding: 0,
                         minHeight: 280,
                     }}
@@ -158,6 +235,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     {children}
                 </Content>
             </AntLayout>
-        </AntLayout >
+        </AntLayout>
     );
 }

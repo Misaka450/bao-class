@@ -242,8 +242,8 @@ export default function Dashboard() {
 
             {/* Filters */}
             <Card style={{ marginBottom: 24 }}>
-                <Row gutter={16}>
-                    <Col span={8}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24} sm={24} md={8}>
                         <div style={{ marginBottom: 8, color: '#666' }}>班级</div>
                         <Select
                             value={selectedClassId}
@@ -256,7 +256,7 @@ export default function Dashboard() {
                             ))}
                         </Select>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={24} md={8}>
                         <div style={{ marginBottom: 8, color: '#666' }}>考试</div>
                         <Select
                             value={selectedExamId}
@@ -270,7 +270,7 @@ export default function Dashboard() {
                             ))}
                         </Select>
                     </Col>
-                    <Col span={8}>
+                    <Col xs={24} sm={24} md={8}>
                         <div style={{ marginBottom: 8, color: '#666' }}>科目</div>
                         <Select
                             value={selectedCourseId}
@@ -294,8 +294,8 @@ export default function Dashboard() {
                 <>
                     {/* Main Stats & Distribution */}
                     <Col span={24}>
-                        <Row gutter={24}>
-                            <Col span={16}>
+                        <Row gutter={[24, 24]}>
+                            <Col xs={24} sm={24} md={24} lg={16}>
                                 <Card title="分数段分布" bodyStyle={{ height: 360 }}>
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={distribution} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -311,7 +311,7 @@ export default function Dashboard() {
                                     </ResponsiveContainer>
                                 </Card>
                             </Col>
-                            <Col span={8}>
+                            <Col xs={24} sm={24} md={24} lg={8}>
                                 <Card title="核心指标" bodyStyle={{ height: 360, display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>
                                     <Statistic
                                         title="最高分"
@@ -376,8 +376,8 @@ export default function Dashboard() {
                         </Card>
                     </Col>
                     <Col span={24}>
-                        <Row gutter={16}>
-                            <Col span={12}>
+                        <Row gutter={[16, 16]}>
+                            <Col xs={24} sm={24} md={12}>
                                 <Card title="进步最大 (Top 5)" bodyStyle={{ padding: '0 12px' }}>
                                     <List
                                         itemLayout="horizontal"
@@ -394,7 +394,7 @@ export default function Dashboard() {
                                     />
                                 </Card>
                             </Col>
-                            <Col span={12}>
+                            <Col xs={24} sm={24} md={12}>
                                 <Card title="退步最大 (Top 5)" bodyStyle={{ padding: '0 12px' }}>
                                     <List
                                         itemLayout="horizontal"
