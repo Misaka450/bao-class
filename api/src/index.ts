@@ -8,22 +8,12 @@ import students from './routes/students';
 import courses from './routes/courses';
 import exams from './routes/exams';
 import scores from './routes/scores';
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { Env } from './types';
-import { cacheMiddleware } from './middleware/cache';
-import auth from './routes/auth';
-import classes from './routes/classes';
-import students from './routes/students';
-import courses from './routes/courses';
-import exams from './routes/exams';
-import scores from './routes/scores';
 import stats from './routes/stats';
 import reports from './routes/reports';
 import importRoute from './routes/import';
 import init from './routes/init';
 import debug from './routes/debug';
-
+import upload from './routes/upload';
 import analysis from './routes/analysis';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -35,10 +25,10 @@ app.use('/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// 为统计接口添加缓存（5分钟）
+// 为统计接口添加缓存(5分钟)
 app.use('/api/stats/*', cacheMiddleware(300));
 
-// 为报告接口添加缓存（10分钟）
+// 为报告接口添加缓存(10分钟)
 app.use('/api/reports/*', cacheMiddleware(600));
 
 // 健康检查
@@ -57,6 +47,7 @@ app.route('/api/stats', stats);
 app.route('/api/analysis', analysis);
 app.route('/api/reports', reports);
 app.route('/api/import', importRoute);
+app.route('/api/upload', upload);
 app.route('/api/init', init);
 app.route('/api/debug', debug);
 

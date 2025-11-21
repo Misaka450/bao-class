@@ -208,10 +208,13 @@ importRoute.post('/scores', async (c) => {
 
                 const courseId = courseResult.id as number
 
-                // Find exam by name and course
-                const examResult = await c.env.DB.prepare(
-                    'SELECT id FROM exams WHERE name = ? AND course_id = ? AND class_id = ?'
-                ).bind(row['考试'], courseId, classId).first()
+                // Find exam by name and course through exam_courses junction table
+                const examResult = await c.env.DB.prepare(`
+                    SELECT e.id 
+                    FROM exams e
+                    JOIN exam_courses ec ON e.id = ec.exam_id
+                    WHERE e.name = ? AND ec.course_id = ? AND e.class_id = ?
+                `).bind(row['考试'], courseId, classId).first()
 
                 if (!examResult) {
                     errors.push(`第 ${i + 2} 行: 找不到班级 "${row['班级']}" 的 "${row['科目']}" 科目的 "${row['考试']}" 考试`)
@@ -223,19 +226,19 @@ importRoute.post('/scores', async (c) => {
 
                 // Check if score already exists
                 const existing = await c.env.DB.prepare(
-                    'SELECT id FROM scores WHERE student_id = ? AND exam_id = ?'
-                ).bind(student.id, examId).first()
+                    'SELECT id FROM scores WHERE student_id = ? AND exam_id = ? AND course_id = ?'
+                ).bind(student.id, examId, courseId).first()
 
                 if (existing) {
                     // Update existing score
                     await c.env.DB.prepare(
-                        'UPDATE scores SET score = ? WHERE student_id = ? AND exam_id = ?'
-                    ).bind(row['分数'], student.id, examId).run()
+                        'UPDATE scores SET score = ?, updated_at = CURRENT_TIMESTAMP WHERE student_id = ? AND exam_id = ? AND course_id = ?'
+                    ).bind(row['分数'], student.id, examId, courseId).run()
                 } else {
                     // Insert new score
                     await c.env.DB.prepare(
-                        'INSERT INTO scores (student_id, exam_id, score) VALUES (?, ?, ?)'
-                    ).bind(student.id, examId, row['分数']).run()
+                        'INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)'
+                    ).bind(student.id, examId, courseId, row['分数']).run()
                 }
                 successCount++
             } catch (error) {

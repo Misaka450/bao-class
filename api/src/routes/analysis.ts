@@ -72,8 +72,7 @@ analysis.get('/student/advice/:studentId', async (c) => {
         GROUP_CONCAT(co.name || ':' || s.score) as subject_scores
       FROM students st
       JOIN scores s ON st.id = s.student_id
-      JOIN exams e ON s.exam_id = e.id
-      JOIN courses co ON e.course_id = co.id
+      JOIN courses co ON s.course_id = co.id
       WHERE st.id = ?
       GROUP BY st.id, st.name
     `).bind(studentId).first()

@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 
 type Bindings = {
-    ASSET_BUCKET: R2Bucket
+    R2: R2Bucket
 }
 
 const upload = new Hono<{ Bindings: Bindings }>()
@@ -27,7 +27,7 @@ upload.post('/image', async (c) => {
         const key = `uploads/${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`
 
         // Upload to R2
-        await c.env.ASSET_BUCKET.put(key, file.stream(), {
+        await c.env.R2.put(key, file.stream(), {
             httpMetadata: {
                 contentType: file.type
             }
@@ -48,7 +48,7 @@ upload.post('/image', async (c) => {
 upload.get('/image/:key{.+}', async (c) => {
     try {
         const key = c.req.param('key')
-        const object = await c.env.ASSET_BUCKET.get(key)
+        const object = await c.env.R2.get(key)
 
         if (!object) {
             return c.json({ error: 'File not found' }, 404)

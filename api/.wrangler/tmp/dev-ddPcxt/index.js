@@ -35904,9 +35904,12 @@ importRoute.post("/scores", async (c) => {
           continue;
         }
         const courseId = courseResult.id;
-        const examResult = await c.env.DB.prepare(
-          "SELECT id FROM exams WHERE name = ? AND course_id = ? AND class_id = ?"
-        ).bind(row["\u8003\u8BD5"], courseId, classId).first();
+        const examResult = await c.env.DB.prepare(`
+                    SELECT e.id 
+                    FROM exams e
+                    JOIN exam_courses ec ON e.id = ec.exam_id
+                    WHERE e.name = ? AND ec.course_id = ? AND e.class_id = ?
+                `).bind(row["\u8003\u8BD5"], courseId, classId).first();
         if (!examResult) {
           errors.push(`\u7B2C ${i + 2} \u884C: \u627E\u4E0D\u5230\u73ED\u7EA7 "${row["\u73ED\u7EA7"]}" \u7684 "${row["\u79D1\u76EE"]}" \u79D1\u76EE\u7684 "${row["\u8003\u8BD5"]}" \u8003\u8BD5`);
           errorCount++;
@@ -35914,16 +35917,16 @@ importRoute.post("/scores", async (c) => {
         }
         const examId = examResult.id;
         const existing = await c.env.DB.prepare(
-          "SELECT id FROM scores WHERE student_id = ? AND exam_id = ?"
-        ).bind(student.id, examId).first();
+          "SELECT id FROM scores WHERE student_id = ? AND exam_id = ? AND course_id = ?"
+        ).bind(student.id, examId, courseId).first();
         if (existing) {
           await c.env.DB.prepare(
-            "UPDATE scores SET score = ? WHERE student_id = ? AND exam_id = ?"
-          ).bind(row["\u5206\u6570"], student.id, examId).run();
+            "UPDATE scores SET score = ?, updated_at = CURRENT_TIMESTAMP WHERE student_id = ? AND exam_id = ? AND course_id = ?"
+          ).bind(row["\u5206\u6570"], student.id, examId, courseId).run();
         } else {
           await c.env.DB.prepare(
-            "INSERT INTO scores (student_id, exam_id, score) VALUES (?, ?, ?)"
-          ).bind(student.id, examId, row["\u5206\u6570"]).run();
+            "INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)"
+          ).bind(student.id, examId, courseId, row["\u5206\u6570"]).run();
         }
         successCount++;
       } catch (error) {
@@ -36207,6 +36210,56 @@ debug.post("/clean-duplicate-courses", async (c) => {
 });
 var debug_default = debug;
 
+// src/routes/upload.ts
+var upload = new Hono2();
+upload.post("/image", async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get("file");
+    if (!file) {
+      return c.json({ error: "No file provided" }, 400);
+    }
+    if (!file.type.startsWith("image/")) {
+      return c.json({ error: "Only image files are allowed" }, 400);
+    }
+    const timestamp = Date.now();
+    const extension = file.name.split(".").pop();
+    const key = `uploads/${timestamp}-${Math.random().toString(36).substring(7)}.${extension}`;
+    await c.env.R2.put(key, file.stream(), {
+      httpMetadata: {
+        contentType: file.type
+      }
+    });
+    return c.json({
+      message: "File uploaded successfully",
+      key,
+      url: `/api/upload/image/${key}`
+    });
+  } catch (error) {
+    console.error("Upload error:", error);
+    return c.json({ error: "Upload failed" }, 500);
+  }
+});
+upload.get("/image/:key{.+}", async (c) => {
+  try {
+    const key = c.req.param("key");
+    const object = await c.env.R2.get(key);
+    if (!object) {
+      return c.json({ error: "File not found" }, 404);
+    }
+    return new Response(object.body, {
+      headers: {
+        "Content-Type": object.httpMetadata?.contentType || "application/octet-stream",
+        "Cache-Control": "public, max-age=31536000"
+      }
+    });
+  } catch (error) {
+    console.error("Get image error:", error);
+    return c.json({ error: "Failed to retrieve file" }, 500);
+  }
+});
+var upload_default = upload;
+
 // src/routes/analysis.ts
 var analysis = new Hono2();
 analysis.get("/class/summary/:classId", async (c) => {
@@ -36262,8 +36315,7 @@ analysis.get("/student/advice/:studentId", async (c) => {
         GROUP_CONCAT(co.name || ':' || s.score) as subject_scores
       FROM students st
       JOIN scores s ON st.id = s.student_id
-      JOIN exams e ON s.exam_id = e.id
-      JOIN courses co ON e.course_id = co.id
+      JOIN courses co ON s.course_id = co.id
       WHERE st.id = ?
       GROUP BY st.id, st.name
     `).bind(studentId).first();
@@ -36443,6 +36495,7 @@ app.route("/api/stats", stats_default);
 app.route("/api/analysis", analysis_default);
 app.route("/api/reports", reports_default);
 app.route("/api/import", import_default);
+app.route("/api/upload", upload_default);
 app.route("/api/init", init_default);
 app.route("/api/debug", debug_default);
 var src_default = app;

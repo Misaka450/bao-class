@@ -46,3 +46,6 @@ id = "ca803a51af3741ecb8db56ea055f7656"
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "class"
+
+[[ai]]
+binding = "AI"
