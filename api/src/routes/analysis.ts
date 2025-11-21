@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import trend from './analysis/trend'
 
 type Bindings = {
     DB: D1Database
@@ -6,6 +7,9 @@ type Bindings = {
 }
 
 const analysis = new Hono<{ Bindings: Bindings }>()
+
+// 注册趋势分析子路由
+analysis.route('/student/trend', trend)
 
 // AI-generated class summary
 analysis.get('/class/summary/:classId', async (c) => {
@@ -69,9 +73,10 @@ analysis.get('/student/advice/:studentId', async (c) => {
       SELECT 
         st.name,
         AVG(s.score) as average_score,
-        GROUP_CONCAT(co.name || ':' || s.score) as subject_scores
+        GROUP_CONCAT(co.name || ':' || CAST(s.score AS TEXT)) as subject_scores
       FROM students st
       JOIN scores s ON st.id = s.student_id
+      JOIN exams e ON s.exam_id = e.id
       JOIN courses co ON s.course_id = co.id
       WHERE st.id = ?
       GROUP BY st.id, st.name
@@ -222,7 +227,7 @@ analysis.get('/class/focus/:classId', async (c) => {
             FROM students st
             JOIN scores s ON st.id = s.student_id
             JOIN exams e ON s.exam_id = e.id
-            JOIN courses c ON e.course_id = c.id
+            JOIN courses c ON s.course_id = c.id
             WHERE st.class_id = ? 
             AND e.exam_date >= date('now', '-30 days')
             AND ((s.score BETWEEN 58 AND 59.9) OR (s.score BETWEEN 88 AND 89.9))
