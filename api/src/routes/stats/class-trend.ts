@@ -60,17 +60,18 @@ classTrend.get('/:classId', async (c) => {
                 FROM exams e
                 JOIN (
                     SELECT 
-                        exam_id, 
-                        student_id, 
-                        SUM(score) as total_score,
-                        COUNT(course_id) as subject_count
+                        s.exam_id, 
+                        s.student_id, 
+                        SUM(s.score) as total_score,
+                        COUNT(s.course_id) as subject_count
                     FROM scores s
                     JOIN students st ON s.student_id = st.id
                     WHERE st.class_id = ?
-                    GROUP BY exam_id, student_id
+                    GROUP BY s.exam_id, s.student_id
                 ) student_totals ON e.id = student_totals.exam_id
+                WHERE e.class_id = ?
             `
-            params.push(classId)
+            params.push(classId, classId)
         }
 
         query += `
