@@ -125,22 +125,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         if (isMobile) setMobileDrawerVisible(false);
                     },
                 },
-                {
-                    key: '/analysis',
-                    label: 'AI 智能分析',
-                    onClick: () => {
-                        navigate('/analysis');
-                        if (isMobile) setMobileDrawerVisible(false);
-                    },
-                },
-                {
-                    key: '/analysis/subject',
-                    label: '学生学科分析',
-                    onClick: () => {
-                        navigate('/analysis/subject');
-                        if (isMobile) setMobileDrawerVisible(false);
-                    },
-                },
             ],
         },
     ];

@@ -354,96 +354,6 @@ stats.get('/scores-list', async (c) => {
     }
 })
 
-// Student radar analysis
-stats.get('/student/radar/:studentId', async (c) => {
-    const studentId = c.req.param('studentId')
-    const examId = c.req.query('examId')
-
-    try {
-        let targetExamId = examId
-
-        if (!targetExamId) {
-            const student = await c.env.DB.prepare('SELECT class_id FROM students WHERE id = ?').bind(studentId).first()
-            if (!student) {
-                return c.json({ error: 'Student not found' }, 404)
-            }
-
-            const latestExam = await c.env.DB.prepare(`
-                SELECT id FROM exams 
-                WHERE class_id = ?
-                ORDER BY exam_date DESC LIMIT 1
-            `).bind(student.class_id).first()
-
-            if (latestExam) {
-                targetExamId = latestExam.id as string
-            }
-        }
-
-        if (!targetExamId) {
-            return c.json([])
-        }
-
-        const scores = await c.env.DB.prepare(`
-            SELECT 
-                c.name as subject,
-                s.score,
-                ec.full_score
-            FROM scores s
-            JOIN courses c ON s.course_id = c.id
-            JOIN exam_courses ec ON ec.exam_id = s.exam_id AND ec.course_id = c.id
-            WHERE s.student_id = ? AND s.exam_id = ?
-        `).bind(studentId, targetExamId).all()
-
-        return c.json(scores.results)
-    } catch (error) {
-        console.error('Student radar error:', error)
-        return c.json({ error: 'Failed to get student radar data' }, 500)
-    }
-})
-
-// Class focus group analysis
-stats.get('/class/focus/:classId', async (c) => {
-    const classId = c.req.param('classId')
-
-    try {
-        const latestExam = await c.env.DB.prepare(`
-            SELECT id FROM exams 
-            WHERE class_id = ?
-            ORDER BY exam_date DESC LIMIT 1
-        `).bind(classId).first()
-
-        if (!latestExam) {
-            return c.json({ critical: [], regressing: [], fluctuating: [] })
-        }
-
-        const examId = latestExam.id
-
-        // Critical students (average < 60)
-        const critical = await c.env.DB.prepare(`
-            SELECT 
-                s.id,
-                s.name,
-                AVG(sc.score) as average_score
-            FROM students s
-            JOIN scores sc ON s.id = sc.student_id
-            WHERE s.class_id = ? AND sc.exam_id = ?
-            GROUP BY s.id, s.name
-            HAVING AVG(sc.score) < 60
-            ORDER BY average_score ASC
-            LIMIT 10
-        `).bind(classId, examId).all()
-
-        return c.json({
-            critical: critical.results,
-            regressing: [],
-            fluctuating: []
-        })
-    } catch (error) {
-        console.error('Focus group error:', error)
-        return c.json({ error: 'Failed to get focus group data' }, 500)
-    }
-})
-
 // Get top students for an exam
 stats.get('/exam/:examId/top-students', async (c) => {
     const examId = c.req.param('examId')
@@ -554,32 +464,6 @@ stats.get('/exam/:examId/progress', async (c) => {
     } catch (error) {
         console.error('Progress error:', error)
         return c.json({ improved: [], declined: [] })
-    }
-})
-
-// Get student score history (for trend chart)
-stats.get('/student/:studentId', async (c) => {
-    const studentId = c.req.param('studentId')
-
-    try {
-        const history = await c.env.DB.prepare(`
-            SELECT 
-                e.name as exam_name,
-                e.exam_date,
-                SUM(s.score) as score,
-                300 as full_score
-            FROM scores s
-            JOIN exams e ON s.exam_id = e.id
-            WHERE s.student_id = ?
-            GROUP BY e.id, e.name, e.exam_date
-            ORDER BY e.exam_date DESC
-            LIMIT 10
-        `).bind(studentId).all()
-
-        return c.json(history.results)
-    } catch (error) {
-        console.error('Student history error:', error)
-        return c.json({ error: 'Failed to get student history' }, 500)
     }
 })
 
