@@ -194,4 +194,193 @@ init.get('/seed-all-exams', async (c) => {
     }
 })
 
+init.get('/seed-grade3-class1', async (c) => {
+    try {
+        // 学生配置 - 包含姓名、性别、学号、类型
+        type StudentType = 'excellent' | 'progressive' | 'regressive' | 'biased' | 'struggling'
+
+        const studentConfigs: Array<{
+            name: string
+            gender: 'male' | 'female'
+            studentId: string
+            type: StudentType
+        }> = [
+                { name: '张明', gender: 'male', studentId: '202401', type: 'excellent' },
+                { name: '李华', gender: 'female', studentId: '202402', type: 'excellent' },
+                { name: '王芳', gender: 'female', studentId: '202403', type: 'excellent' },
+                { name: '刘强', gender: 'male', studentId: '202404', type: 'progressive' },
+                { name: '陈静', gender: 'female', studentId: '202405', type: 'progressive' },
+                { name: '赵磊', gender: 'male', studentId: '202406', type: 'regressive' },
+                { name: '孙丽', gender: 'female', studentId: '202407', type: 'regressive' },
+                { name: '周杰', gender: 'male', studentId: '202408', type: 'biased' },
+                { name: '吴梅', gender: 'female', studentId: '202409', type: 'biased' },
+                { name: '郑伟', gender: 'male', studentId: '202410', type: 'struggling' }
+            ]
+
+        // 成绩生成函数
+        const generateScore = (
+            studentType: StudentType,
+            courseName: string,
+            examIndex: number,
+            totalExams: number
+        ): number => {
+            let baseScore: number
+            let variance: number
+            let trend = 0
+
+            // 根据学生类型设置基础分数
+            switch (studentType) {
+                case 'excellent':
+                    baseScore = 90
+                    variance = 5
+                    break
+                case 'progressive':
+                    baseScore = 70
+                    variance = 8
+                    trend = (examIndex / Math.max(totalExams - 1, 1)) * 15 // 逐步提高
+                    break
+                case 'regressive':
+                    baseScore = 75
+                    variance = 8
+                    trend = -(examIndex / Math.max(totalExams - 1, 1)) * 12 // 逐步下降
+                    break
+                case 'biased':
+                    // 数学特别好，其他科目一般
+                    baseScore = courseName === '数学' ? 88 : 65
+                    variance = 6
+                    break
+                case 'struggling':
+                    baseScore = 55
+                    variance = 10
+                    break
+            }
+
+            const randomVariance = Math.random() * variance * 2 - variance
+            let score = baseScore + trend + randomVariance
+            return Math.max(0, Math.min(100, Math.round(score)))
+        }
+
+        // 1. 创建三年级一班
+        let class1 = await c.env.DB.prepare('SELECT * FROM classes WHERE name = ? AND grade = ?')
+            .bind('三年级一班', 3)
+            .first<{ id: number }>()
+
+        if (!class1) {
+            const res = await c.env.DB.prepare('INSERT INTO classes (name, grade) VALUES (?, ?) RETURNING id')
+                .bind('三年级一班', 3)
+                .first<{ id: number }>()
+            if (!res) return c.json({ error: 'Failed to create class' }, 500)
+            class1 = res
+        }
+
+        // 2. 删除现有学生和成绩（重新开始）
+        const existingStudents = await c.env.DB.prepare('SELECT id FROM students WHERE class_id = ?')
+            .bind(class1.id)
+            .all<{ id: number }>()
+
+        for (const student of existingStudents.results) {
+            await c.env.DB.prepare('DELETE FROM scores WHERE student_id = ?').bind(student.id).run()
+        }
+        await c.env.DB.prepare('DELETE FROM students WHERE class_id = ?').bind(class1.id).run()
+        await c.env.DB.prepare('DELETE FROM exams WHERE class_id = ?').bind(class1.id).run()
+
+        // 3. 创建学生（含真实姓名和性别）
+        const createdStudents: Array<{ id: number, type: StudentType }> = []
+        for (const config of studentConfigs) {
+            const result = await c.env.DB.prepare(
+                'INSERT INTO students (name, student_id, gender, class_id) VALUES (?, ?, ?, ?) RETURNING id'
+            )
+                .bind(config.name, config.studentId, config.gender, class1.id)
+                .first<{ id: number }>()
+
+            if (result) {
+                createdStudents.push({ id: result.id, type: config.type })
+            }
+        }
+
+        // 4. 获取三年级二班
+        const class2 = await c.env.DB.prepare('SELECT * FROM classes WHERE name = ? AND grade = ?')
+            .bind('三年级二班', 3)
+            .first<{ id: number }>()
+
+        if (!class2) {
+            return c.json({ error: 'Class 三年级二班 not found. Please run /init/progress-data first.' }, 404)
+        }
+
+        // 5. 获取三年级二班的所有考试（按日期排序）
+        const class2Exams = await c.env.DB.prepare('SELECT * FROM exams WHERE class_id = ? ORDER BY exam_date ASC')
+            .bind(class2.id)
+            .all<{ id: number, name: string, exam_date: string }>()
+
+        if (class2Exams.results.length === 0) {
+            return c.json({ error: 'No exams found for 三年级二班. Please run /init/progress-data first.' }, 404)
+        }
+
+        // 6. 获取所有课程
+        const courses = await c.env.DB.prepare('SELECT * FROM courses')
+            .all<{ id: number, name: string }>()
+
+        if (courses.results.length === 0) {
+            return c.json({ error: 'No courses found. Please run /init/progress-data first.' }, 404)
+        }
+
+        let totalExamsCreated = 0
+        let totalScoresCreated = 0
+        const totalExams = class2Exams.results.length
+
+        // 7. 为三年级一班创建相同的考试
+        for (let examIndex = 0; examIndex < class2Exams.results.length; examIndex++) {
+            const exam = class2Exams.results[examIndex]
+
+            // 为三年级一班创建相同名称的考试
+            const newExamRes = await c.env.DB.prepare('INSERT INTO exams (name, exam_date, class_id) VALUES (?, ?, ?) RETURNING id')
+                .bind(exam.name, exam.exam_date, class1.id)
+                .first<{ id: number }>()
+
+            if (!newExamRes) continue
+            totalExamsCreated++
+
+            const newExamId = newExamRes.id
+
+            // 8. 获取原考试的科目关联
+            const examCourses = await c.env.DB.prepare('SELECT course_id, full_score FROM exam_courses WHERE exam_id = ?')
+                .bind(exam.id)
+                .all<{ course_id: number, full_score: number }>()
+
+            // 9. 为新考试添加科目关联和成绩
+            for (const examCourse of examCourses.results) {
+                // 添加考试-科目关联
+                await c.env.DB.prepare('INSERT INTO exam_courses (exam_id, course_id, full_score) VALUES (?, ?, ?)')
+                    .bind(newExamId, examCourse.course_id, examCourse.full_score)
+                    .run()
+
+                // 获取课程名称
+                const course = courses.results.find(c => c.id === examCourse.course_id)
+                const courseName = course?.name || ''
+
+                // 为每个学生添加成绩（根据学生类型生成）
+                for (const student of createdStudents) {
+                    const score = generateScore(student.type, courseName, examIndex, totalExams)
+
+                    await c.env.DB.prepare('INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)')
+                        .bind(student.id, newExamId, examCourse.course_id, score)
+                        .run()
+                    totalScoresCreated++
+                }
+            }
+        }
+
+        return c.json({
+            message: '三年级一班数据添加成功',
+            classId: class1.id,
+            studentsCount: createdStudents.length,
+            examsCreated: totalExamsCreated,
+            scoresCreated: totalScoresCreated
+        })
+    } catch (error) {
+        console.error('Seed grade 3 class 1 error:', error)
+        return c.json({ error: String(error) }, 500)
+    }
+})
+
 export default init
