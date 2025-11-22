@@ -97,10 +97,6 @@ export default function ScoresList() {
     };
 
     const fetchScoresData = async () => {
-        if (!selectedExamId) {
-            setScoresData([]);
-            return;
-        }
         setLoading(true);
         try {
             let url = `${API_BASE_URL}/api/stats/scores-list`;

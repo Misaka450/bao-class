@@ -316,6 +316,7 @@ init.get('/seed-grade3-class1', async (c) => {
             return c.json({ error: 'No exams found for 三年级二班. Please run /init/progress-data first.' }, 404)
         }
 
+
         // 6. 获取所有课程
         const courses = await c.env.DB.prepare('SELECT * FROM courses')
             .all<{ id: number, name: string }>()
@@ -332,15 +333,29 @@ init.get('/seed-grade3-class1', async (c) => {
         for (let examIndex = 0; examIndex < class2Exams.results.length; examIndex++) {
             const exam = class2Exams.results[examIndex]
 
-            // 为三年级一班创建相同名称的考试
-            const newExamRes = await c.env.DB.prepare('INSERT INTO exams (name, exam_date, class_id) VALUES (?, ?, ?) RETURNING id')
+            // 检查是否已存在相同名称和日期的考试
+            let existingExam = await c.env.DB.prepare(
+                'SELECT id FROM exams WHERE name = ? AND exam_date = ? AND class_id = ?'
+            )
                 .bind(exam.name, exam.exam_date, class1.id)
                 .first<{ id: number }>()
 
-            if (!newExamRes) continue
-            totalExamsCreated++
+            let targetExamId: number
 
-            const newExamId = newExamRes.id
+            if (existingExam) {
+                // 使用已存在的考试
+                targetExamId = existingExam.id
+                console.log(`Using existing exam ${exam.name} (ID: ${targetExamId})`)
+            } else {
+                // 创建新考试
+                const newExamRes = await c.env.DB.prepare('INSERT INTO exams (name, exam_date, class_id) VALUES (?, ?, ?) RETURNING id')
+                    .bind(exam.name, exam.exam_date, class1.id)
+                    .first<{ id: number }>()
+
+                if (!newExamRes) continue
+                targetExamId = newExamRes.id
+                totalExamsCreated++
+            }
 
             // 8. 获取原考试的科目关联
             const examCourses = await c.env.DB.prepare('SELECT course_id, full_score FROM exam_courses WHERE exam_id = ?')
@@ -349,10 +364,19 @@ init.get('/seed-grade3-class1', async (c) => {
 
             // 9. 为新考试添加科目关联和成绩
             for (const examCourse of examCourses.results) {
-                // 添加考试-科目关联
-                await c.env.DB.prepare('INSERT INTO exam_courses (exam_id, course_id, full_score) VALUES (?, ?, ?)')
-                    .bind(newExamId, examCourse.course_id, examCourse.full_score)
-                    .run()
+                // 检查考试-科目关联是否已存在
+                const existingEC = await c.env.DB.prepare(
+                    'SELECT id FROM exam_courses WHERE exam_id = ? AND course_id = ?'
+                )
+                    .bind(targetExamId, examCourse.course_id)
+                    .first()
+
+                if (!existingEC) {
+                    // 添加考试-科目关联
+                    await c.env.DB.prepare('INSERT INTO exam_courses (exam_id, course_id, full_score) VALUES (?, ?, ?)')
+                        .bind(targetExamId, examCourse.course_id, examCourse.full_score)
+                        .run()
+                }
 
                 // 获取课程名称
                 const course = courses.results.find(c => c.id === examCourse.course_id)
@@ -360,12 +384,21 @@ init.get('/seed-grade3-class1', async (c) => {
 
                 // 为每个学生添加成绩（根据学生类型生成）
                 for (const student of createdStudents) {
-                    const score = generateScore(student.type, courseName, examIndex, totalExams)
+                    // 检查成绩是否已存在
+                    const existingScore = await c.env.DB.prepare(
+                        'SELECT id FROM scores WHERE student_id = ? AND exam_id = ? AND course_id = ?'
+                    )
+                        .bind(student.id, targetExamId, examCourse.course_id)
+                        .first()
 
-                    await c.env.DB.prepare('INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)')
-                        .bind(student.id, newExamId, examCourse.course_id, score)
-                        .run()
-                    totalScoresCreated++
+                    if (!existingScore) {
+                        const score = generateScore(student.type, courseName, examIndex, totalExams)
+
+                        await c.env.DB.prepare('INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)')
+                            .bind(student.id, targetExamId, examCourse.course_id, score)
+                            .run()
+                        totalScoresCreated++
+                    }
                 }
             }
         }
@@ -384,3 +417,4 @@ init.get('/seed-grade3-class1', async (c) => {
 })
 
 export default init
+
