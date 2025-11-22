@@ -10,11 +10,22 @@ const auth = new Hono<{ Bindings: Env; Variables: { user: JWTPayload } }>();
 // 用户登录
 auth.post('/login', async (c) => {
   try {
+    // 记录请求头
+    console.log('Login request headers:', Object.fromEntries(c.req.raw.headers));
+
     // 更安全地解析请求体
     let requestData: LoginRequest;
     try {
-      requestData = await c.req.json();
+      // 尝试获取原始文本
+      const rawBody = await c.req.text();
+      console.log('Raw request body:', rawBody);
+      console.log('Raw body length:', rawBody.length);
+
+      // 尝试解析为 JSON
+      requestData = JSON.parse(rawBody);
+      console.log('Parsed request data:', JSON.stringify(requestData));
     } catch (parseError) {
+      console.error('JSON parse error:', parseError);
       return c.json(errorResponse('请求格式错误'), 400);
     }
 
@@ -24,18 +35,27 @@ auth.post('/login', async (c) => {
       return c.json(errorResponse('用户名和密码不能为空'), 400);
     }
 
+    console.log('Attempting login for username:', username);
+
     // 查询用户
     const user = await c.env.DB.prepare(
       'SELECT id, username, password, role, name FROM users WHERE username = ?'
     ).bind(username).first();
 
+    console.log('User query result:', user ? `Found user: ${user.username}` : 'User not found');
+
     if (!user) {
+      console.log('Login failed: User not found');
       return c.json(errorResponse('用户名或密码错误'), 401);
     }
 
     // 验证密码
+    console.log('Verifying password...');
     const isValid = await verifyPassword(password, user.password as string);
+    console.log('Password verification result:', isValid);
+
     if (!isValid) {
+      console.log('Login failed: Invalid password');
       return c.json(errorResponse('用户名或密码错误'), 401);
     }
 
@@ -52,7 +72,9 @@ auth.post('/login', async (c) => {
       return c.json(errorResponse('服务器配置错误', 'JWT_SECRET 未配置'), 500);
     }
 
+    console.log('Generating JWT token...');
     const token = await generateToken(payload, c.env.JWT_SECRET);
+    console.log('Login successful for user:', username);
 
     return c.json(successResponse({
       token,
@@ -64,6 +86,7 @@ auth.post('/login', async (c) => {
       },
     }));
   } catch (error) {
+    console.error('Login error:', error);
     return c.json(errorResponse('登录失败', (error as Error).message), 500);
   }
 });

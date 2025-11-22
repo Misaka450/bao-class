@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, message, Space, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../store/authStore';
 
 interface Course {
@@ -16,26 +17,28 @@ export default function Courses() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<Course | null>(null);
     const [form] = Form.useForm();
-    const token = useAuthStore((state) => state.token);
-
-    useEffect(() => {
-        fetchCourses();
-    }, []);
+    const { token } = useAuthStore();
 
     const fetchCourses = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:8787/api/courses', {
+            const res = await fetch(`${API_BASE_URL}/api/courses`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data = await res.json();
-            setCourses(data);
+            if (res.ok) {
+                const data = await res.json();
+                setCourses(data);
+            }
         } catch (error) {
             message.error('获取课程列表失败');
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchCourses();
+    }, []);
 
     const handleAdd = () => {
         setEditingCourse(null);
@@ -51,7 +54,7 @@ export default function Courses() {
 
     const handleDelete = async (id: number) => {
         try {
-            await fetch(`http://localhost:8787/api/courses/${id}`, {
+            await fetch(`${API_BASE_URL}/api/courses/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -65,8 +68,8 @@ export default function Courses() {
     const handleSubmit = async (values: any) => {
         try {
             const url = editingCourse
-                ? `http://localhost:8787/api/courses/${editingCourse.id}`
-                : 'http://localhost:8787/api/courses';
+                ? `${API_BASE_URL}/api/courses/${editingCourse.id}`
+                : `${API_BASE_URL}/api/courses`;
             const method = editingCourse ? 'PUT' : 'POST';
 
             await fetch(url, {

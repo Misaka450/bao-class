@@ -1,30 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, DatePicker, Space, Popconfirm, message, Tag } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, DatePicker, message, Space, Popconfirm, Tag } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import dayjs from 'dayjs';
+import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../store/authStore';
 
 interface ExamCourse {
-    id?: number;
     course_id: number;
-    course_name?: string;
-    full_score: number;
+    course_name: string;
 }
 
 interface Exam {
     id: number;
     name: string;
     class_id: number;
-    class_name?: string;
+    class_name: string;
     exam_date: string;
-    description?: string;
     courses: ExamCourse[];
-}
-
-interface Course {
-    id: number;
-    name: string;
+    description?: string;
 }
 
 interface Class {
@@ -32,30 +26,31 @@ interface Class {
     name: string;
 }
 
+interface Course {
+    id: number;
+    name: string;
+}
+
 export default function Exams() {
     const [exams, setExams] = useState<Exam[]>([]);
-    const [courses, setCourses] = useState<Course[]>([]);
     const [classes, setClasses] = useState<Class[]>([]);
+    const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<Exam | null>(null);
     const [form] = Form.useForm();
-    const token = useAuthStore((state) => state.token);
-
-    useEffect(() => {
-        fetchExams();
-        fetchCourses();
-        fetchClasses();
-    }, []);
+    const { token } = useAuthStore();
 
     const fetchExams = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:8787/api/exams', {
+            const res = await fetch(`${API_BASE_URL}/api/exams`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data = await res.json();
-            setExams(data);
+            if (res.ok) {
+                const data = await res.json();
+                setExams(data);
+            }
         } catch (error) {
             message.error('获取考试列表失败');
         } finally {
@@ -63,58 +58,59 @@ export default function Exams() {
         }
     };
 
-    const fetchCourses = async () => {
+    const fetchClasses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/courses', {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data = await res.json();
-            // 去重课程（根据课程名称）
-            const uniqueCourses = data.reduce((acc: Course[], course: Course) => {
-                if (!acc.find(c => c.name === course.name)) {
-                    acc.push(course);
-                }
-                return acc;
-            }, []);
-            setCourses(uniqueCourses);
+            if (res.ok) {
+                const data = await res.json();
+                setClasses(data);
+            }
         } catch (error) {
-            console.error(error);
+            console.error('Failed to fetch classes');
         }
     };
 
-    const fetchClasses = async () => {
+    const fetchCourses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/classes', {
+            const res = await fetch(`${API_BASE_URL}/api/courses`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            setClasses(await res.json());
+            if (res.ok) {
+                const data = await res.json();
+                setCourses(data);
+            }
         } catch (error) {
-            console.error(error);
+            console.error('Failed to fetch courses');
         }
     };
+
+    useEffect(() => {
+        fetchExams();
+        fetchClasses();
+        fetchCourses();
+    }, []);
 
     const handleAdd = () => {
         setEditingExam(null);
         form.resetFields();
-        form.setFieldsValue({ course_ids: [] });
         setIsModalOpen(true);
     };
 
     const handleEdit = (record: Exam) => {
         setEditingExam(record);
         form.setFieldsValue({
-            name: record.name,
-            class_id: record.class_id,
-            exam_date: record.exam_date ? dayjs(record.exam_date) : null,
-            description: record.description,
-            course_ids: record.courses.map(c => c.course_id),
+            ...record,
+            exam_date: dayjs(record.exam_date),
+            course_ids: record.courses.map(c => c.course_id)
         });
         setIsModalOpen(true);
     };
 
     const handleDelete = async (id: number) => {
         try {
-            await fetch(`http://localhost:8787/api/exams/${id}`, {
+            await fetch(`${API_BASE_URL}/api/exams/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -127,21 +123,15 @@ export default function Exams() {
 
     const handleSubmit = async (values: any) => {
         try {
-            const data = {
-                name: values.name,
-                class_id: values.class_id,
-                exam_date: values.exam_date ? values.exam_date.format('YYYY-MM-DD') : null,
-                description: values.description,
-                courses: values.course_ids.map((courseId: number) => ({
-                    course_id: courseId,
-                    full_score: 100 // 默认满分100
-                }))
-            };
-
             const url = editingExam
-                ? `http://localhost:8787/api/exams/${editingExam.id}`
-                : 'http://localhost:8787/api/exams';
+                ? `${API_BASE_URL}/api/exams/${editingExam.id}`
+                : `${API_BASE_URL}/api/exams`;
             const method = editingExam ? 'PUT' : 'POST';
+
+            const data = {
+                ...values,
+                exam_date: values.exam_date.format('YYYY-MM-DD'),
+            };
 
             await fetch(url, {
                 method,

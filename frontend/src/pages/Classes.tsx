@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message, Row, Col } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, message, Space, Popconfirm, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../store/authStore';
 
 interface Class {
     id: number;
     name: string;
     grade: number;
-    teacher_id?: number;
 }
 
 export default function Classes() {
@@ -19,26 +19,28 @@ export default function Classes() {
     const [form] = Form.useForm();
     const [searchText, setSearchText] = useState('');
     const [filterGrade, setFilterGrade] = useState<string>('');
-    const token = useAuthStore((state) => state.token);
-
-    useEffect(() => {
-        fetchClasses();
-    }, []);
+    const { token } = useAuthStore();
 
     const fetchClasses = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:8787/api/classes', {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data = await res.json();
-            setClasses(data);
+            if (res.ok) {
+                const data = await res.json();
+                setClasses(data);
+            }
         } catch (error) {
             message.error('获取班级列表失败');
         } finally {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchClasses();
+    }, []);
 
     const handleAdd = () => {
         setEditingClass(null);
@@ -54,7 +56,7 @@ export default function Classes() {
 
     const handleDelete = async (id: number) => {
         try {
-            await fetch(`http://localhost:8787/api/classes/${id}`, {
+            await fetch(`${API_BASE_URL}/api/classes/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -68,8 +70,8 @@ export default function Classes() {
     const handleSubmit = async (values: any) => {
         try {
             const url = editingClass
-                ? `http://localhost:8787/api/classes/${editingClass.id}`
-                : 'http://localhost:8787/api/classes';
+                ? `${API_BASE_URL}/api/classes/${editingClass.id}`
+                : `${API_BASE_URL}/api/classes`;
             const method = editingClass ? 'PUT' : 'POST';
 
             await fetch(url, {

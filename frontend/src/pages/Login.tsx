@@ -2,6 +2,7 @@ import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 import { useState } from 'react';
 
 interface LoginForm {
@@ -17,23 +18,24 @@ export default function Login() {
     const onFinish = async (values: LoginForm) => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:8787/api/auth/login', {
+            const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(values),
             });
 
-            if (!res.ok) {
-                const error = await res.json();
-                message.error(error.error || '登录失败');
+            const data = await res.json();
+
+            if (!res.ok || !data.success) {
+                message.error(data.message || '登录失败');
                 return;
             }
 
-            const data = await res.json();
-            login(data.user, data.token);
+            login(data.data.user, data.data.token);
             message.success('登录成功！');
             navigate('/dashboard');
         } catch (error) {
+            console.error('Login error:', error);
             message.error('登录失败，请检查网络连接');
         } finally {
             setLoading(false);

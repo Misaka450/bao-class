@@ -8,6 +8,7 @@ import {
     FallOutlined,
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../store/authStore';
 
 interface Stats {
@@ -30,11 +31,40 @@ interface Student {
     average_score: number;
 }
 
-interface Class { id: number; name: string; }
-interface Exam { id: number; name: string; class_id: number; courses?: any[] }
-interface Course { id: number; name: string; }
+interface ProgressItem {
+    student_name: string;
+    progress: number;
+}
+
+interface ProgressData {
+    improved: ProgressItem[];
+    declined: ProgressItem[];
+}
+
+interface Class {
+    id: number;
+    name: string;
+}
+
+interface Exam {
+    id: number;
+    name: string;
+    class_id: number;
+    courses: { course_id: number; course_name: string }[];
+}
+
+interface Course {
+    id: number;
+    name: string;
+}
 
 export default function Dashboard() {
+    const [stats, setStats] = useState<Stats | null>(null);
+    const [distribution, setDistribution] = useState<Distribution[]>([]);
+    const [topStudents, setTopStudents] = useState<Student[]>([]);
+    const [progress, setProgress] = useState<ProgressData>({ improved: [], declined: [] });
+    const [loading, setLoading] = useState(false);
+
     const [classes, setClasses] = useState<Class[]>([]);
     const [exams, setExams] = useState<Exam[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
@@ -43,195 +73,153 @@ export default function Dashboard() {
     const [selectedExamId, setSelectedExamId] = useState<string>('');
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
 
-    const [stats, setStats] = useState<Stats | null>(null);
-    const [distribution, setDistribution] = useState<Distribution[]>([]);
-    const [topStudents, setTopStudents] = useState<Student[]>([]);
-    const [progress, setProgress] = useState<{ improved: any[], declined: any[] }>({ improved: [], declined: [] });
-    const [loading, setLoading] = useState(false);
+    const { token } = useAuthStore();
 
-    const token = useAuthStore((state) => state.token);
-
-    // Initial data fetch
+    // Fetch initial data (Classes)
     useEffect(() => {
-        const initData = async () => {
-            await fetchClasses();
-            await fetchExams(); // Fetches all exams
-            await fetchCourses(); // Fetches all courses
-        };
-        initData();
-    }, []);
-
-    // Filter exams when class changes
-    const filteredExams = selectedClassId
-        ? exams.filter(exam => exam.class_id.toString() === selectedClassId)
-        : [];
-
-    // Filter courses when exam changes and deduplicate
-    const filteredCourses = selectedExamId
-        ? (() => {
-            const exam = exams.find(e => e.id.toString() === selectedExamId);
-            const examCourses = exam?.courses?.map((c: any) => ({ id: c.course_id, name: c.course_name })) || courses;
-
-            // Deduplicate courses based on ID
-            const uniqueCourses = Array.from(new Map(examCourses.map((c: any) => [c.id, c])).values());
-            return uniqueCourses as Course[];
-        })()
-        : courses;
-
-    // Auto-select first exam when class changes
-    useEffect(() => {
-        if (filteredExams.length > 0) {
-            // Only change if current selection is invalid or empty
-            if (!selectedExamId || !filteredExams.find(e => e.id.toString() === selectedExamId)) {
-                setSelectedExamId(filteredExams[0].id.toString());
-            }
-        } else {
-            setSelectedExamId('');
-        }
-    }, [selectedClassId, exams]);
-
-    // Auto-select first course when exam changes
-    useEffect(() => {
-        if (selectedExamId) {
-            fetchDistribution();
-
-            // Get valid courses for this exam
-            const exam = exams.find(e => e.id.toString() === selectedExamId);
-            const validCourses = exam?.courses?.map((c: any) => ({ id: c.course_id, name: c.course_name })) || courses;
-            const uniqueValidCourses = Array.from(new Map(validCourses.map((c: any) => [c.id, c])).values()) as Course[];
-
-            // Check if current selection is valid
-            const isCurrentValid = selectedCourseId && uniqueValidCourses.some(c => c.id.toString() === selectedCourseId);
-
-            if (!isCurrentValid) {
-                if (uniqueValidCourses.length > 0) {
-                    setSelectedCourseId(uniqueValidCourses[0].id.toString());
-                } else {
-                    setSelectedCourseId('');
+        const fetchClasses = async () => {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/classes`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setClasses(data);
+                    if (data.length > 0) {
+                        setSelectedClassId(data[0].id.toString());
+                    }
                 }
+            } catch (error) {
+                console.error('Failed to fetch classes');
             }
-        } else {
-            setSelectedCourseId('');
-        }
-    }, [selectedExamId, exams, courses]);
+        };
+        fetchClasses();
+    }, [token]);
 
-    // Fetch data when filters change
+    // Fetch Exams when Class changes
     useEffect(() => {
-        if (selectedClassId && selectedExamId) {
-            fetchDashboardData();
+        const fetchExams = async () => {
+            if (!selectedClassId) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/exams?class_id=${selectedClassId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    // Filter exams for the selected class locally if API doesn't filter
+                    const classExams = data.filter((e: Exam) => e.class_id.toString() === selectedClassId);
+                    setExams(classExams);
+                    if (classExams.length > 0) {
+                        setSelectedExamId(classExams[0].id.toString());
+                    } else {
+                        setSelectedExamId('');
+                        setStats(null);
+                        setDistribution([]);
+                        setTopStudents([]);
+                        setProgress({ improved: [], declined: [] });
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch exams');
+            }
+        };
+        fetchExams();
+    }, [selectedClassId, token]);
+
+    // Update Courses when Exam changes
+    useEffect(() => {
+        if (!selectedExamId) {
+            setCourses([]);
+            setSelectedCourseId('');
+            return;
         }
-    }, [selectedClassId, selectedExamId, selectedCourseId]);
-
-    const fetchClasses = async () => {
-        try {
-            const res = await fetch('http://localhost:8787/api/classes', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            setClasses(data);
-            if (data.length > 0) setSelectedClassId(data[0].id.toString());
-        } catch (error) {
-            message.error('获取班级失败');
+        const exam = exams.find(e => e.id.toString() === selectedExamId);
+        if (exam) {
+            const examCourses = exam.courses.map(c => ({ id: c.course_id, name: c.course_name }));
+            setCourses(examCourses);
+            // Default to first course if available
+            if (examCourses.length > 0) {
+                setSelectedCourseId(examCourses[0].id.toString());
+            } else {
+                setSelectedCourseId('');
+            }
         }
-    };
+    }, [selectedExamId, exams]);
 
-    const fetchExams = async () => {
-        try {
-            const res = await fetch('http://localhost:8787/api/exams', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            setExams(data);
-        } catch (error) {
-            message.error('获取考试失败');
-        }
-    };
+    // Fetch Dashboard Data
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            if (!selectedExamId) return;
 
-    const fetchCourses = async () => {
-        try {
-            const res = await fetch('http://localhost:8787/api/courses', {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            setCourses(data);
-        } catch (error) {
-            message.error('获取课程失败');
-        }
-    };
+            setLoading(true);
+            try {
+                // 1. Distribution
+                let distUrl = `${API_BASE_URL}/api/stats/exam/${selectedExamId}/distribution`;
+                if (selectedCourseId) {
+                    distUrl += `?courseId=${selectedCourseId}`;
+                }
+                const distRes = await fetch(distUrl, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (distRes.ok) {
+                    const data = await distRes.json();
+                    setDistribution(Array.isArray(data) ? data : []);
+                }
 
-    const fetchDashboardData = async () => {
-        setLoading(true);
-        try {
-            await Promise.all([
-                fetchStats(),
-                fetchDistribution(),
-                fetchTopStudents(),
-                fetchProgress()
-            ]);
-        } finally {
-            setLoading(false);
-        }
-    };
+                // 2. Stats
+                let statsUrl = `${API_BASE_URL}/api/stats/class/${selectedClassId}?examId=${selectedExamId}`;
+                if (selectedCourseId) {
+                    statsUrl += `&courseId=${selectedCourseId}`;
+                }
+                const statsRes = await fetch(statsUrl, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (statsRes.ok) {
+                    const data = await statsRes.json();
+                    setStats(data);
+                }
 
-    const fetchStats = async () => {
-        try {
-            let url = `http://localhost:8787/api/stats/class/${selectedClassId}?examId=${selectedExamId}`;
-            if (selectedCourseId) url += `&courseId=${selectedCourseId}`;
+                // 2. Top Students
+                let topUrl = `${API_BASE_URL}/api/stats/exam/${selectedExamId}/top-students?limit=5`;
+                if (selectedCourseId) {
+                    topUrl += `&courseId=${selectedCourseId}`;
+                }
+                const topRes = await fetch(topUrl, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (topRes.ok) {
+                    setTopStudents(await topRes.json());
+                }
 
-            const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setStats(await res.json());
-        } catch (error) {
-            console.error(error);
-        }
-    };
+                // 3. Progress
+                let progressUrl = `${API_BASE_URL}/api/stats/exam/${selectedExamId}/progress`;
+                if (selectedCourseId) {
+                    progressUrl += `?courseId=${selectedCourseId}`;
+                }
+                const progressRes = await fetch(progressUrl, {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+                if (progressRes.ok) {
+                    setProgress(await progressRes.json());
+                }
 
-    const fetchDistribution = async () => {
-        try {
-            let url = `http://localhost:8787/api/stats/exam/${selectedExamId}/distribution`;
-            if (selectedCourseId) url += `?courseId=${selectedCourseId}`;
+            } catch (error) {
+                console.error('Failed to fetch dashboard data', error);
+                message.error('获取数据失败');
+            } finally {
+                setLoading(false);
+            }
+        };
 
-            const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setDistribution(await res.json());
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const fetchTopStudents = async () => {
-        try {
-            let url = `http://localhost:8787/api/stats/exam/${selectedExamId}/top-students?limit=5`;
-            if (selectedCourseId) url += `&courseId=${selectedCourseId}`;
-
-            const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setTopStudents(await res.json());
-        } catch (error) {
-            console.error(error);
-        }
-    };
-
-    const fetchProgress = async () => {
-        try {
-            let url = `http://localhost:8787/api/stats/exam/${selectedExamId}/progress`;
-            if (selectedCourseId) url += `?courseId=${selectedCourseId}`;
-
-            const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            setProgress(await res.json());
-        } catch (error) {
-            console.error(error);
-        }
-    };
+        fetchDashboardData();
+    }, [selectedExamId, selectedCourseId, token]);
 
     const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
-
     const highestScore = topStudents.length > 0 ? topStudents[0].average_score : 0;
+
+    // Filtered lists for Selects (already handled by state updates, but for safety)
+    const filteredExams = exams;
+    const filteredCourses = courses;
 
     return (
         <div>
@@ -351,7 +339,7 @@ export default function Dashboard() {
                             </Col>
                         </Row>
                     </Col>
-                    <Col span={24}>
+                    <Col span={24} style={{ marginTop: 24 }}>
                         <Card title="优秀学生 (Top 5)" bodyStyle={{ padding: '0 12px' }}>
                             <List
                                 itemLayout="horizontal"
@@ -375,7 +363,7 @@ export default function Dashboard() {
                             />
                         </Card>
                     </Col>
-                    <Col span={24}>
+                    <Col span={24} style={{ marginTop: 24 }}>
                         <Row gutter={[16, 16]}>
                             <Col xs={24} sm={24} md={12}>
                                 <Card title="进步最大 (Top 5)" bodyStyle={{ padding: '0 12px' }}>

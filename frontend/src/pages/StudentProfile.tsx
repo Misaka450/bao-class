@@ -4,6 +4,7 @@ import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Butto
 import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined } from '@ant-design/icons';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 const { Title, Text } = Typography;
 
@@ -54,7 +55,7 @@ export default function StudentProfile() {
     const fetchProfile = async (studentId: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:8787/api/stats/profile/${studentId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/stats/profile/${studentId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             if (!res.ok) throw new Error('Failed to fetch profile');

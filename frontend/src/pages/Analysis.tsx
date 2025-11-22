@@ -4,6 +4,7 @@ import { BulbOutlined, UserOutlined, TeamOutlined, WarningOutlined, FallOutlined
 import ReactMarkdown from 'react-markdown';
 
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 const { Text } = Typography;
 
@@ -35,7 +36,7 @@ export default function Analysis() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/classes', {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -48,7 +49,7 @@ export default function Analysis() {
 
     const fetchStudents = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/students', {
+            const res = await fetch(`${API_BASE_URL}/api/students`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -64,7 +65,7 @@ export default function Analysis() {
         setLoading(true);
         setClassSummary('');
         try {
-            const res = await fetch(`http://localhost:8787/api/analysis/class/${selectedClassId}/summary`, {
+            const res = await fetch(`${API_BASE_URL}/api/analysis/class/${selectedClassId}/summary`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -81,7 +82,7 @@ export default function Analysis() {
         setLoading(true);
         setStudentAdvice('');
         try {
-            const res = await fetch(`http://localhost:8787/api/analysis/student/${selectedStudentId}/advice`, {
+            const res = await fetch(`${API_BASE_URL}/api/analysis/student/${selectedStudentId}/advice`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -98,7 +99,7 @@ export default function Analysis() {
         setLoading(true);
         setFocusGroup(null);
         try {
-            const res = await fetch(`http://localhost:8787/api/analysis/class/focus/${selectedClassId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/analysis/class/focus/${selectedClassId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();

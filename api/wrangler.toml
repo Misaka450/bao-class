@@ -11,7 +11,6 @@ routes = [
 [vars]
 ENVIRONMENT = "production"
 # 注意：JWT_SECRET 应该通过 wrangler secret put JWT_SECRET 命令设置，而不是硬编码在这里
-# JWT_SECRET = "my-super-secret-jwt-key-for-development-2024"
 
 # 可观察性配置
 [observability]
@@ -29,23 +28,22 @@ enabled = true
 persist = true
 head_sampling_rate = 1
 
-# 静态资源配置
-[assets]
-directory = "../frontend/dist"
-binding = "ASSETS"
-
+# D1 数据库配置
 [[d1_databases]]
 binding = "DB"
 database_name = "class"
 database_id = "6e013f8f-0b3b-4674-abad-fa81fb5e22bc"
 
+# KV 命名空间配置
 [[kv_namespaces]]
 binding = "KV"
 id = "ca803a51af3741ecb8db56ea055f7656"
 
+# R2 存储桶配置
 [[r2_buckets]]
 binding = "R2"
 bucket_name = "class"
 
+# AI 绑定配置
 [ai]
 binding = "AI"

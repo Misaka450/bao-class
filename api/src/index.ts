@@ -22,7 +22,7 @@ import exportRoute from './routes/export';
 
 const app = new Hono<{ Bindings: Env }>();
 
-// CORS 中间件
+// CORS 中间件 - 允许所有来源（生产环境应该限制为前端域名）
 app.use('/*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -40,7 +40,12 @@ app.use('/api/reports/*', cacheMiddleware(600));
 
 // 健康检查
 app.get('/', (c) => {
-  return c.text('小学班级成绩管理系统 API 正常运行');
+  return c.json({
+    status: 'ok',
+    message: '小学班级成绩管理系统 API',
+    version: '1.0.0',
+    environment: c.env.ENVIRONMENT || 'production'
+  });
 });
 
 // 注册路由

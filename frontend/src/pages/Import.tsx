@@ -3,6 +3,7 @@ import { Card, Tabs, Button, Upload, message, Alert, Table, Select, Form } from 
 import { DownloadOutlined, UploadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload/interface';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 export default function Import() {
     const [activeTab, setActiveTab] = useState('students');
@@ -22,7 +23,7 @@ export default function Import() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/classes', {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -34,7 +35,7 @@ export default function Import() {
 
     const fetchExams = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/exams', {
+            const res = await fetch(`${API_BASE_URL}/api/exams`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -46,7 +47,7 @@ export default function Import() {
 
     const handleDownloadTemplate = async (type: string) => {
         try {
-            let url = `http://localhost:8787/api/import/template/${type}`;
+            let url = `${API_BASE_URL}/api/import/template/${type}`;
 
             if (type === 'scores') {
                 if (!selectedClass || !selectedExam) {
@@ -95,7 +96,7 @@ export default function Import() {
                 formData.append('examId', selectedExam);
             }
 
-            const res = await fetch(`http://localhost:8787/api/import/${activeTab}`, {
+            const res = await fetch(`${API_BASE_URL}/api/import/${activeTab}`, {
                 method: 'POST',
                 headers: { Authorization: `Bearer ${token}` },
                 body: formData,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Select, Spin, Typography, message, Row, Col, Empty } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 const { Title } = Typography;
 
@@ -34,7 +35,7 @@ export default function SubjectComparison() {
 
     const fetchExams = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/exams', {
+            const res = await fetch(`${API_BASE_URL}/api/exams`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -47,7 +48,7 @@ export default function SubjectComparison() {
 
     const fetchCourses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/courses', {
+            const res = await fetch(`${API_BASE_URL}/api/courses`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -61,7 +62,7 @@ export default function SubjectComparison() {
         setLoading(true);
         try {
             // Fetch Class Comparison
-            let compUrl = `http://localhost:8787/api/stats/comparison/classes?examId=${examId}`;
+            let compUrl = `${API_BASE_URL}/api/stats/comparison/classes?examId=${examId}`;
             if (courseId) compUrl += `&courseId=${courseId}`;
 
             const compRes = await fetch(compUrl, {
@@ -71,7 +72,7 @@ export default function SubjectComparison() {
             setComparisonData(compJson);
 
             // Fetch Score Distribution
-            let distUrl = `http://localhost:8787/api/stats/exam/${examId}/distribution`;
+            let distUrl = `${API_BASE_URL}/api/stats/exam/${examId}/distribution`;
             if (courseId) distUrl += `?courseId=${courseId}`;
 
             const distRes = await fetch(distUrl, {

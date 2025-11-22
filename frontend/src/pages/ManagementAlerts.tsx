@@ -3,6 +3,7 @@ import { Card, Select, Spin, Typography, message, Row, Col, Empty, Tag, List, Bu
 import { FallOutlined, RiseOutlined, WarningOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 const { Title } = Typography;
 
@@ -49,7 +50,7 @@ export default function ManagementAlerts() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/classes', {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const json = await res.json();
@@ -65,7 +66,7 @@ export default function ManagementAlerts() {
     const fetchAlerts = async (classId: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:8787/api/analysis/class/focus/${classId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/analysis/class/focus/${classId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const json = await res.json();

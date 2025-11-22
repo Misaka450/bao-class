@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Select, Spin, Typography, message, Row, Col, Empty } from 'antd';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 const { Title } = Typography;
 
@@ -40,7 +41,7 @@ export default function ClassAnalysis() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/classes', {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const json = await res.json();
@@ -56,7 +57,7 @@ export default function ClassAnalysis() {
     const fetchTrend = async (classId: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`http://localhost:8787/api/stats/class-trend/${classId}`, {
+            const res = await fetch(`${API_BASE_URL}/api/stats/class-trend/${classId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const json = await res.json();
@@ -90,7 +91,7 @@ export default function ClassAnalysis() {
             </div>
 
             <Spin spinning={loading}>
-                {data && data.trends.length > 0 ? (
+                {data && data.trends && data.trends.length > 0 ? (
                     <Row gutter={[24, 24]}>
                         <Col span={24}>
                             <Card title="平均分走势" bordered={false}>

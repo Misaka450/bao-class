@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, Select, Spin, Typography, message, Row, Col, Empty } from 'antd';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 const { Title } = Typography;
 
@@ -29,7 +30,7 @@ export default function SubjectAnalysis() {
 
     const fetchStudents = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/students', {
+            const res = await fetch(`${API_BASE_URL}/api/students`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -44,14 +45,14 @@ export default function SubjectAnalysis() {
         setLoading(true);
         try {
             // Fetch Radar Data
-            const radarRes = await fetch(`http://localhost:8787/api/analysis/student/radar/${studentId}`, {
+            const radarRes = await fetch(`${API_BASE_URL}/api/analysis/student/radar/${studentId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const radarJson = await radarRes.json();
             setRadarData(radarJson);
 
             // Fetch Trend Data
-            const trendRes = await fetch(`http://localhost:8787/api/stats/student/${studentId}`, {
+            const trendRes = await fetch(`${API_BASE_URL}/api/stats/student/${studentId}`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const trendJson = await trendRes.json();

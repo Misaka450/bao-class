@@ -3,6 +3,7 @@ import { Table, Card, Select, Row, Col, message, Spin } from 'antd';
 import { TableOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 interface ScoreData {
     student_id: number;
@@ -53,7 +54,7 @@ export default function ScoresList() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/classes', {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -65,7 +66,7 @@ export default function ScoresList() {
 
     const fetchExams = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/exams', {
+            const res = await fetch(`${API_BASE_URL}/api/exams`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -77,7 +78,7 @@ export default function ScoresList() {
 
     const fetchCourses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/courses', {
+            const res = await fetch(`${API_BASE_URL}/api/courses`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -101,7 +102,7 @@ export default function ScoresList() {
         }
         setLoading(true);
         try {
-            let url = 'http://localhost:8787/api/stats/scores-list';
+            let url = `${API_BASE_URL}/api/stats/scores-list`;
             const params = new URLSearchParams();
             if (selectedClassId) params.append('classId', selectedClassId);
             if (selectedExamId) params.append('examId', selectedExamId);
@@ -111,7 +112,19 @@ export default function ScoresList() {
             const res = await fetch(url, {
                 headers: { Authorization: `Bearer ${token}` },
             });
-            const data: ScoreData[] = await res.json();
+
+            if (!res.ok) {
+                throw new Error('Failed to fetch data');
+            }
+
+            const data = await res.json();
+
+            if (!Array.isArray(data)) {
+                console.error('Invalid data format:', data);
+                setScoresData([]);
+                return;
+            }
+
             setScoresData(data);
 
             // Extract unique subjects

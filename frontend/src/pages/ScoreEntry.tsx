@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { message, Card, Select, Table, Button, InputNumber, Row, Col, Spin } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 interface ExamCourse {
     course_id: number;
@@ -52,7 +53,7 @@ export default function ScoreEntry() {
 
     const fetchExams = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/exams', {
+            const res = await fetch(`${API_BASE_URL}/api/exams`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -68,7 +69,7 @@ export default function ScoreEntry() {
         setLoading(true);
         try {
             const res = await fetch(
-                `http://localhost:8787/api/scores?exam_id=${selectedExamId}&class_id=${selectedExam.class_id}&course_id=${selectedCourseId}`,
+                `${API_BASE_URL}/api/scores?exam_id=${selectedExamId}&class_id=${selectedExam.class_id}&course_id=${selectedCourseId}`,
                 { headers: { Authorization: `Bearer ${token}` } }
             );
             const data = await res.json();
@@ -96,7 +97,7 @@ export default function ScoreEntry() {
                     score: s.score
                 }));
 
-            await fetch('http://localhost:8787/api/scores/batch', {
+            await fetch(`${API_BASE_URL}/api/scores/batch`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

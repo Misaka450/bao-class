@@ -4,6 +4,7 @@ import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message, 
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { useAuthStore } from '../store/authStore';
+import { API_BASE_URL } from '../config';
 
 interface Student {
     id: number;
@@ -37,7 +38,7 @@ export default function Students() {
     const fetchStudents = async () => {
         setLoading(true);
         try {
-            const res = await fetch('http://localhost:8787/api/students', {
+            const res = await fetch(`${API_BASE_URL}/api/students`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -51,7 +52,7 @@ export default function Students() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch('http://localhost:8787/api/classes', {
+            const res = await fetch('${API_BASE_URL}/api/classes', {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
@@ -75,7 +76,7 @@ export default function Students() {
 
     const handleDelete = async (id: number) => {
         try {
-            await fetch(`http://localhost:8787/api/students/${id}`, {
+            await fetch(`${API_BASE_URL}/api/students/${id}`, {
                 method: 'DELETE',
                 headers: { Authorization: `Bearer ${token}` },
             });
@@ -89,8 +90,8 @@ export default function Students() {
     const handleSubmit = async (values: any) => {
         try {
             const url = editingStudent
-                ? `http://localhost:8787/api/students/${editingStudent.id}`
-                : 'http://localhost:8787/api/students';
+                ? `${API_BASE_URL}/api/students/${editingStudent.id}`
+                : `${API_BASE_URL}/api/students`;
             const method = editingStudent ? 'PUT' : 'POST';
 
             await fetch(url, {

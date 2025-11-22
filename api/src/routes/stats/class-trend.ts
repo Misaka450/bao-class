@@ -99,7 +99,7 @@ classTrend.get('/:classId', async (c) => {
 
     } catch (error) {
         console.error('Class trend error:', error)
-        return c.json({ error: 'Failed to fetch class trend' }, 500)
+        return c.json({ error: 'Failed to fetch class trend', details: error instanceof Error ? error.message : String(error) }, 500)
     }
 })
 
