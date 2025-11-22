@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Table, Card, Select, Row, Col, message, Spin } from 'antd';
-import { TableOutlined } from '@ant-design/icons';
+import { Table, Card, Select, Row, Col, message, Spin, Button } from 'antd';
+import { TableOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
+import * as XLSX from 'xlsx';
 import { useAuthStore } from '../store/authStore';
 import { API_BASE_URL } from '../config';
 
@@ -140,6 +141,47 @@ export default function ScoresList() {
         }
     };
 
+    const handleExport = () => {
+        if (scoresData.length === 0) {
+            message.warning('没有数据可导出');
+            return;
+        }
+
+        const exportData = scoresData.map((student, index) => {
+            const row: any = {
+                '排名': index + 1,
+                '学号': student.student_number,
+                '姓名': student.student_name,
+                '班级': student.class_name,
+            };
+
+            subjects.forEach(subject => {
+                row[subject] = student.scores[subject] || '-';
+            });
+
+            if (!selectedCourseId) {
+                row['总分'] = student.total;
+            }
+
+            return row;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, '成绩清单');
+
+        const className = selectedClassId
+            ? classes.find(c => c.id.toString() === selectedClassId)?.name || '全部班级'
+            : '全部班级';
+        const examName = selectedExamId
+            ? exams.find(e => e.id.toString() === selectedExamId)?.name || '考试'
+            : '考试';
+        const fileName = `${className}_${examName}_成绩清单.xlsx`;
+
+        XLSX.writeFile(wb, fileName);
+        message.success('导出成功！');
+    };
+
     // Build dynamic columns
     const columns: ColumnsType<ScoreData> = [
         {
@@ -260,6 +302,17 @@ export default function ScoresList() {
                     </Col>
                 </Row>
             </Card>
+
+            <div style={{ marginBottom: 16, textAlign: 'right' }}>
+                <Button
+                    type="primary"
+                    icon={<DownloadOutlined />}
+                    onClick={handleExport}
+                    disabled={scoresData.length === 0}
+                >
+                    导出成绩
+                </Button>
+            </div>
 
             {loading ? (
                 <div style={{ textAlign: 'center', padding: 60 }}>

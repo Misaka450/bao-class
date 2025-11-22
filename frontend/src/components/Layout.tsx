@@ -141,14 +141,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                         if (isMobile) setMobileDrawerVisible(false);
                     },
                 },
-                {
-                    key: '/analysis/comparison',
-                    label: '学科横向对比',
-                    onClick: () => {
-                        navigate('/analysis/comparison');
-                        if (isMobile) setMobileDrawerVisible(false);
-                    },
-                },
             ],
         },
     ];

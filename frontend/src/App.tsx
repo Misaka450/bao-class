@@ -13,7 +13,6 @@ import ScoreEntry from './pages/ScoreEntry';
 import Import from './pages/Import';
 import Analysis from './pages/Analysis';
 import SubjectAnalysis from './pages/SubjectAnalysis';
-import SubjectComparison from './pages/SubjectComparison';
 import ClassAnalysis from './pages/ClassAnalysis';
 import ManagementAlerts from './pages/ManagementAlerts';
 import ScoresList from './pages/ScoresList';
@@ -54,7 +53,6 @@ function App() {
                     <Route path="/analysis/class" element={<ClassAnalysis />} />
                     <Route path="/analysis/alerts" element={<ManagementAlerts />} />
                     <Route path="/analysis/subject" element={<SubjectAnalysis />} />
-                    <Route path="/analysis/comparison" element={<SubjectComparison />} />
                     <Route path="/scores-list" element={<ScoresList />} />
                   </Routes>
                 </Layout>
