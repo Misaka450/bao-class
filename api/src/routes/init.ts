@@ -273,16 +273,10 @@ init.get('/seed-grade3-class1', async (c) => {
             class1 = res
         }
 
-        // 2. 删除现有学生和成绩（重新开始）
-        const existingStudents = await c.env.DB.prepare('SELECT id FROM students WHERE class_id = ?')
-            .bind(class1.id)
-            .all<{ id: number }>()
-
-        for (const student of existingStudents.results) {
-            await c.env.DB.prepare('DELETE FROM scores WHERE student_id = ?').bind(student.id).run()
-        }
-        await c.env.DB.prepare('DELETE FROM students WHERE class_id = ?').bind(class1.id).run()
+        // 2. 删除现有数据（按正确顺序：先考试再学生）
+        // 删除考试会通过 CASCADE 自动删除相关成绩
         await c.env.DB.prepare('DELETE FROM exams WHERE class_id = ?').bind(class1.id).run()
+        await c.env.DB.prepare('DELETE FROM students WHERE class_id = ?').bind(class1.id).run()
 
         // 3. 创建学生（含真实姓名和性别）
         const createdStudents: Array<{ id: number, type: StudentType }> = []
