@@ -52,7 +52,7 @@ export default function Students() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch('${API_BASE_URL}/api/classes', {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
