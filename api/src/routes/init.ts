@@ -205,16 +205,16 @@ init.get('/seed-grade3-class1', async (c) => {
             studentId: string
             type: StudentType
         }> = [
-                { name: '张明', gender: 'male', studentId: '202401', type: 'excellent' },
-                { name: '李华', gender: 'female', studentId: '202402', type: 'excellent' },
-                { name: '王芳', gender: 'female', studentId: '202403', type: 'excellent' },
-                { name: '刘强', gender: 'male', studentId: '202404', type: 'progressive' },
-                { name: '陈静', gender: 'female', studentId: '202405', type: 'progressive' },
-                { name: '赵磊', gender: 'male', studentId: '202406', type: 'regressive' },
-                { name: '孙丽', gender: 'female', studentId: '202407', type: 'regressive' },
-                { name: '周杰', gender: 'male', studentId: '202408', type: 'biased' },
-                { name: '吴梅', gender: 'female', studentId: '202409', type: 'biased' },
-                { name: '郑伟', gender: 'male', studentId: '202410', type: 'struggling' }
+                { name: '张明', gender: 'male', studentId: '203101', type: 'excellent' },
+                { name: '李华', gender: 'female', studentId: '203102', type: 'excellent' },
+                { name: '王芳', gender: 'female', studentId: '203103', type: 'excellent' },
+                { name: '刘强', gender: 'male', studentId: '203104', type: 'progressive' },
+                { name: '陈静', gender: 'female', studentId: '203105', type: 'progressive' },
+                { name: '赵磊', gender: 'male', studentId: '203106', type: 'regressive' },
+                { name: '孙丽', gender: 'female', studentId: '203107', type: 'regressive' },
+                { name: '周杰', gender: 'male', studentId: '203108', type: 'biased' },
+                { name: '吴梅', gender: 'female', studentId: '203109', type: 'biased' },
+                { name: '郑伟', gender: 'male', studentId: '203110', type: 'struggling' }
             ]
 
         // 成绩生成函数
