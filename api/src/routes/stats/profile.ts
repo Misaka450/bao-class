@@ -59,6 +59,42 @@ profile.get('/:studentId', async (c) => {
             const totalSum = ranks.reduce((acc, curr) => acc + (curr.total as number), 0)
             const classAvg = ranks.length > 0 ? totalSum / ranks.length : 0
 
+            // Get subject details for this exam
+            const subjectScores = await c.env.DB.prepare(`
+                SELECT c.name as subject, s.score, s.course_id
+                FROM scores s
+                JOIN courses c ON s.course_id = c.id
+                WHERE s.student_id = ? AND s.exam_id = ?
+            `).bind(studentId, exam.exam_id).all()
+
+            const subjectDetails = []
+            for (const sub of subjectScores.results as any[]) {
+                // Get class average for this subject
+                const subAvg = await c.env.DB.prepare(`
+                    SELECT AVG(s.score) as avg
+                    FROM scores s
+                    JOIN students st ON s.student_id = st.id
+                    WHERE s.exam_id = ? AND s.course_id = ? AND st.class_id = ?
+                `).bind(exam.exam_id, sub.course_id, student.class_id).first()
+
+                // Get class rank for this subject
+                const rankResult = await c.env.DB.prepare(`
+                    SELECT COUNT(*) as count
+                    FROM scores s
+                    JOIN students st ON s.student_id = st.id
+                    WHERE s.exam_id = ? AND s.course_id = ? AND st.class_id = ? AND s.score > ?
+                `).bind(exam.exam_id, sub.course_id, student.class_id, sub.score).first()
+
+                const rank = (rankResult?.count as number || 0) + 1
+
+                subjectDetails.push({
+                    subject: sub.subject,
+                    score: sub.score,
+                    class_avg: subAvg ? parseFloat((subAvg.avg as number).toFixed(2)) : 0,
+                    class_rank: rank
+                })
+            }
+
             historyWithRank.push({
                 exam_id: exam.exam_id,
                 exam_name: exam.exam_name,
@@ -66,14 +102,21 @@ profile.get('/:studentId', async (c) => {
                 total_score: exam.total_score,
                 class_rank: rank,
                 class_avg: parseFloat(classAvg.toFixed(2)),
-                total_students: ranks.length
+                total_students: ranks.length,
+                subjects: subjectDetails
             })
         }
 
         // 3. Radar Data (Z-Scores for latest exam)
         // Find latest exam
         const latestExam = historyWithRank.length > 0 ? historyWithRank[0] : null
-        const radarData = []
+        const radarData: {
+            subject: string;
+            score: number;
+            classAvg: number;
+            zScore: number;
+            fullMark: number;
+        }[] = []
 
         if (latestExam) {
             const courses = await c.env.DB.prepare('SELECT id, name FROM courses').all()
@@ -116,7 +159,7 @@ profile.get('/:studentId', async (c) => {
 
                 radarData.push({
                     subject: course.name,
-                    score: scoreRecord.score,
+                    score: Number(scoreRecord.score),
                     classAvg: parseFloat(avg.toFixed(2)),
                     zScore: parseFloat(zScore.toFixed(2)),
                     fullMark: 100 // Assuming 100 for now, ideally fetch from exam_courses

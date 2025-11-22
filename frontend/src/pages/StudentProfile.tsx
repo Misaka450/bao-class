@@ -23,6 +23,12 @@ interface StudentProfileData {
         class_rank: number;
         class_avg: number;
         total_students: number;
+        subjects?: {
+            subject: string;
+            score: number;
+            class_avg: number;
+            class_rank: number;
+        }[];
     }[];
     radar: {
         subject: string;
@@ -197,6 +203,37 @@ export default function StudentProfile() {
                             rowKey="exam_id"
                             pagination={false}
                             size="middle"
+                            expandable={{
+                                expandedRowRender: (record) => (
+                                    <div style={{ margin: 0 }}>
+                                        <Table
+                                            dataSource={record.subjects}
+                                            columns={[
+                                                { title: '学科', dataIndex: 'subject', key: 'subject' },
+                                                { title: '我的分数', dataIndex: 'score', key: 'score' },
+                                                { title: '班级排名', dataIndex: 'class_rank', key: 'class_rank' },
+                                                { title: '班级平均分', dataIndex: 'class_avg', key: 'class_avg' },
+                                                {
+                                                    title: '对比',
+                                                    key: 'diff',
+                                                    render: (_, sub) => {
+                                                        const diff = sub.score - sub.class_avg;
+                                                        return (
+                                                            <span style={{ color: diff >= 0 ? '#3f8600' : '#cf1322' }}>
+                                                                {diff >= 0 ? '+' : ''}{diff.toFixed(1)}
+                                                            </span>
+                                                        );
+                                                    }
+                                                },
+                                            ]}
+                                            pagination={false}
+                                            size="small"
+                                            rowKey="subject"
+                                        />
+                                    </div>
+                                ),
+                                rowExpandable: (record) => !!(record.subjects && record.subjects.length > 0),
+                            }}
                         />
                     </Card>
                 </Col>

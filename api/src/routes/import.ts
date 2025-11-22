@@ -37,7 +37,7 @@ importRoute.get('/template/students', async (c) => {
     return new Response(excelBuffer, {
         headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition': 'attachment; filename=student_import_template.xlsx'
+            'Content-Disposition': `attachment; filename="${encodeURIComponent('学生导入模板.xlsx')}"`
         }
     })
 })
@@ -185,7 +185,7 @@ importRoute.get('/template/scores', async (c) => {
         return new Response(excelBuffer, {
             headers: {
                 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                'Content-Disposition': `attachment; filename=scores_import_template.xlsx`
+                'Content-Disposition': `attachment; filename="${encodeURIComponent('成绩导入模板.xlsx')}"`
             }
         })
 

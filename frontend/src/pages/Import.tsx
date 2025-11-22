@@ -71,7 +71,7 @@ export default function Import() {
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = downloadUrl;
-            a.download = `${type}_import_template.xlsx`;
+            a.download = type === 'students' ? '学生导入模板.xlsx' : '成绩导入模板.xlsx';
             a.click();
             window.URL.revokeObjectURL(downloadUrl);
             message.success('模板下载成功');
