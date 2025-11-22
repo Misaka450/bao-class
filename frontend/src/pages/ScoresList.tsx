@@ -24,6 +24,8 @@ interface Exam {
     id: number;
     name: string;
     class_name?: string;
+    exam_date?: string;
+    class_id?: number;
 }
 
 interface Course {
@@ -37,7 +39,7 @@ export default function ScoresList() {
     const [exams, setExams] = useState<Exam[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<string>('');
-    const [selectedExamId, setSelectedExamId] = useState<string>('');
+    const [selectedExamName, setSelectedExamName] = useState<string>(''); // 改为按考试名称筛选
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
     const [loading, setLoading] = useState(false);
     const [subjects, setSubjects] = useState<string[]>([]);
@@ -51,7 +53,7 @@ export default function ScoresList() {
 
     useEffect(() => {
         fetchScoresData();
-    }, [selectedClassId, selectedExamId, selectedCourseId]);
+    }, [selectedClassId, selectedExamName, selectedCourseId]);
 
     const fetchClasses = async () => {
         try {
@@ -102,7 +104,7 @@ export default function ScoresList() {
             let url = `${API_BASE_URL}/api/stats/scores-list`;
             const params = new URLSearchParams();
             if (selectedClassId) params.append('classId', selectedClassId);
-            if (selectedExamId) params.append('examId', selectedExamId);
+            if (selectedExamName) params.append('examName', selectedExamName); // 改为按考试名称查询
             if (selectedCourseId) params.append('courseId', selectedCourseId);
             if (params.toString()) url += `?${params.toString()}`;
 
@@ -169,9 +171,7 @@ export default function ScoresList() {
         const className = selectedClassId
             ? classes.find(c => c.id.toString() === selectedClassId)?.name || '全部班级'
             : '全部班级';
-        const examName = selectedExamId
-            ? exams.find(e => e.id.toString() === selectedExamId)?.name || '考试'
-            : '考试';
+        const examName = selectedExamName || '所有考试';
         const fileName = `${className}_${examName}_成绩清单.xlsx`;
 
         XLSX.writeFile(wb, fileName);
@@ -229,9 +229,8 @@ export default function ScoresList() {
         }] : []),
     ];
 
-    const filteredExams = selectedClassId
-        ? exams.filter(exam => exam.class_name === classes.find(c => c.id.toString() === selectedClassId)?.name)
-        : exams;
+    // 获取唯一的考试名称列表
+    const uniqueExamNames = Array.from(new Set(exams.map(e => e.name))).sort();
 
     return (
         <div>
@@ -252,7 +251,6 @@ export default function ScoresList() {
                             value={selectedClassId}
                             onChange={(val) => {
                                 setSelectedClassId(val);
-                                setSelectedExamId(''); // Reset exam when class changes
                             }}
                             style={{ width: '100%' }}
                             placeholder="全部班级"
@@ -267,15 +265,15 @@ export default function ScoresList() {
                     </Col>
                     <Col span={6}>
                         <Select
-                            value={selectedExamId}
-                            onChange={setSelectedExamId}
+                            value={selectedExamName}
+                            onChange={setSelectedExamName}
                             style={{ width: '100%' }}
                             placeholder="全部考试"
                             allowClear
                         >
-                            {filteredExams.map((exam) => (
-                                <Select.Option key={exam.id} value={exam.id.toString()}>
-                                    {exam.name} - {exam.class_name}
+                            {uniqueExamNames.map((name) => (
+                                <Select.Option key={name} value={name}>
+                                    {name}
                                 </Select.Option>
                             ))}
                         </Select>
@@ -288,7 +286,6 @@ export default function ScoresList() {
                             placeholder="全部科目"
                             allowClear
                         >
-
                             {courses.map((course) => (
                                 <Select.Option key={course.id} value={course.id.toString()}>
                                     {course.name}

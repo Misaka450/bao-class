@@ -274,6 +274,7 @@ stats.get('/comparison/classes', async (c) => {
 stats.get('/scores-list', async (c) => {
     const classId = c.req.query('classId')
     const examId = c.req.query('examId')
+    const examName = c.req.query('examName') // 新增：按考试名称查询
     const courseId = c.req.query('courseId')
 
     try {
@@ -303,9 +304,13 @@ stats.get('/scores-list', async (c) => {
             params.push(classId)
         }
 
+        // 优先使用 examId，如果没有则使用 examName
         if (examId) {
             query += ` AND e.id = ?`
             params.push(examId)
+        } else if (examName) {
+            query += ` AND e.name = ?`
+            params.push(examName)
         }
 
         if (courseId) {
