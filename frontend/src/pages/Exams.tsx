@@ -21,11 +21,6 @@ interface Exam {
     description?: string;
 }
 
-interface Class {
-    id: number;
-    name: string;
-}
-
 interface Course {
     id: number;
     name: string;
@@ -33,7 +28,6 @@ interface Course {
 
 export default function Exams() {
     const [exams, setExams] = useState<Exam[]>([]);
-    const [classes, setClasses] = useState<Class[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,20 +52,6 @@ export default function Exams() {
         }
     };
 
-    const fetchClasses = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/classes`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setClasses(data);
-            }
-        } catch (error) {
-            console.error('Failed to fetch classes');
-        }
-    };
-
     const fetchCourses = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/courses`, {
@@ -88,7 +68,6 @@ export default function Exams() {
 
     useEffect(() => {
         fetchExams();
-        fetchClasses();
         fetchCourses();
     }, []);
 
