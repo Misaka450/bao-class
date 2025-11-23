@@ -167,14 +167,48 @@ profile.get('/:studentId', async (c) => {
             }
         }
 
-        const weakSubjects = radarData
-            .filter(r => r.zScore < -1 || r.score < 60)
+        // 4. Enhanced Subject Analysis (偏科检测)
+        const advantageSubjects = radarData
+            .filter(r => r.zScore > 1.5 || (r.score - r.classAvg) > 15)
             .map(r => ({
                 subject: r.subject,
                 score: r.score,
                 zScore: r.zScore,
-                reason: r.score < 60 ? '不及格' : '显著低于班级平均'
+                advantage: r.score - r.classAvg,
+                reason: r.zScore > 1.5 ? '显著高于班级平均' : '高于平均15分以上'
             }))
+
+        const weakSubjects = radarData
+            .filter(r => r.zScore < -1.5 || r.score < 60 || (r.classAvg - r.score) > 15)
+            .map(r => ({
+                subject: r.subject,
+                score: r.score,
+                zScore: r.zScore,
+                reason: r.score < 60 ? '不及格' : (r.zScore < -1.5 ? '显著低于班级平均' : '低于平均15分以上')
+            }))
+
+        // 5. Progress Rate (进步率统计)
+        let progressRate = 0
+        let rankProgress = 0
+        let percentile = 0
+
+        if (historyWithRank.length > 0) {
+            const latest = historyWithRank[0]
+            const first = historyWithRank[historyWithRank.length - 1]
+
+            // 总分进步率
+            if (first.total_score > 0) {
+                progressRate = ((latest.total_score - first.total_score) / first.total_score * 100)
+            }
+
+            // 排名进步 (正数表示进步)
+            rankProgress = first.class_rank - latest.class_rank
+
+            // 百分位排名
+            if (latest.total_students > 0) {
+                percentile = ((latest.total_students - latest.class_rank) / latest.total_students * 100)
+            }
+        }
 
         return c.json({
             student: {
@@ -185,7 +219,14 @@ profile.get('/:studentId', async (c) => {
             },
             history: historyWithRank.reverse(), // Oldest to Newest for charts
             radar: radarData,
-            weak_subjects: weakSubjects
+            weak_subjects: weakSubjects,
+            advantage_subjects: advantageSubjects,
+            statistics: {
+                progress_rate: parseFloat(progressRate.toFixed(2)),
+                rank_progress: rankProgress,
+                percentile: parseFloat(percentile.toFixed(1)),
+                total_exams: historyWithRank.length
+            }
         })
 
     } catch (error) {

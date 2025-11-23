@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Button } from 'antd';
-import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined } from '@ant-design/icons';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
+import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Button, Progress } from 'antd';
+import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, PercentageOutlined } from '@ant-design/icons';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useAuthStore } from '../store/authStore';
 import { API_BASE_URL } from '../config';
 
@@ -43,6 +43,19 @@ interface StudentProfileData {
         zScore: number;
         reason: string;
     }[];
+    advantage_subjects?: {
+        subject: string;
+        score: number;
+        zScore: number;
+        advantage: number;
+        reason: string;
+    }[];
+    statistics?: {
+        progress_rate: number;
+        rank_progress: number;
+        percentile: number;
+        total_exams: number;
+    };
 }
 
 export default function StudentProfile() {
@@ -82,10 +95,6 @@ export default function StudentProfile() {
     const prevRank = data.history.length > 1 ? data.history[data.history.length - 2].class_rank : null;
     const rankDiff = prevRank !== null ? (prevRank as number) - (latestRank as number) : 0; // Positive means improved (rank number got smaller)
 
-    const bestSubject = data.radar.length > 0
-        ? [...data.radar].sort((a, b) => b.zScore - a.zScore)[0]
-        : null;
-
     const columns = [
         { title: '考试名称', dataIndex: 'exam_name', key: 'exam_name' },
         { title: '日期', dataIndex: 'exam_date', key: 'exam_date' },
@@ -121,8 +130,8 @@ export default function StudentProfile() {
                             <Title level={3}>{data.student.name}</Title>
                             <Text type="secondary">{data.student.class_name} | {data.student.student_id}</Text>
                         </div>
-                        <Row gutter={16} style={{ textAlign: 'center' }}>
-                            <Col span={12}>
+                        <Row gutter={16} style={{ textAlign: 'center', marginBottom: 16 }}>
+                            <Col span={8}>
                                 <Statistic
                                     title="最新排名"
                                     value={latestRank}
@@ -133,17 +142,56 @@ export default function StudentProfile() {
                                     )}
                                 />
                             </Col>
-                            <Col span={12}>
+                            <Col span={8}>
                                 <Statistic
-                                    title="优势学科"
-                                    value={bestSubject ? bestSubject.subject : '-'}
-                                    valueStyle={{ fontSize: 18 }}
+                                    title="百分位"
+                                    value={data.statistics?.percentile || 0}
+                                    suffix="%"
+                                    prefix={<PercentageOutlined />}
+                                    valueStyle={{ color: '#1890ff' }}
+                                />
+                            </Col>
+                            <Col span={8}>
+                                <Statistic
+                                    title="进步率"
+                                    value={data.statistics?.progress_rate || 0}
+                                    suffix="%"
+                                    prefix={data.statistics && data.statistics.progress_rate > 0 ? <RiseOutlined /> : <FallOutlined />}
+                                    valueStyle={{ color: data.statistics && data.statistics.progress_rate >= 0 ? '#3f8600' : '#cf1322' }}
                                 />
                             </Col>
                         </Row>
 
+                        {data.statistics && data.statistics.percentile > 0 && (
+                            <div style={{ marginBottom: 16 }}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>超过班级 {data.statistics.percentile.toFixed(0)}% 的同学</Text>
+                                <Progress
+                                    percent={data.statistics.percentile}
+                                    strokeColor={{
+                                        '0%': '#108ee9',
+                                        '100%': '#87d068',
+                                    }}
+                                    showInfo={false}
+                                    style={{ marginTop: 4 }}
+                                />
+                            </div>
+                        )}
+
+                        {data.advantage_subjects && data.advantage_subjects.length > 0 && (
+                            <div style={{ marginBottom: 16 }}>
+                                <Text strong><TrophyOutlined style={{ color: '#52c41a' }} /> 优势学科:</Text>
+                                <div style={{ marginTop: 8 }}>
+                                    {data.advantage_subjects.map(as => (
+                                        <Tag color="success" key={as.subject} style={{ marginBottom: 8 }}>
+                                            {as.subject} (+{as.advantage.toFixed(1)}分)
+                                        </Tag>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {data.weak_subjects.length > 0 && (
-                            <div style={{ marginTop: 24 }}>
+                            <div>
                                 <Text strong><WarningOutlined style={{ color: '#faad14' }} /> 需关注学科:</Text>
                                 <div style={{ marginTop: 8 }}>
                                     {data.weak_subjects.map(ws => (
@@ -161,16 +209,20 @@ export default function StudentProfile() {
                 <Col xs={24} md={16}>
                     <Row gutter={[24, 24]}>
                         <Col span={24}>
-                            <Card title="排名走势 (数值越小越好)" bordered={false}>
-                                <div style={{ height: 250 }}>
+                            <Card title="成绩与排名双轴趋势" bordered={false}>
+                                <div style={{ height: 300 }}>
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <LineChart data={data.history}>
+                                        <ComposedChart data={data.history}>
                                             <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="exam_name" />
-                                            <YAxis reversed allowDecimals={false} />
+                                            <XAxis dataKey="exam_name" angle={-15} textAnchor="end" height={60} />
+                                            <YAxis yAxisId="left" label={{ value: '总分', angle: -90, position: 'insideLeft' }} />
+                                            <YAxis yAxisId="right" orientation="right" reversed label={{ value: '排名', angle: 90, position: 'insideRight' }} allowDecimals={false} />
                                             <Tooltip />
-                                            <Line type="monotone" dataKey="class_rank" stroke="#1890ff" name="班级排名" strokeWidth={2} />
-                                        </LineChart>
+                                            <Legend />
+                                            <Bar yAxisId="left" dataKey="total_score" fill="#8884d8" name="总分" opacity={0.3} />
+                                            <Line yAxisId="left" type="monotone" dataKey="total_score" stroke="#8884d8" name="总分" strokeWidth={2} dot={{ r: 4 }} />
+                                            <Line yAxisId="right" type="monotone" dataKey="class_rank" stroke="#82ca9d" name="班级排名" strokeWidth={2} dot={{ r: 4 }} />
+                                        </ComposedChart>
                                     </ResponsiveContainer>
                                 </div>
                             </Card>
