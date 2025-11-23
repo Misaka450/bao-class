@@ -4,61 +4,54 @@ on:
   push:
     branches:
       - master
-  workflow_dispatch:
 
 jobs:
-  deploy-worker:
-    name: Deploy Worker
+  deploy:
     runs-on: ubuntu-latest
+    name: Deploy Frontend and Backend
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      # Backend deployment
+      - name: Setup Node.js for Backend
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: api/package-lock.json
 
-      - name: Install dependencies
+      - name: Install Backend Dependencies
         working-directory: ./api
         run: npm ci
 
-      - name: Deploy to Cloudflare Workers
+      - name: Deploy Backend to Cloudflare Workers
         working-directory: ./api
         run: npx wrangler deploy
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-  deploy-pages:
-    name: Deploy Pages
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
+      # Frontend deployment
+      - name: Setup Node.js for Frontend
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install Frontend Dependencies
         working-directory: ./frontend
         run: npm ci
 
-      - name: Build frontend
+      - name: Build Frontend
         working-directory: ./frontend
         run: npm run build
 
-      - name: Publish to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: bao-class
-          directory: ./frontend/dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+      - name: Deploy Frontend to Cloudflare Pages
+        working-directory: ./frontend
+        run: npx wrangler pages deploy dist --project-name=bao-class
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
