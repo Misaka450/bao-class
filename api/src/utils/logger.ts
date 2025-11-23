@@ -52,16 +52,18 @@ export async function logAction(
     details: any
 ) {
     try {
+        const timestamp = new Date().toISOString();
         await db.prepare(
-            `INSERT INTO audit_logs (user_id, username, action, entity_type, entity_id, details)
-             VALUES (?, ?, ?, ?, ?, ?)`
+            `INSERT INTO audit_logs (user_id, username, action, entity_type, entity_id, details, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`
         ).bind(
             userId,
             username,
             action,
             entityType,
             entityId,
-            JSON.stringify(details)
+            JSON.stringify(details),
+            timestamp
         ).run();
     } catch (error) {
         console.error('Failed to log action:', error);
