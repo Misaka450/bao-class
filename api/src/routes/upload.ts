@@ -1,10 +1,14 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../middleware/auth'
 
 type Bindings = {
     R2: R2Bucket
 }
 
 const upload = new Hono<{ Bindings: Bindings }>()
+
+// Apply auth middleware to all routes
+upload.use('*', authMiddleware)
 
 // Upload image to R2
 upload.post('/image', async (c) => {

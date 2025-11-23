@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../middleware/auth'
 
 type Bindings = {
     DB: D1Database
@@ -6,6 +7,9 @@ type Bindings = {
 }
 
 const analysis = new Hono<{ Bindings: Bindings }>()
+
+// Apply auth middleware to all routes
+analysis.use('*', authMiddleware)
 
 // Class Focus Group Analysis
 analysis.get('/class/focus/:classId', async (c) => {

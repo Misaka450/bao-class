@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { logAction } from '../utils/logger'
 import { JWTPayload } from '../types'
+import { authMiddleware } from '../middleware/auth'
 
 type Bindings = {
     DB: D1Database
@@ -11,6 +12,9 @@ type Variables = {
 }
 
 const exams = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+
+// Apply auth middleware to all routes
+exams.use('*', authMiddleware)
 
 // Get all exams with their courses
 exams.get('/', async (c) => {

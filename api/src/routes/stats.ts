@@ -1,10 +1,14 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../middleware/auth'
 
 type Bindings = {
     DB: D1Database
 }
 
 const stats = new Hono<{ Bindings: Bindings }>()
+
+// Apply auth middleware to all routes
+stats.use('*', authMiddleware)
 
 // Get class statistics
 stats.get('/class/:classId', async (c) => {

@@ -1,11 +1,15 @@
 import { Hono } from 'hono'
 import * as XLSX from 'xlsx'
+import { authMiddleware } from '../middleware/auth'
 
 type Bindings = {
     DB: D1Database
 }
 
 const exportRoute = new Hono<{ Bindings: Bindings }>()
+
+// Apply auth middleware to all routes
+exportRoute.use('*', authMiddleware)
 
 /**
  * 导出班级成绩单为 Excel

@@ -1,10 +1,14 @@
 import { Hono } from 'hono'
+import { authMiddleware } from '../middleware/auth'
 
 type Bindings = {
     DB: D1Database
 }
 
 const logs = new Hono<{ Bindings: Bindings }>()
+
+// Apply auth middleware to all routes
+logs.use('*', authMiddleware)
 
 logs.get('/', async (c) => {
     const page = Number(c.req.query('page')) || 1

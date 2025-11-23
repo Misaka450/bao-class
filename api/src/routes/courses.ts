@@ -2,6 +2,7 @@ import { Hono } from 'hono'
 import { Course } from '../db/types'
 import { logAction } from '../utils/logger'
 import { JWTPayload } from '../types'
+import { authMiddleware } from '../middleware/auth'
 
 type Bindings = {
     DB: D1Database
@@ -12,6 +13,9 @@ type Variables = {
 }
 
 const courses = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+
+// Apply auth middleware to all routes
+courses.use('*', authMiddleware)
 
 courses.get('/', async (c) => {
     const { results } = await c.env.DB.prepare('SELECT * FROM courses ORDER BY created_at DESC').all<Course>()
