@@ -87,7 +87,7 @@ export default function ManagementAlerts() {
                 dataSource={students}
                 renderItem={(item) => (
                     <List.Item
-                        actions={[<Button type="link" size="small" onClick={() => navigate(`/student/${item.id}`)}>查看</Button>]}
+                        actions={[<Button type="link" size="small" onClick={() => navigate(`/student-profile/${item.id}`)}>查看</Button>]}
                     >
                         <List.Item.Meta
                             avatar={

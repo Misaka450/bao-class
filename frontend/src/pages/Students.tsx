@@ -146,7 +146,7 @@ export default function Students() {
                     <Button
                         type="link"
                         icon={<UserOutlined />}
-                        onClick={() => navigate(`/student/${record.id}`)}
+                        onClick={() => navigate(`/student-profile/${record.id}`)}
                     >
                         档案
                     </Button>

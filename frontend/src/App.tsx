@@ -12,6 +12,7 @@ import Exams from './pages/Exams';
 import ScoresList from './pages/ScoresList';
 import Import from './pages/Import';
 import StudentProfile from './pages/StudentProfile';
+import ClassAnalysis from './pages/ClassAnalysis';
 import ManagementAlerts from './pages/ManagementAlerts';
 import AuditLogs from './pages/AuditLogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -49,6 +50,8 @@ function App() {
               <Route path="/scores-list" element={<ScoresList />} />
               <Route path="/import" element={<Import />} />
               <Route path="/student-profile/:id" element={<StudentProfile />} />
+              <Route path="/analysis/class" element={<ClassAnalysis />} />
+              <Route path="/analysis/alerts" element={<ManagementAlerts />} />
               <Route path="/management-alerts" element={<ManagementAlerts />} />
               <Route path="/audit-logs" element={<AuditLogs />} />
             </Routes>
