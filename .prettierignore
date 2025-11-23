@@ -1,0 +1,8 @@
+dist/
+build/
+node_modules/
+*.sql
+.wrangler/
+coverage/
+*.log
+package-lock.json
