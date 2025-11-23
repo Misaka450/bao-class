@@ -1,11 +1,15 @@
 import { Hono } from 'hono'
 import * as XLSX from 'xlsx'
+import { authMiddleware } from '../middleware/auth'
 
 type Bindings = {
     DB: D1Database
 }
 
 const importRoute = new Hono<{ Bindings: Bindings }>()
+
+// Apply auth middleware to all routes
+importRoute.use('*', authMiddleware)
 
 // Download student import template
 importRoute.get('/template/students', async (c) => {
