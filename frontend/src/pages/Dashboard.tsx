@@ -354,7 +354,6 @@ export default function Dashboard() {
                                                 <List.Item.Meta
                                                     avatar={<Avatar style={{ backgroundColor: index < 3 ? '#f56a00' : '#7265e6' }}>{index + 1}</Avatar>}
                                                     title={item.name}
-                                                    description={`学号: ${item.student_number}`}
                                                 />
                                                 <div style={{ fontWeight: 'bold', color: '#10b981' }}>{item.average_score}分</div>
                                             </List.Item>

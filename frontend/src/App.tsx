@@ -16,9 +16,30 @@ import ManagementAlerts from './pages/ManagementAlerts';
 import ScoresList from './pages/ScoresList';
 import StudentProfile from './pages/StudentProfile';
 import AuditLogs from './pages/AuditLogs';
+import { lightTheme } from './theme';
+import './modern-style.css';
 
-// ... existing imports ...
+function PrivateRoute({ children }: { children: React.ReactElement }) {
+  const token = useAuthStore((state) => state.token);
+  return token ? children : <Navigate to="/login" replace />;
+}
 
+function App() {
+  return (
+    <ConfigProvider
+      locale={zhCN}
+      theme={lightTheme}
+    >
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route
+            path="/*"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/classes" element={<Classes />} />
                     <Route path="/students" element={<Students />} />
@@ -31,14 +52,14 @@ import AuditLogs from './pages/AuditLogs';
                     <Route path="/analysis/alerts" element={<ManagementAlerts />} />
                     <Route path="/scores-list" element={<ScoresList />} />
                     <Route path="/audit-logs" element={<AuditLogs />} />
-                  </Routes >
-                </Layout >
-              </PrivateRoute >
+                  </Routes>
+                </Layout>
+              </PrivateRoute>
             }
           />
-        </Routes >
-      </BrowserRouter >
-    </ConfigProvider >
+        </Routes>
+      </BrowserRouter>
+    </ConfigProvider>
   );
 }
 

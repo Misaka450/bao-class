@@ -1,0 +1,20 @@
+
+> bao-class-api@0.0.1 deploy
+> wrangler deploy
+
+
+ 鉀咃笍 wrangler 4.49.0 (update available 4.50.0)
+鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€
+
+X [ERROR] Build failed with 1 error:
+
+  X [ERROR] No matching export in "src/utils/logger.ts" for import "logger"
+  
+      src/middleware/logging.ts:2:9:
+        2 鈹?import { logger } from '../utils/logger'
+          鈺?         ~~~~~~
+  
+  
+
+
+馃  Logs were written to "C:\Users\40377\AppData\Roaming\xdg.config\.wrangler\logs\wrangler-2025-11-23_03-26-53_360.log"

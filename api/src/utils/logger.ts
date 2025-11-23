@@ -1,5 +1,47 @@
 import { D1Database } from '@cloudflare/workers-types';
 
+type LogContext = {
+    requestId?: string
+    method?: string
+    path?: string
+    userAgent?: string | null
+    [key: string]: any
+}
+
+class Logger {
+    private context: LogContext = {}
+
+    setContext(context: LogContext) {
+        this.context = { ...this.context, ...context }
+    }
+
+    clearContext() {
+        this.context = {}
+    }
+
+    info(message: string, meta?: any) {
+        console.log(JSON.stringify({
+            level: 'info',
+            message,
+            timestamp: new Date().toISOString(),
+            ...this.context,
+            ...meta
+        }))
+    }
+
+    error(message: string, meta?: any) {
+        console.error(JSON.stringify({
+            level: 'error',
+            message,
+            timestamp: new Date().toISOString(),
+            ...this.context,
+            ...meta
+        }))
+    }
+}
+
+export const logger = new Logger()
+
 export async function logAction(
     db: D1Database,
     userId: number | null,
