@@ -3,20 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
-import { useAuthStore } from '../store/authStore';
-import { API_BASE_URL } from '../config';
-
-interface Student {
-    id: number;
-    name: string;
-    student_id: string;
-    class_id: number;
-}
-
-interface Class {
-    id: number;
-    name: string;
-}
+import type { Student, Class } from '../types';
+import api from '../services/api';
 
 export default function Students() {
     const navigate = useNavigate();
@@ -28,7 +16,6 @@ export default function Students() {
     const [form] = Form.useForm();
     const [searchText, setSearchText] = useState('');
     const [filterClassId, setFilterClassId] = useState<string>('');
-    const token = useAuthStore((state) => state.token);
 
     useEffect(() => {
         fetchStudents();
@@ -38,13 +25,10 @@ export default function Students() {
     const fetchStudents = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/students`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
+            const data = await api.student.list();
             setStudents(data);
         } catch (error) {
-            message.error('获取学生列表失败');
+            // Error already handled in request layer
         } finally {
             setLoading(false);
         }
@@ -52,13 +36,10 @@ export default function Students() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/classes`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
+            const data = await api.class.list();
             setClasses(data);
         } catch (error) {
-            message.error('获取班级列表失败');
+            // Error already handled in request layer
         }
     };
 
@@ -76,38 +57,27 @@ export default function Students() {
 
     const handleDelete = async (id: number) => {
         try {
-            await fetch(`${API_BASE_URL}/api/students/${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await api.student.delete(id);
             message.success('删除成功');
             fetchStudents();
         } catch (error) {
-            message.error('删除失败');
+            // Error already handled in request layer
         }
     };
 
     const handleSubmit = async (values: any) => {
         try {
-            const url = editingStudent
-                ? `${API_BASE_URL}/api/students/${editingStudent.id}`
-                : `${API_BASE_URL}/api/students`;
-            const method = editingStudent ? 'PUT' : 'POST';
-
-            await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(values),
-            });
-
-            message.success(editingStudent ? '更新成功' : '添加成功');
+            if (editingStudent) {
+                await api.student.update(editingStudent.id, values);
+                message.success('更新成功');
+            } else {
+                await api.student.create(values);
+                message.success('添加成功');
+            }
             setIsModalOpen(false);
             fetchStudents();
         } catch (error) {
-            message.error('操作失败');
+            // Error already handled in request layer
         }
     };
 

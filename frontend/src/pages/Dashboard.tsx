@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, Row, Col, Select, Statistic, Spin, message, List, Avatar } from 'antd';
+import { Card, Row, Col, Select, Statistic, Spin, List, Avatar } from 'antd';
 import {
     TrophyOutlined,
     CheckCircleOutlined,
@@ -8,60 +8,21 @@ import {
     FallOutlined,
 } from '@ant-design/icons';
 import { BarChart, Bar, XAxis, YAxis, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { API_BASE_URL } from '../config';
-import { useAuthStore } from '../store/authStore';
-
-interface Stats {
-    total_students: number;
-    average_score: number;
-    pass_rate: string;
-    excellent_rate: string;
-}
-
-interface Distribution {
-    range: string;
-    count: number;
-    [key: string]: any;
-}
-
-interface Student {
-    id: number;
-    name: string;
-    student_number: string;
-    average_score: number;
-}
-
-interface ProgressItem {
-    student_name: string;
-    progress: number;
-}
-
-interface ProgressData {
-    improved: ProgressItem[];
-    declined: ProgressItem[];
-}
-
-interface Class {
-    id: number;
-    name: string;
-}
-
-interface Exam {
-    id: number;
-    name: string;
-    class_id: number;
-    courses: { course_id: number; course_name: string }[];
-}
-
-interface Course {
-    id: number;
-    name: string;
-}
+import type {
+    Stats,
+    Distribution,
+    TopStudent,
+    ProgressData,
+    Class,
+    Exam,
+    Course,
+} from '../types';
+import api from '../services/api';
 
 export default function Dashboard() {
     const [stats, setStats] = useState<Stats | null>(null);
     const [distribution, setDistribution] = useState<Distribution[]>([]);
-    const [topStudents, setTopStudents] = useState<Student[]>([]);
+    const [topStudents, setTopStudents] = useState<TopStudent[]>([]);
     const [progress, setProgress] = useState<ProgressData>({ improved: [], declined: [] });
     const [loading, setLoading] = useState(false);
 
@@ -73,58 +34,46 @@ export default function Dashboard() {
     const [selectedExamId, setSelectedExamId] = useState<string>('');
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
 
-    const { token } = useAuthStore();
-
     // Fetch initial data (Classes)
     useEffect(() => {
         const fetchClasses = async () => {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/classes`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setClasses(data);
-                    if (data.length > 0) {
-                        setSelectedClassId(data[0].id.toString());
-                    }
+                const data = await api.class.list();
+                setClasses(data);
+                if (data.length > 0) {
+                    setSelectedClassId(data[0].id.toString());
                 }
             } catch (error) {
-                console.error('Failed to fetch classes');
+                // Error already handled in request layer
             }
         };
         fetchClasses();
-    }, [token]);
+    }, []);
 
     // Fetch Exams when Class changes
     useEffect(() => {
         const fetchExams = async () => {
             if (!selectedClassId) return;
             try {
-                const res = await fetch(`${API_BASE_URL}/api/exams?class_id=${selectedClassId}`, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    // Filter exams for the selected class locally if API doesn't filter
-                    const classExams = data.filter((e: Exam) => e.class_id.toString() === selectedClassId);
-                    setExams(classExams);
-                    if (classExams.length > 0) {
-                        setSelectedExamId(classExams[0].id.toString());
-                    } else {
-                        setSelectedExamId('');
-                        setStats(null);
-                        setDistribution([]);
-                        setTopStudents([]);
-                        setProgress({ improved: [], declined: [] });
-                    }
+                const data = await api.exam.list({ class_id: selectedClassId });
+                // Filter exams for the selected class
+                const classExams = data.filter((e: Exam) => e.class_id.toString() === selectedClassId);
+                setExams(classExams);
+                if (classExams.length > 0) {
+                    setSelectedExamId(classExams[0].id.toString());
+                } else {
+                    setSelectedExamId('');
+                    setStats(null);
+                    setDistribution([]);
+                    setTopStudents([]);
+                    setProgress({ improved: [], declined: [] });
                 }
             } catch (error) {
-                console.error('Failed to fetch exams');
+                // Error already handled in request layer
             }
         };
         fetchExams();
-    }, [selectedClassId, token]);
+    }, [selectedClassId]);
 
     // Update Courses when Exam changes
     useEffect(() => {
@@ -135,7 +84,7 @@ export default function Dashboard() {
         }
         const exam = exams.find(e => e.id.toString() === selectedExamId);
         if (exam) {
-            const examCourses = exam.courses.map(c => ({ id: c.course_id, name: c.course_name }));
+            const examCourses = exam.courses?.map(c => ({ id: c.course_id, name: c.course_name })) || [];
             setCourses(examCourses);
             // Default to first course if available
             if (examCourses.length > 0) {
@@ -154,65 +103,41 @@ export default function Dashboard() {
             setLoading(true);
             try {
                 // 1. Distribution
-                let distUrl = `${API_BASE_URL}/api/stats/exam/${selectedExamId}/distribution`;
-                if (selectedCourseId) {
-                    distUrl += `?courseId=${selectedCourseId}`;
-                }
-                const distRes = await fetch(distUrl, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (distRes.ok) {
-                    const data = await distRes.json();
-                    setDistribution(Array.isArray(data) ? data : []);
-                }
+                const distData = await api.stats.getDistribution(
+                    selectedExamId,
+                    selectedCourseId || undefined
+                );
+                setDistribution(Array.isArray(distData) ? distData : []);
 
                 // 2. Stats
-                let statsUrl = `${API_BASE_URL}/api/stats/class/${selectedClassId}?examId=${selectedExamId}`;
-                if (selectedCourseId) {
-                    statsUrl += `&courseId=${selectedCourseId}`;
-                }
-                const statsRes = await fetch(statsUrl, {
-                    headers: { Authorization: `Bearer ${token}` },
+                const statsData = await api.stats.getClassStats(selectedClassId, {
+                    examId: selectedExamId,
+                    courseId: selectedCourseId || undefined,
                 });
-                if (statsRes.ok) {
-                    const data = await statsRes.json();
-                    setStats(data);
-                }
+                setStats(statsData);
 
-                // 2. Top Students
-                let topUrl = `${API_BASE_URL}/api/stats/exam/${selectedExamId}/top-students?limit=5`;
-                if (selectedCourseId) {
-                    topUrl += `&courseId=${selectedCourseId}`;
-                }
-                const topRes = await fetch(topUrl, {
-                    headers: { Authorization: `Bearer ${token}` },
+                // 3. Top Students
+                const topData = await api.stats.getTopStudents(selectedExamId, {
+                    limit: 5,
+                    courseId: selectedCourseId || undefined,
                 });
-                if (topRes.ok) {
-                    setTopStudents(await topRes.json());
-                }
+                setTopStudents(topData);
 
-                // 3. Progress
-                let progressUrl = `${API_BASE_URL}/api/stats/exam/${selectedExamId}/progress`;
-                if (selectedCourseId) {
-                    progressUrl += `?courseId=${selectedCourseId}`;
-                }
-                const progressRes = await fetch(progressUrl, {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
-                if (progressRes.ok) {
-                    setProgress(await progressRes.json());
-                }
-
+                // 4. Progress
+                const progressData = await api.stats.getProgress(
+                    selectedExamId,
+                    selectedCourseId || undefined
+                );
+                setProgress(progressData);
             } catch (error) {
-                console.error('Failed to fetch dashboard data', error);
-                message.error('获取数据失败');
+                // Error already handled in request layer
             } finally {
                 setLoading(false);
             }
         };
 
         fetchDashboardData();
-    }, [selectedExamId, selectedCourseId, token]);
+    }, [selectedExamId, selectedCourseId, selectedClassId]);
 
     const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
     const highestScore = topStudents.length > 0 ? topStudents[0].average_score : 0;

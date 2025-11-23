@@ -1,41 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Card, Select, Spin, Typography, message, Row, Col, Empty, Tag, List, Button, Space } from 'antd';
+import { Card, Select, Spin, Typography, Row, Col, Empty, Tag, List, Button, Space } from 'antd';
 import { FallOutlined, RiseOutlined, WarningOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../store/authStore';
-import { API_BASE_URL } from '../config';
+import type { Class, FocusGroupData, AlertStudent } from '../types';
+import api from '../services/api';
 
 const { Title } = Typography;
 
-interface AlertStudent {
-    id: number;
-    name: string;
-    type: string;
-    score?: number;
-    subject?: string;
-    drop_amount?: number;
-    score_diff?: number;
-    failed_score?: number;
-}
-
-interface FocusGroupData {
-    critical: AlertStudent[];
-    regressing: AlertStudent[];
-    fluctuating: AlertStudent[];
-    imbalanced: AlertStudent[];
-}
-
-interface ClassOption {
-    id: number;
-    name: string;
-}
-
 export default function ManagementAlerts() {
-    const [classes, setClasses] = useState<ClassOption[]>([]);
+    const [classes, setClasses] = useState<Class[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [data, setData] = useState<FocusGroupData | null>(null);
     const [loading, setLoading] = useState(false);
-    const token = useAuthStore((state) => state.token);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -50,29 +26,23 @@ export default function ManagementAlerts() {
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/classes`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const json = await res.json();
-            setClasses(json);
-            if (json.length > 0) {
-                setSelectedClassId(json[0].id.toString());
+            const data = await api.class.list();
+            setClasses(data);
+            if (data.length > 0) {
+                setSelectedClassId(data[0].id.toString());
             }
         } catch (error) {
-            message.error('获取班级列表失败');
+            // Error already handled in request layer
         }
     };
 
     const fetchAlerts = async (classId: string) => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/analysis/class/focus/${classId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const json = await res.json();
-            setData(json);
+            const data = await api.analysis.getFocusGroup(classId);
+            setData(data);
         } catch (error) {
-            message.error('获取预警信息失败');
+            // Error already handled in request layer
         } finally {
             setLoading(false);
         }
