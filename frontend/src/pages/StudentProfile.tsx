@@ -131,7 +131,7 @@ export default function StudentProfile() {
                             <Text type="secondary">{data.student.class_name} | {data.student.student_id}</Text>
                         </div>
                         <Row gutter={16} style={{ textAlign: 'center', marginBottom: 16 }}>
-                            <Col span={8}>
+                            <Col span={12}>
                                 <Statistic
                                     title="最新排名"
                                     value={latestRank}
@@ -142,22 +142,12 @@ export default function StudentProfile() {
                                     )}
                                 />
                             </Col>
-                            <Col span={8}>
+                            <Col span={12}>
                                 <Statistic
                                     title="百分位"
-                                    value={data.statistics?.percentile || 0}
+                                    value={data.statistics?.percentile.toFixed(1) || '0'}
                                     suffix="%"
-                                    prefix={<PercentageOutlined />}
                                     valueStyle={{ color: '#1890ff' }}
-                                />
-                            </Col>
-                            <Col span={8}>
-                                <Statistic
-                                    title="进步率"
-                                    value={data.statistics?.progress_rate || 0}
-                                    suffix="%"
-                                    prefix={data.statistics && data.statistics.progress_rate > 0 ? <RiseOutlined /> : <FallOutlined />}
-                                    valueStyle={{ color: data.statistics && data.statistics.progress_rate >= 0 ? '#3f8600' : '#cf1322' }}
                                 />
                             </Col>
                         </Row>
@@ -219,7 +209,6 @@ export default function StudentProfile() {
                                             <YAxis yAxisId="right" orientation="right" reversed label={{ value: '排名', angle: 90, position: 'insideRight' }} allowDecimals={false} />
                                             <Tooltip />
                                             <Legend />
-                                            <Bar yAxisId="left" dataKey="total_score" fill="#8884d8" name="总分" opacity={0.3} />
                                             <Line yAxisId="left" type="monotone" dataKey="total_score" stroke="#8884d8" name="总分" strokeWidth={2} dot={{ r: 4 }} />
                                             <Line yAxisId="right" type="monotone" dataKey="class_rank" stroke="#82ca9d" name="班级排名" strokeWidth={2} dot={{ r: 4 }} />
                                         </ComposedChart>
