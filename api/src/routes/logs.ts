@@ -13,14 +13,14 @@ logs.get('/', async (c) => {
 
     try {
         const { results } = await c.env.DB.prepare(
-            'SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT ? OFFSET ?'
+            'SELECT * FROM audit_logs ORDER BY id DESC LIMIT ? OFFSET ?'
         ).bind(pageSize, offset).all()
 
         const totalResult = await c.env.DB.prepare(
             'SELECT COUNT(*) as count FROM audit_logs'
         ).first()
 
-        const total = totalResult ? totalResult.count : 0
+        const total = totalResult ? Number(totalResult.count) : 0
 
         return c.json({
             data: results,
@@ -30,7 +30,11 @@ logs.get('/', async (c) => {
         })
     } catch (error) {
         console.error('Fetch logs error:', error)
-        return c.json({ error: 'Failed to fetch logs' }, 500)
+        // 返回更详细的错误信息
+        return c.json({
+            error: 'Failed to fetch logs',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        }, 500)
     }
 })
 
