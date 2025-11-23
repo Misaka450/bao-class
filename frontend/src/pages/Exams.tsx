@@ -131,7 +131,10 @@ export default function Exams() {
             const data = {
                 ...values,
                 exam_date: values.exam_date.format('YYYY-MM-DD'),
-                courses: values.course_ids,
+                courses: values.course_ids.map((courseId: number) => ({
+                    course_id: courseId,
+                    full_score: 100
+                })),
             };
             delete data.course_ids;
 
