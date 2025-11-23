@@ -172,6 +172,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {collapsed && !isMobile ? '成绩' : '成绩管理系统'}
             </div>
             <Menu
+                theme="light"
                 mode="inline"
                 selectedKeys={[location.pathname]}
                 items={menuItems}
@@ -184,7 +185,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <AntLayout style={{ minHeight: '100vh' }}>
             {/* 桌面端：固定侧边栏 */}
             {!isMobile && (
-                <Sider trigger={null} collapsible collapsed={collapsed} width={260} className="modern-sidebar">
+                <Sider trigger={null} collapsible collapsed={collapsed} width={260} className="modern-sidebar" theme="light">
                     <SidebarContent />
                 </Sider>
             )}
@@ -208,7 +209,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     padding: isMobile ? '0 16px' : '0 24px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    background: '#fff',
                 }}>
                     <Button
                         type="text"

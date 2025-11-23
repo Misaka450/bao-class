@@ -285,18 +285,20 @@ export default function Dashboard() {
                         <Row gutter={[24, 24]}>
                             <Col xs={24} sm={24} md={24} lg={16}>
                                 <Card title="分数段分布" bodyStyle={{ height: 360 }}>
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <BarChart data={distribution} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                            <XAxis dataKey="range" axisLine={false} tickLine={false} />
-                                            <YAxis axisLine={false} tickLine={false} />
-                                            <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
-                                            <Bar dataKey="count" name="人数" radius={[6, 6, 0, 0]}>
-                                                {distribution.map((_, index) => (
-                                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                ))}
-                                            </Bar>
-                                        </BarChart>
-                                    </ResponsiveContainer>
+                                    <div style={{ width: '100%', height: '100%', minHeight: 300 }}>
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={distribution} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                                                <XAxis dataKey="range" axisLine={false} tickLine={false} />
+                                                <YAxis axisLine={false} tickLine={false} />
+                                                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
+                                                <Bar dataKey="count" name="人数" radius={[6, 6, 0, 0]}>
+                                                    {distribution.map((_, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 </Card>
                             </Col>
                             <Col xs={24} sm={24} md={24} lg={8}>

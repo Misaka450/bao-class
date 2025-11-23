@@ -64,7 +64,7 @@ body {
 
 /* Header Styles */
 .glass-header {
-    background: rgba(255, 255, 255, 0.8) !important;
+    background: #fff !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.5) !important;

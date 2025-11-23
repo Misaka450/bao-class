@@ -129,7 +129,9 @@ export default function ScoresList() {
             // Extract unique subjects
             const subjectsSet = new Set<string>();
             data.forEach(student => {
-                Object.keys(student.scores).forEach(subject => subjectsSet.add(subject));
+                if (student.scores) {
+                    Object.keys(student.scores).forEach(subject => subjectsSet.add(subject));
+                }
             });
             setSubjects(Array.from(subjectsSet).sort());
         } catch (error) {
@@ -211,7 +213,7 @@ export default function ScoresList() {
             key: subject,
             width: 80,
             render: (score: number) => {
-                if (!score) return '-';
+                if (score === undefined || score === null) return '-';
                 let color = '#333';
                 if (subject.includes('语文')) color = '#f56a00'; // Orange
                 else if (subject.includes('数学')) color = '#1890ff'; // Blue
@@ -231,8 +233,8 @@ export default function ScoresList() {
                 return <span style={{ color, fontWeight }}>{score}</span>;
             },
             sorter: (a: ScoreData, b: ScoreData) => {
-                const scoreA = a.scores[subject] || 0;
-                const scoreB = b.scores[subject] || 0;
+                const scoreA = a.scores?.[subject] || 0;
+                const scoreB = b.scores?.[subject] || 0;
                 return scoreA - scoreB;
             },
         })),

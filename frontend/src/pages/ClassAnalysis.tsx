@@ -327,6 +327,7 @@ export default function ClassAnalysis() {
                     items={items}
                     type="card"
                     style={{ background: '#fff', padding: '16px', borderRadius: '8px' }}
+                    destroyInactiveTabPane
                 />
             </Spin>
         </div>
