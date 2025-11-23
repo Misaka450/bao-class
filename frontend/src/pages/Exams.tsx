@@ -131,7 +131,9 @@ export default function Exams() {
             const data = {
                 ...values,
                 exam_date: values.exam_date.format('YYYY-MM-DD'),
+                courses: values.course_ids,
             };
+            delete data.course_ids;
 
             await fetch(url, {
                 method,

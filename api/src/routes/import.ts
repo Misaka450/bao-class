@@ -117,7 +117,7 @@ importRoute.post('/students', async (c) => {
 
                 await c.env.DB.prepare(
                     'INSERT INTO students (name, student_id, class_id, gender) VALUES (?, ?, ?, ?)'
-                ).bind(row['姓名'], studentId, classId, row['性别'] || null).run()
+                ).bind(row['姓名'], studentId, classId, (row['性别']==='男'?'male':row['性别']==='女'?'female':null)).run()
                 successCount++
             } catch (error) {
                 errorCount++
