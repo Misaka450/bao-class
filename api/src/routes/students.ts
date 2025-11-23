@@ -1,17 +1,17 @@
 import { Hono } from 'hono'
 import { Student } from '../db/types'
 import { logAction } from '../utils/logger'
-import { JWTPayload } from '../types'
-
-type Bindings = {
-    DB: D1Database
-}
+import { JWTPayload, Env } from '../types'
+import { authMiddleware } from '../middleware/auth'
 
 type Variables = {
     user: JWTPayload
 }
 
-const students = new Hono<{ Bindings: Bindings; Variables: Variables }>()
+const students = new Hono<{ Bindings: Env; Variables: Variables }>()
+
+// 所有students路由都需要认证
+students.use('*', authMiddleware)
 
 students.get('/', async (c) => {
     const classId = c.req.query('class_id')
