@@ -5,6 +5,7 @@ import { cacheMiddleware } from './middleware/cache';
 import { loggingMiddleware } from './middleware/logging';
 import { errorHandler } from './middleware/error-handler';
 import { rateLimiter } from './middleware/rate-limiter';
+import { authMiddleware } from './middleware/auth';
 import auth from './routes/auth';
 import classes from './routes/classes';
 import students from './routes/students';
@@ -68,25 +69,51 @@ app.get('/', (c) => {
   });
 });
 
-// 注册路由
+// 注册路由 (除了 auth 和 init,其他路由都需要认证)
 app.route('/api/auth', auth);
+app.route('/api/init', init);
+
+// 需要认证的路由
+app.use('/api/classes/*', authMiddleware);
 app.route('/api/classes', classes);
+
+app.use('/api/students/*', authMiddleware);
 app.route('/api/students', students);
+
+app.use('/api/courses/*', authMiddleware);
 app.route('/api/courses', courses);
+
+app.use('/api/exams/*', authMiddleware);
 app.route('/api/exams', exams);
+
+app.use('/api/scores/*', authMiddleware);
 app.route('/api/scores', scores);
+
+app.use('/api/stats/*', authMiddleware);
 app.route('/api/stats', stats);
 app.route('/api/stats/profile', profile);
 app.route('/api/stats/class-trend', classTrend);
 app.route('/api/stats/class-subject-trend', classSubjectTrend);
 app.route('/api/stats/grade-comparison', gradeComparison);
+
+app.use('/api/analysis/*', authMiddleware);
 app.route('/api/analysis', analysis);
+
+app.use('/api/reports/*', authMiddleware);
 app.route('/api/reports', reports);
+
+app.use('/api/import/*', authMiddleware);
 app.route('/api/import', importRoute);
+
+app.use('/api/upload/*', authMiddleware);
 app.route('/api/upload', upload);
+
+app.use('/api/export/*', authMiddleware);
 app.route('/api/export', exportRoute);
+
+app.use('/api/logs/*', authMiddleware);
 app.route('/api/logs', logs);
-app.route('/api/init', init);
+
 app.route('/api/debug', debug);
 
 // 全局错误处理
