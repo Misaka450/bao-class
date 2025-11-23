@@ -88,3 +88,25 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     details TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ============================================
+-- 性能优化索引
+-- ============================================
+
+-- 成绩查询优化 (最常用的查询组合)
+CREATE INDEX IF NOT EXISTS idx_scores_student_exam ON scores(student_id, exam_id);
+CREATE INDEX IF NOT EXISTS idx_scores_course ON scores(course_id);
+CREATE INDEX IF NOT EXISTS idx_scores_exam ON scores(exam_id);
+
+-- 学生查询优化
+CREATE INDEX IF NOT EXISTS idx_students_class ON students(class_id);
+
+-- 考试查询优化
+CREATE INDEX IF NOT EXISTS idx_exams_class ON exams(class_id);
+
+-- 用户查询优化
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+
+-- 审计日志查询优化
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(created_at DESC);
