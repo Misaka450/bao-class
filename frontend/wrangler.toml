@@ -1,0 +1,7 @@
+name = "bao-class-frontend"
+compatibility_date = "2024-01-01"
+account_id = "02cefa4c2401a3f9c36ef7c6dbf5ce39"
+
+[site]
+bucket = "./dist"
+entry-point = "./"

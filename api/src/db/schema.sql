@@ -76,3 +76,15 @@ CREATE TABLE IF NOT EXISTS scores (
     FOREIGN KEY (course_id) REFERENCES courses(id),
     UNIQUE(student_id, exam_id, course_id)
 );
+
+-- Audit Logs Table (操作日志)
+CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    username TEXT,
+    action TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id INTEGER,
+    details TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

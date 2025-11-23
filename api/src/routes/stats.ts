@@ -166,10 +166,10 @@ stats.get('/exam/:examId/distribution', async (c) => {
         let query = `
             SELECT 
                 CASE 
-                    WHEN score >= 90 THEN '90-100'
-                    WHEN score >= 80 THEN '80-89'
-                    WHEN score >= 70 THEN '70-79'
-                    WHEN score >= 60 THEN '60-69'
+                    WHEN score >= 90 THEN '100-90'
+                    WHEN score >= 80 THEN '89-80'
+                    WHEN score >= 70 THEN '79-70'
+                    WHEN score >= 60 THEN '69-60'
                     ELSE '0-59'
                 END as range,
                 COUNT(*) as count
@@ -188,7 +188,7 @@ stats.get('/exam/:examId/distribution', async (c) => {
 
         const result = await c.env.DB.prepare(query).bind(...params).all()
 
-        const allRanges = ['90-100', '80-89', '70-79', '60-69', '0-59']
+        const allRanges = ['100-90', '89-80', '79-70', '69-60', '0-59']
         const distribution = allRanges.map(range => ({
             range,
             count: (result.results.find((r: any) => r.range === range) as any)?.count || 0

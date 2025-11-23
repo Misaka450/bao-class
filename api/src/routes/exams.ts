@@ -1,10 +1,16 @@
 import { Hono } from 'hono'
+import { logAction } from '../utils/logger'
+import { JWTPayload } from '../types'
 
 type Bindings = {
     DB: D1Database
 }
 
-const exams = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: JWTPayload
+}
+
+const exams = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Get all exams with their courses
 exams.get('/', async (c) => {
@@ -99,6 +105,9 @@ exams.post('/', async (c) => {
             ).bind(examId, course.course_id, course.full_score || 100).run()
         }
 
+        const user = c.get('user')
+        await logAction(c.env.DB, user.userId, user.username, 'CREATE_EXAM', 'exam', examId, { name, class_id, exam_date })
+
         return c.json({ message: 'Exam created', id: examId }, 201)
     } catch (error) {
         console.error('Create exam error:', error)
@@ -134,6 +143,9 @@ exams.put('/:id', async (c) => {
             }
         }
 
+        const user = c.get('user')
+        await logAction(c.env.DB, user.userId, user.username, 'UPDATE_EXAM', 'exam', Number(id), { name, class_id, exam_date })
+
         return c.json({ message: 'Exam updated' })
     } catch (error) {
         console.error('Update exam error:', error)
@@ -151,6 +163,12 @@ exams.delete('/:id', async (c) => {
 
         // Then delete the exam (exam_courses will be deleted automatically via cascade)
         const { success } = await c.env.DB.prepare('DELETE FROM exams WHERE id = ?').bind(id).run()
+
+        if (success) {
+            const user = c.get('user')
+            await logAction(c.env.DB, user.userId, user.username, 'DELETE_EXAM', 'exam', Number(id), { id })
+        }
+
         return success ? c.json({ message: 'Exam deleted' }) : c.json({ error: 'Failed to delete exam' }, 500)
     } catch (error) {
         console.error('Delete exam error:', error)

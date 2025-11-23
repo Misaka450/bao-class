@@ -210,7 +210,26 @@ export default function ScoresList() {
             dataIndex: ['scores', subject],
             key: subject,
             width: 80,
-            render: (score: number) => score || '-',
+            render: (score: number) => {
+                if (!score) return '-';
+                let color = '#333';
+                if (subject.includes('语文')) color = '#f56a00'; // Orange
+                else if (subject.includes('数学')) color = '#1890ff'; // Blue
+                else if (subject.includes('英语')) color = '#52c41a'; // Green
+                else if (subject.includes('物理')) color = '#13c2c2'; // Cyan
+                else if (subject.includes('化学')) color = '#722ed1'; // Purple
+                else if (subject.includes('生物')) color = '#a0d911'; // Lime
+                else if (subject.includes('历史')) color = '#faad14'; // Gold
+                else if (subject.includes('地理')) color = '#2f54eb'; // Geekblue
+                else if (subject.includes('政治')) color = '#eb2f96'; // Magenta
+
+                // Highlight high/low scores
+                let fontWeight = 'normal';
+                if (score >= 90) fontWeight = 'bold';
+                if (score < 60) color = '#ff4d4f'; // Fail - Red override
+
+                return <span style={{ color, fontWeight }}>{score}</span>;
+            },
             sorter: (a: ScoreData, b: ScoreData) => {
                 const scoreA = a.scores[subject] || 0;
                 const scoreB = b.scores[subject] || 0;

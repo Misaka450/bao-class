@@ -1,11 +1,17 @@
 import { Hono } from 'hono'
 import { Student } from '../db/types'
+import { logAction } from '../utils/logger'
+import { JWTPayload } from '../types'
 
 type Bindings = {
     DB: D1Database
 }
 
-const students = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: JWTPayload
+}
+
+const students = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 students.get('/', async (c) => {
     const classId = c.req.query('class_id')
@@ -27,9 +33,15 @@ students.post('/', async (c) => {
     if (!name || !student_id || !class_id) return c.json({ error: 'Name, Student ID, and Class ID are required' }, 400)
 
     try {
-        const { success } = await c.env.DB.prepare(
+        const { success, meta } = await c.env.DB.prepare(
             'INSERT INTO students (name, student_id, class_id, parent_id) VALUES (?, ?, ?, ?)'
         ).bind(name, student_id, class_id, parent_id || null).run()
+
+        if (success) {
+            const user = c.get('user')
+            await logAction(c.env.DB, user.userId, user.username, 'CREATE_STUDENT', 'student', meta.last_row_id, { name, student_id, class_id })
+        }
+
         return success ? c.json({ message: 'Student created' }, 201) : c.json({ error: 'Failed to create student' }, 500)
     } catch (e) {
         return c.json({ error: 'Student ID already exists' }, 409)
@@ -44,6 +56,11 @@ students.put('/:id', async (c) => {
         'UPDATE students SET name = ?, student_id = ?, class_id = ?, parent_id = ? WHERE id = ?'
     ).bind(name, student_id, class_id, parent_id || null, id).run()
 
+    if (success) {
+        const user = c.get('user')
+        await logAction(c.env.DB, user.id, user.username, 'UPDATE_STUDENT', 'student', Number(id), { name, student_id, class_id })
+    }
+
     return success ? c.json({ message: 'Student updated' }) : c.json({ error: 'Failed to update student' }, 500)
 })
 
@@ -55,6 +72,12 @@ students.delete('/:id', async (c) => {
 
         // Then delete the student
         const { success } = await c.env.DB.prepare('DELETE FROM students WHERE id = ?').bind(id).run()
+
+        if (success) {
+            const user = c.get('user')
+            await logAction(c.env.DB, user.userId, user.username, 'DELETE_STUDENT', 'student', Number(id), { id })
+        }
+
         return success ? c.json({ message: 'Student deleted' }) : c.json({ error: 'Failed to delete student' }, 500)
     } catch (error) {
         console.error('Delete student error:', error)

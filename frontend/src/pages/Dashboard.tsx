@@ -339,61 +339,62 @@ export default function Dashboard() {
                             </Col>
                         </Row>
                     </Col>
+
+                    {/* Student Stats Row */}
                     <Col span={24} style={{ marginTop: 24 }}>
-                        <Card title="优秀学生 (Top 5)" bodyStyle={{ padding: '0 12px' }}>
-                            <List
-                                itemLayout="horizontal"
-                                dataSource={topStudents}
-                                renderItem={(item, index) => (
-                                    <List.Item>
-                                        <List.Item.Meta
-                                            avatar={
-                                                <Avatar style={{ backgroundColor: index < 3 ? '#f59e0b' : '#10b981', fontWeight: 600 }}>
-                                                    {index + 1}
-                                                </Avatar>
-                                            }
-                                            title={<span style={{ fontWeight: 600 }}>{item.name}</span>}
-                                            description={`学号: ${item.student_number}`}
-                                        />
-                                        <div style={{ fontWeight: 'bold', fontSize: 18, color: '#6366f1' }}>
-                                            {Number(item.average_score).toFixed(1)}
-                                        </div>
-                                    </List.Item>
-                                )}
-                            />
-                        </Card>
-                    </Col>
-                    <Col span={24} style={{ marginTop: 24 }}>
-                        <Row gutter={[16, 16]}>
-                            <Col xs={24} sm={24} md={12}>
-                                <Card title="进步最大 (Top 5)" bodyStyle={{ padding: '0 12px' }}>
+                        <Row gutter={[24, 24]}>
+                            {/* Top 5 Students */}
+                            <Col xs={24} md={8}>
+                                <Card title="优秀学生 (Top 5)" bodyStyle={{ padding: '0 12px' }}>
                                     <List
                                         itemLayout="horizontal"
-                                        dataSource={progress.improved}
+                                        dataSource={topStudents}
                                         renderItem={(item, index) => (
                                             <List.Item>
                                                 <List.Item.Meta
-                                                    avatar={<Avatar style={{ backgroundColor: '#f59e0b', fontSize: 12 }}>{index + 1}</Avatar>}
-                                                    title={item.student_name}
-                                                    description={<span style={{ color: '#10b981', fontWeight: 500 }}><RiseOutlined /> +{Number(item.progress).toFixed(1)}</span>}
+                                                    avatar={<Avatar style={{ backgroundColor: index < 3 ? '#f56a00' : '#7265e6' }}>{index + 1}</Avatar>}
+                                                    title={item.name}
+                                                    description={`学号: ${item.student_number}`}
                                                 />
+                                                <div style={{ fontWeight: 'bold', color: '#10b981' }}>{item.average_score}分</div>
                                             </List.Item>
                                         )}
                                     />
                                 </Card>
                             </Col>
-                            <Col xs={24} sm={24} md={12}>
+
+                            {/* Most Improved */}
+                            <Col xs={24} md={8}>
+                                <Card title="进步最大 (Top 5)" bodyStyle={{ padding: '0 12px' }}>
+                                    <List
+                                        itemLayout="horizontal"
+                                        dataSource={progress.improved.slice(0, 5)}
+                                        renderItem={(item) => (
+                                            <List.Item>
+                                                <List.Item.Meta
+                                                    avatar={<Avatar style={{ backgroundColor: '#87d068' }} icon={<RiseOutlined />} />}
+                                                    title={item.student_name}
+                                                />
+                                                <div style={{ fontWeight: 'bold', color: '#10b981' }}>+{item.progress}</div>
+                                            </List.Item>
+                                        )}
+                                    />
+                                </Card>
+                            </Col>
+
+                            {/* Biggest Decline */}
+                            <Col xs={24} md={8}>
                                 <Card title="退步最大 (Top 5)" bodyStyle={{ padding: '0 12px' }}>
                                     <List
                                         itemLayout="horizontal"
-                                        dataSource={progress.declined}
-                                        renderItem={(item, index) => (
+                                        dataSource={progress.declined.slice(0, 5)}
+                                        renderItem={(item) => (
                                             <List.Item>
                                                 <List.Item.Meta
-                                                    avatar={<Avatar style={{ backgroundColor: '#ef4444', fontSize: 12 }}>{index + 1}</Avatar>}
+                                                    avatar={<Avatar style={{ backgroundColor: '#ff4d4f' }} icon={<FallOutlined />} />}
                                                     title={item.student_name}
-                                                    description={<span style={{ color: '#ef4444', fontWeight: 500 }}><FallOutlined /> {Number(item.progress).toFixed(1)}</span>}
                                                 />
+                                                <div style={{ fontWeight: 'bold', color: '#ff4d4f' }}>{item.progress}</div>
                                             </List.Item>
                                         )}
                                     />

@@ -1,75 +1,28 @@
-/**
- * 结构化日志工具
- * 支持不同级别的日志记录（INFO、WARN、ERROR）
- */
+import { D1Database } from '@cloudflare/workers-types';
 
-export enum LogLevel {
-    INFO = 'INFO',
-    WARN = 'WARN',
-    ERROR = 'ERROR',
-    DEBUG = 'DEBUG'
-}
-
-interface LogContext {
-    userId?: string | number
-    requestId?: string
-    path?: string
-    method?: string
-    [key: string]: any
-}
-
-class Logger {
-    private context: LogContext = {}
-
-    setContext(context: LogContext) {
-        this.context = { ...this.context, ...context }
-    }
-
-    clearContext() {
-        this.context = {}
-    }
-
-    private formatLog(level: LogLevel, message: string, data?: any) {
-        const timestamp = new Date().toISOString()
-        const logEntry = {
-            timestamp,
-            level,
-            message,
-            context: this.context,
-            ...(data && { data })
-        }
-        return logEntry
-    }
-
-    info(message: string, data?: any) {
-        const log = this.formatLog(LogLevel.INFO, message, data)
-        console.log(JSON.stringify(log))
-    }
-
-    warn(message: string, data?: any) {
-        const log = this.formatLog(LogLevel.WARN, message, data)
-        console.warn(JSON.stringify(log))
-    }
-
-    error(message: string, error?: Error | any) {
-        const log = this.formatLog(LogLevel.ERROR, message, {
-            error: error instanceof Error ? {
-                message: error.message,
-                stack: error.stack,
-                name: error.name
-            } : error
-        })
-        console.error(JSON.stringify(log))
-    }
-
-    debug(message: string, data?: any) {
-        const log = this.formatLog(LogLevel.DEBUG, message, data)
-        console.debug(JSON.stringify(log))
+export async function logAction(
+    db: D1Database,
+    userId: number | null,
+    username: string | null,
+    action: string,
+    entityType: string,
+    entityId: number | null,
+    details: any
+) {
+    try {
+        await db.prepare(
+            `INSERT INTO audit_logs (user_id, username, action, entity_type, entity_id, details)
+             VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(
+            userId,
+            username,
+            action,
+            entityType,
+            entityId,
+            JSON.stringify(details)
+        ).run();
+    } catch (error) {
+        console.error('Failed to log action:', error);
+        // Don't throw error to prevent blocking the main action
     }
 }
-
-// 单例实例
-export const logger = new Logger()
-
-// 导出类型
-export type { LogContext }

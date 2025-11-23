@@ -101,11 +101,6 @@ export default function Login() {
                         </Button>
                     </Form.Item>
                 </Form>
-
-                <div style={{ textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-                    <p>测试账号: admin / admin123</p>
-                    <p>教师账号: teacher / teacher123</p>
-                </div>
             </Card>
         </div>
     );

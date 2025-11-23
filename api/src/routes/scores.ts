@@ -1,10 +1,16 @@
 import { Hono } from 'hono'
+import { logAction } from '../utils/logger'
+import { JWTPayload } from '../types'
 
 type Bindings = {
     DB: D1Database
 }
 
-const scores = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: JWTPayload
+}
+
+const scores = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Get scores for a specific exam (all courses) and class
 scores.get('/', async (c) => {
@@ -66,6 +72,7 @@ scores.post('/batch', async (c) => {
     }
 
     try {
+        let updatedCount = 0
         for (const item of scoreList) {
             // Check if score exists
             const existing = await c.env.DB.prepare(
@@ -81,7 +88,11 @@ scores.post('/batch', async (c) => {
                     'INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)'
                 ).bind(item.student_id, exam_id, course_id, item.score).run()
             }
+            updatedCount++
         }
+
+        const user = c.get('user')
+        await logAction(c.env.DB, user.userId, user.username, 'BATCH_UPDATE_SCORES', 'score', null, { exam_id, course_id, count: updatedCount })
 
         return c.json({ message: 'Scores updated successfully' })
     } catch (error) {
@@ -96,6 +107,12 @@ scores.delete('/:id', async (c) => {
 
     try {
         const { success } = await c.env.DB.prepare('DELETE FROM scores WHERE id = ?').bind(id).run()
+
+        if (success) {
+            const user = c.get('user')
+            await logAction(c.env.DB, user.userId, user.username, 'DELETE_SCORE', 'score', Number(id), { id })
+        }
+
         return success ? c.json({ message: 'Score deleted' }) : c.json({ error: 'Failed to delete score' }, 500)
     } catch (error) {
         return c.json({ error: 'Failed to delete score' }, 500)

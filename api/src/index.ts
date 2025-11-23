@@ -15,12 +15,30 @@ import classTrend from './routes/stats/class-trend';
 import classSubjectTrend from './routes/stats/class-subject-trend';
 import gradeComparison from './routes/stats/grade-comparison';
 import reports from './routes/reports';
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import { Env } from './types';
+import { cacheMiddleware } from './middleware/cache';
+import { loggingMiddleware } from './middleware/logging';
+import auth from './routes/auth';
+import classes from './routes/classes';
+import students from './routes/students';
+import courses from './routes/courses';
+import exams from './routes/exams';
+import scores from './routes/scores';
+import stats from './routes/stats';
+import profile from './routes/stats/profile';
+import classTrend from './routes/stats/class-trend';
+import classSubjectTrend from './routes/stats/class-subject-trend';
+import gradeComparison from './routes/stats/grade-comparison';
+import reports from './routes/reports';
 import importRoute from './routes/import';
 import init from './routes/init';
 import debug from './routes/debug';
 import upload from './routes/upload';
 import analysis from './routes/analysis';
 import exportRoute from './routes/export';
+import logs from './routes/logs';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -67,6 +85,7 @@ app.route('/api/reports', reports);
 app.route('/api/import', importRoute);
 app.route('/api/upload', upload);
 app.route('/api/export', exportRoute);
+app.route('/api/logs', logs);
 app.route('/api/init', init);
 app.route('/api/debug', debug);
 

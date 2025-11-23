@@ -10,6 +10,7 @@ import {
     BulbOutlined,
     TableOutlined,
     LogoutOutlined,
+    SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import type { MenuProps } from 'antd';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -101,6 +102,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             label: <span style={{ fontWeight: 500 }}>成绩清单</span>,
             onClick: () => {
                 navigate('/scores-list');
+                if (isMobile) setMobileDrawerVisible(false);
+            },
+        },
+        {
+            key: '/audit-logs',
+            icon: <SafetyCertificateOutlined style={{ color: '#64748b', fontSize: '18px' }} />, // Slate
+            label: <span style={{ fontWeight: 500 }}>操作日志</span>,
+            onClick: () => {
+                navigate('/audit-logs');
                 if (isMobile) setMobileDrawerVisible(false);
             },
         },
