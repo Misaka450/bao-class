@@ -83,7 +83,31 @@ wrangler d1 execute class --file=src/db/schema.sql
 wrangler d1 execute class --command "INSERT INTO users (username, password, role, name) VALUES ('admin', 'password', 'admin', '管理员')"
 ```
 
-### 4. 本地开发
+### 4. 环境变量配置
+
+**后端 (API):**
+
+```bash
+# 在 api 目录下执行
+
+# 设置 JWT 密钥 (重要!)
+wrangler secret put JWT_SECRET
+# 输入一个强密码,如: your-super-secret-jwt-key-here-change-this
+
+# 查看已设置的环境变量
+wrangler secret list
+```
+
+**前端 (Frontend):**
+
+```bash
+# 复制环境变量示例文件
+cp frontend/.env.example frontend/.env
+
+# 编辑 .env 文件,根据需要修改配置
+```
+
+### 5. 本地开发
 
 **启动后端服务：**
 

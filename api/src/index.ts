@@ -3,23 +3,8 @@ import { cors } from 'hono/cors';
 import { Env } from './types';
 import { cacheMiddleware } from './middleware/cache';
 import { loggingMiddleware } from './middleware/logging';
-import auth from './routes/auth';
-import classes from './routes/classes';
-import students from './routes/students';
-import courses from './routes/courses';
-import exams from './routes/exams';
-import scores from './routes/scores';
-import stats from './routes/stats';
-import profile from './routes/stats/profile';
-import classTrend from './routes/stats/class-trend';
-import classSubjectTrend from './routes/stats/class-subject-trend';
-import gradeComparison from './routes/stats/grade-comparison';
-import reports from './routes/reports';
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { Env } from './types';
-import { cacheMiddleware } from './middleware/cache';
-import { loggingMiddleware } from './middleware/logging';
+import { errorHandler } from './middleware/error-handler';
+import { rateLimiter } from './middleware/rate-limiter';
 import auth from './routes/auth';
 import classes from './routes/classes';
 import students from './routes/students';
@@ -42,12 +27,27 @@ import logs from './routes/logs';
 
 const app = new Hono<{ Bindings: Env }>();
 
-// CORS 中间件 - 允许所有来源（生产环境应该限制为前端域名）
+// CORS 中间件 - 根据环境动态配置
 app.use('/*', cors({
-  origin: '*',
+  origin: (origin) => {
+    // 简化的环境判断
+    const isDev = origin?.includes('localhost') || origin?.includes('127.0.0.1');
+    if (isDev) return origin;
+
+    // 生产环境只允许特定域名
+    const allowedOrigins = [
+      'https://bao-class.pages.dev',
+      'https://980823.xyz',
+      'https://www.980823.xyz'
+    ];
+    return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// 速率限制中间件 - 防止API滥用
+app.use('/api/*', rateLimiter(15 * 60 * 1000, 1000)); // 15分钟1000次请求
 
 // 日志中间件
 app.use('/api/*', loggingMiddleware);
@@ -88,5 +88,8 @@ app.route('/api/export', exportRoute);
 app.route('/api/logs', logs);
 app.route('/api/init', init);
 app.route('/api/debug', debug);
+
+// 全局错误处理
+app.onError(errorHandler);
 
 export default app;
