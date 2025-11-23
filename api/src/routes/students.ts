@@ -58,7 +58,7 @@ students.put('/:id', async (c) => {
 
     if (success) {
         const user = c.get('user')
-        await logAction(c.env.DB, user.id, user.username, 'UPDATE_STUDENT', 'student', Number(id), { name, student_id, class_id })
+        await logAction(c.env.DB, user.userId, user.username, 'UPDATE_STUDENT', 'student', Number(id), { name, student_id, class_id })
     }
 
     return success ? c.json({ message: 'Student updated' }) : c.json({ error: 'Failed to update student' }, 500)
