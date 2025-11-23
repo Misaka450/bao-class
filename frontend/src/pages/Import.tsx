@@ -228,7 +228,9 @@ export default function Import() {
                                     placeholder="请选择考试"
                                     value={selectedExam}
                                     onChange={setSelectedExam}
-                                    options={exams.map(e => ({ label: e.name, value: e.id }))}
+                                    options={exams
+                                        .filter(e => !selectedClass || e.class_id === Number(selectedClass))
+                                        .map(e => ({ label: e.name, value: e.id }))}
                                 />
                             </Form.Item>
                         </Form>
@@ -251,7 +253,9 @@ export default function Import() {
                                 placeholder="请选择考试"
                                 value={selectedExam}
                                 onChange={setSelectedExam}
-                                options={exams.map(e => ({ label: e.name, value: e.id }))}
+                                options={exams
+                                    .filter(e => !selectedClass || e.class_id === Number(selectedClass))
+                                    .map(e => ({ label: e.name, value: e.id }))}
                             />
                         </div>
                         <Upload.Dragger

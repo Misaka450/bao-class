@@ -167,11 +167,6 @@ export default function Exams() {
                 </>
             ),
         },
-        {
-            title: '班级',
-            dataIndex: 'class_name',
-            key: 'class_name',
-        },
         { title: '考试日期', dataIndex: 'exam_date', key: 'exam_date' },
         {
             title: '操作',
@@ -227,13 +222,6 @@ export default function Exams() {
                 <Form form={form} onFinish={handleSubmit} layout="vertical">
                     <Form.Item label="考试名称" name="name" rules={[{ required: true, message: '请输入考试名称' }]}>
                         <Input placeholder="例如：2024年秋季期中考试" />
-                    </Form.Item>
-                    <Form.Item label="班级" name="class_id" rules={[{ required: true, message: '请选择班级' }]}>
-                        <Select placeholder="请选择班级">
-                            {classes.map((c) => (
-                                <Select.Option key={c.id} value={c.id}>{c.name}</Select.Option>
-                            ))}
-                        </Select>
                     </Form.Item>
                     <Form.Item
                         label="包含科目"
