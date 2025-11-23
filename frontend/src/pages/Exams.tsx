@@ -26,8 +26,14 @@ interface Course {
     name: string;
 }
 
+interface Class {
+    id: number;
+    name: string;
+}
+
 export default function Exams() {
     const [exams, setExams] = useState<Exam[]>([]);
+    const [classes, setClasses] = useState<Class[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -52,6 +58,20 @@ export default function Exams() {
         }
     };
 
+    const fetchClasses = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/classes`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setClasses(data);
+            }
+        } catch (error) {
+            console.error('Failed to fetch classes');
+        }
+    };
+
     const fetchCourses = async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/courses`, {
@@ -68,6 +88,7 @@ export default function Exams() {
 
     useEffect(() => {
         fetchExams();
+        fetchClasses();
         fetchCourses();
     }, []);
 
@@ -201,6 +222,13 @@ export default function Exams() {
                 <Form form={form} onFinish={handleSubmit} layout="vertical">
                     <Form.Item label="考试名称" name="name" rules={[{ required: true, message: '请输入考试名称' }]}>
                         <Input placeholder="例如：2024年秋季期中考试" />
+                    </Form.Item>
+                    <Form.Item label="班级" name="class_id" rules={[{ required: true, message: '请选择班级' }]}>
+                        <Select placeholder="请选择班级">
+                            {classes.map((c) => (
+                                <Select.Option key={c.id} value={c.id}>{c.name}</Select.Option>
+                            ))}
+                        </Select>
                     </Form.Item>
                     <Form.Item
                         label="包含科目"
