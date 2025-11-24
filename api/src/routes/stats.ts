@@ -43,22 +43,38 @@ stats.get('/class/:classId', async (c) => {
         }
 
         // Build query based on whether we're filtering by course
-        let query = `
-            SELECT 
-                COUNT(DISTINCT s.student_id) as total_students,
-                AVG(s.score) as average_score,
-                SUM(CASE WHEN s.score >= 60 THEN 1 ELSE 0 END) as pass_count,
-                SUM(CASE WHEN s.score >= 90 THEN 1 ELSE 0 END) as excellent_count
-            FROM scores s
-            WHERE s.exam_id = ?
-        `
-
+        let query: string
         const params: any[] = [targetExamId]
 
         if (targetCourseId) {
-            query += ` AND s.course_id = ?`
+            query = `
+                SELECT 
+                    COUNT(DISTINCT s.student_id) as total_students,
+                    AVG(s.score) as average_score,
+                    COUNT(DISTINCT CASE WHEN s.score >= 60 THEN s.student_id END) as pass_count,
+                    COUNT(DISTINCT CASE WHEN s.score >= 90 THEN s.student_id END) as excellent_count
+                FROM scores s
+                WHERE s.exam_id = ? AND s.course_id = ?
+            `
             params.push(targetCourseId)
+        } else {
+            // 全科：基于每个学生的总分计算统计数据
+            query = `
+                SELECT 
+                    COUNT(*) as total_students,
+                    AVG(total_score) as average_score,
+                    SUM(CASE WHEN total_score >= 180 THEN 1 ELSE 0 END) as pass_count,
+                    SUM(CASE WHEN total_score >= 270 THEN 1 ELSE 0 END) as excellent_count
+                FROM (
+                    SELECT student_id, SUM(score) as total_score
+                    FROM scores 
+                    WHERE exam_id = ?
+                    GROUP BY student_id
+                ) student_stats
+            `
         }
+
+
 
         const stats = await c.env.DB.prepare(query).bind(...params).first()
 
@@ -167,32 +183,54 @@ stats.get('/exam/:examId/distribution', async (c) => {
     const courseId = c.req.query('courseId')
 
     try {
-        let query = `
-            SELECT 
-                CASE 
-                    WHEN score >= 90 THEN '100-90'
-                    WHEN score >= 80 THEN '89-80'
-                    WHEN score >= 70 THEN '79-70'
-                    WHEN score >= 60 THEN '69-60'
-                    ELSE '0-59'
-                END as range,
-                COUNT(*) as count
-            FROM scores
-            WHERE exam_id = ?
-        `
-
+        let query: string
         const params: any[] = [examId]
+        let allRanges: string[]
 
         if (courseId) {
-            query += ` AND course_id = ?`
+            // 单科分布 (0-100)
+            query = `
+                SELECT 
+                    CASE 
+                        WHEN score >= 90 THEN '100-90'
+                        WHEN score >= 80 THEN '89-80'
+                        WHEN score >= 70 THEN '79-70'
+                        WHEN score >= 60 THEN '69-60'
+                        ELSE '0-59'
+                    END as range,
+                    COUNT(*) as count
+                FROM scores
+                WHERE exam_id = ? AND course_id = ?
+                GROUP BY range
+            `
             params.push(courseId)
+            allRanges = ['100-90', '89-80', '79-70', '69-60', '0-59']
+        } else {
+            // 全科总分分布 (假设满分300)
+            // 先计算每个学生的总分，再统计分布
+            query = `
+                SELECT 
+                    CASE 
+                        WHEN total_score >= 270 THEN '300-270'
+                        WHEN total_score >= 240 THEN '269-240'
+                        WHEN total_score >= 210 THEN '239-210'
+                        WHEN total_score >= 180 THEN '209-180'
+                        ELSE '0-179'
+                    END as range,
+                    COUNT(*) as count
+                FROM (
+                    SELECT student_id, SUM(score) as total_score
+                    FROM scores
+                    WHERE exam_id = ?
+                    GROUP BY student_id
+                ) student_scores
+                GROUP BY range
+            `
+            allRanges = ['300-270', '269-240', '239-210', '209-180', '0-179']
         }
-
-        query += ` GROUP BY range ORDER BY range DESC`
 
         const result = await c.env.DB.prepare(query).bind(...params).all()
 
-        const allRanges = ['100-90', '89-80', '79-70', '69-60', '0-59']
         const distribution = allRanges.map(range => ({
             range,
             count: (result.results.find((r: any) => r.range === range) as any)?.count || 0
@@ -365,34 +403,51 @@ stats.get('/exam/:examId/top-students', async (c) => {
     const limit = c.req.query('limit') || '5'
 
     try {
-
-        let query = `
-            SELECT 
-                s.id,
-                s.name,
-                s.student_id,
-                SUM(sc.score) as average_score
-            FROM students s
-            JOIN scores sc ON s.id = sc.student_id
-            WHERE sc.exam_id = ?
-        `
-
-        const params: any[] = [examId]
+        let query: string
+        const params: any[] = []
 
         if (courseId) {
-            query += ` AND sc.course_id = ?`
-            params.push(courseId)
+            // 单科：直接取该科分数（不使用AVG或SUM，因为有UNIQUE约束）
+            query = `
+                SELECT 
+                    s.id,
+                    s.name,
+                    s.student_id,
+                    sc.score as average_score
+                FROM students s
+                JOIN scores sc ON s.id = sc.student_id
+                WHERE sc.exam_id = ? AND sc.course_id = ?
+                ORDER BY sc.score DESC
+                LIMIT ?
+            `
+            params.push(examId, courseId, Number(limit))
+        } else {
+            // 全科：计算所有科目的总分
+            query = `
+                SELECT 
+                    s.id,
+                    s.name,
+                    s.student_id,
+                    SUM(sc.score) as average_score
+                FROM students s
+                JOIN scores sc ON s.id = sc.student_id
+                WHERE sc.exam_id = ?
+                GROUP BY s.id, s.name, s.student_id
+                ORDER BY average_score DESC
+                LIMIT ?
+            `
+            params.push(examId, Number(limit))
         }
 
-        query += `
-            GROUP BY s.id, s.name, s.student_id
-            ORDER BY average_score DESC
-            LIMIT ?
-        `
-        params.push(Number(limit))
-
         const result = await c.env.DB.prepare(query).bind(...params).all()
-        return c.json(result.results)
+
+        // 格式化分数为保留1位小数
+        const formattedResults = result.results.map((student: any) => ({
+            ...student,
+            average_score: parseFloat(Number(student.average_score || 0).toFixed(1))
+        }))
+
+        return c.json(formattedResults)
     } catch (error) {
         console.error('Top students error:', error)
         return c.json({ error: 'Failed to get top students' }, 500)

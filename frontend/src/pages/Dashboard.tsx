@@ -205,7 +205,7 @@ export default function Dashboard() {
                     <Col span={24}>
                         <Row gutter={[24, 24]}>
                             <Col xs={24} sm={24} md={24} lg={16}>
-                                <Card title="分数段分布" bodyStyle={{ height: 360 }}>
+                                <Card title={selectedCourseId ? "分数段分布" : "总分分布"} bodyStyle={{ height: 360 }}>
                                     <div style={{ width: '100%', height: '100%', minHeight: 300 }}>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart data={distribution} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -232,7 +232,7 @@ export default function Dashboard() {
                                         prefix={<TrophyOutlined />}
                                     />
                                     <Statistic
-                                        title="平均分"
+                                        title={selectedCourseId ? "平均分" : "平均总分"}
                                         value={stats?.average_score}
                                         precision={1}
                                         valueStyle={{ color: '#3b82f6', fontSize: '2rem' }}
