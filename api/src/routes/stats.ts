@@ -481,29 +481,40 @@ stats.get('/exam/:examId/progress', async (c) => {
         }
 
         // Build query to compare scores
-        let query = `
-            SELECT 
-                s.id as student_id,
-                s.name as student_name,
-                AVG(curr.score) as current_score,
-                AVG(prev.score) as previous_score,
-                AVG(curr.score) - AVG(prev.score) as progress
-            FROM students s
-            JOIN scores curr ON s.id = curr.student_id AND curr.exam_id = ?
-            JOIN scores prev ON s.id = prev.student_id AND prev.exam_id = ?
-        `
-
+        let query: string
         const params: any[] = [examId, previousExam.id]
 
         if (courseId) {
-            query += ` WHERE curr.course_id = ? AND prev.course_id = ?`
-            params.push(courseId, courseId)
+            // 选择科目时：直接对比单科分数（每个学生每科只有一个分数）
+            query = `
+                SELECT 
+                    s.id as student_id,
+                    s.name as student_name,
+                    curr.score as current_score,
+                    prev.score as previous_score,
+                    curr.score - prev.score as progress
+                FROM students s
+                JOIN scores curr ON s.id = curr.student_id AND curr.exam_id = ? AND curr.course_id = ?
+                JOIN scores prev ON s.id = prev.student_id AND prev.exam_id = ? AND prev.course_id = ?
+            `
+            params.push(courseId)
+            params.push(previousExam.id, courseId)
+        } else {
+            // 未选择科目时：对比总分（所有科目的总和）
+            query = `
+                SELECT 
+                    s.id as student_id,
+                    s.name as student_name,
+                    SUM(curr.score) as current_score,
+                    SUM(prev.score) as previous_score,
+                    SUM(curr.score) - SUM(prev.score) as progress
+                FROM students s
+                JOIN scores curr ON s.id = curr.student_id AND curr.exam_id = ?
+                JOIN scores prev ON s.id = prev.student_id AND prev.exam_id = ?
+                GROUP BY s.id, s.name
+                HAVING COUNT(DISTINCT curr.course_id) > 0 AND COUNT(DISTINCT prev.course_id) > 0
+            `
         }
-
-        query += `
-            GROUP BY s.id, s.name
-            HAVING COUNT(DISTINCT curr.course_id) > 0 AND COUNT(DISTINCT prev.course_id) > 0
-        `
 
         const result = await c.env.DB.prepare(query).bind(...params).all()
         const students = result.results as any[]
