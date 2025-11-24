@@ -33,36 +33,69 @@ analysis.get('/class/focus/:classId', async (c) => {
             AND ((s.score BETWEEN 58 AND 59.9) OR (s.score BETWEEN 88 AND 89.9))
         `).bind(classId).all()
 
-        // 2. Regressing Students (Rank dropped significantly)
-        // This is complex in SQL, simplified: compare average score of last 2 exams
-        // For now, let's just find students whose latest exam score is significantly lower than their average
-        const regressingStudents = await c.env.DB.prepare(`
-            SELECT st.id, st.name, 'regressing' as type,
-            (AVG(s.score) - (
-                SELECT s2.score 
-                FROM scores s2 
-                JOIN exams e2 ON s2.exam_id = e2.id 
-                WHERE s2.student_id = st.id 
-                ORDER BY e2.exam_date DESC LIMIT 1
-            )) as drop_amount
-            FROM students st
-            JOIN scores s ON st.id = s.student_id
+        // Check if we have enough exams for trend analysis (at least 2)
+        const exams = await c.env.DB.prepare(`
+            SELECT DISTINCT e.id 
+            FROM exams e 
+            JOIN scores s ON e.id = s.exam_id 
+            JOIN students st ON s.student_id = st.id 
             WHERE st.class_id = ?
-            GROUP BY st.id
-            HAVING drop_amount > 10
         `).bind(classId).all()
 
-        // 3. Fluctuating Students (High Variance)
-        // Using difference between Max and Min score as a simple proxy for variance/fluctuation
-        const fluctuatingStudents = await c.env.DB.prepare(`
-            SELECT st.id, st.name, 'fluctuating' as type,
-            (MAX(s.score) - MIN(s.score)) as score_diff
-            FROM students st
-            JOIN scores s ON st.id = s.student_id
-            WHERE st.class_id = ?
-            GROUP BY st.id
-            HAVING score_diff > 20
-        `).bind(classId).all()
+        let regressingStudents: any = { results: [] }
+        let fluctuatingStudents: any = { results: [] }
+
+        if (exams.results && exams.results.length >= 2) {
+            // 2. Regressing Students (Rank dropped significantly)
+            // Compare overall average score vs latest exam average score
+            regressingStudents = await c.env.DB.prepare(`
+                WITH StudentExamAverages AS (
+                    SELECT s.student_id, st.name, s.exam_id, e.exam_date, AVG(s.score) as avg_score
+                    FROM scores s
+                    JOIN exams e ON s.exam_id = e.id
+                    JOIN students st ON s.student_id = st.id
+                    WHERE st.class_id = ?
+                    GROUP BY s.student_id, s.exam_id
+                ),
+                StudentStats AS (
+                    SELECT 
+                        student_id, 
+                        name,
+                        AVG(avg_score) as overall_avg,
+                        (
+                            SELECT avg_score 
+                            FROM StudentExamAverages sea2 
+                            WHERE sea2.student_id = sea1.student_id 
+                            ORDER BY exam_date DESC 
+                            LIMIT 1
+                        ) as latest_score
+                    FROM StudentExamAverages sea1
+                    GROUP BY student_id
+                )
+                SELECT student_id as id, name, 'regressing' as type, 
+                (overall_avg - latest_score) as drop_amount
+                FROM StudentStats
+                WHERE drop_amount > 10
+            `).bind(classId).all()
+
+            // 3. Fluctuating Students (High Variance across exams)
+            // Difference between Max and Min exam average scores
+            fluctuatingStudents = await c.env.DB.prepare(`
+                WITH StudentExamAverages AS (
+                    SELECT s.student_id, st.name, s.exam_id, AVG(s.score) as avg_score
+                    FROM scores s
+                    JOIN exams e ON s.exam_id = e.id
+                    JOIN students st ON s.student_id = st.id
+                    WHERE st.class_id = ?
+                    GROUP BY s.student_id, s.exam_id
+                )
+                SELECT student_id as id, name, 'fluctuating' as type,
+                (MAX(avg_score) - MIN(avg_score)) as score_diff
+                FROM StudentExamAverages
+                GROUP BY student_id
+                HAVING score_diff > 15
+            `).bind(classId).all()
+        }
 
         // 4. Imbalanced Students (Total Rank Top 50% BUT has failed subject)
         // Simplified: Total Score > Class Avg BUT has score < 60
