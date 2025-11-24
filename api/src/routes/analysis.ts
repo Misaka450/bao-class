@@ -78,22 +78,18 @@ analysis.get('/class/focus/:classId', async (c) => {
                 WHERE drop_amount > 10
             `).bind(classId).all()
 
-            // 3. Fluctuating Students (High Variance across exams)
-            // Difference between Max and Min exam average scores
+            // 3. Fluctuating Students (High Variance in specific subjects)
+            // Difference between Max and Min score for the SAME subject across exams
             fluctuatingStudents = await c.env.DB.prepare(`
-                WITH StudentExamAverages AS (
-                    SELECT s.student_id, st.name, s.exam_id, AVG(s.score) as avg_score
-                    FROM scores s
-                    JOIN exams e ON s.exam_id = e.id
-                    JOIN students st ON s.student_id = st.id
-                    WHERE st.class_id = ?
-                    GROUP BY s.student_id, s.exam_id
-                )
-                SELECT student_id as id, name, 'fluctuating' as type,
-                (MAX(avg_score) - MIN(avg_score)) as score_diff
-                FROM StudentExamAverages
-                GROUP BY student_id
-                HAVING score_diff > 15
+                SELECT st.id, st.name, 'fluctuating' as type, c.name as subject,
+                (MAX(s.score) - MIN(s.score)) as score_diff
+                FROM scores s
+                JOIN students st ON s.student_id = st.id
+                JOIN courses c ON s.course_id = c.id
+                JOIN exams e ON s.exam_id = e.id
+                WHERE st.class_id = ?
+                GROUP BY s.student_id, s.course_id
+                HAVING score_diff > 20
             `).bind(classId).all()
         }
 

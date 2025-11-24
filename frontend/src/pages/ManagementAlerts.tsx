@@ -79,6 +79,7 @@ export default function ManagementAlerts() {
                                     </span>
                                 ) : type === 'fluctuating' ? (
                                     <span>
+                                        <Tag color="blue">{item.subject}</Tag>
                                         分差波动: {item.score_diff} 分
                                     </span>
                                 ) : (
