@@ -482,7 +482,7 @@ stats.get('/exam/:examId/progress', async (c) => {
 
         // Build query to compare scores
         let query: string
-        const params: any[] = [examId, previousExam.id]
+        const params: any[] = []
 
         if (courseId) {
             // 选择科目时：直接对比单科分数（每个学生每科只有一个分数）
@@ -497,8 +497,7 @@ stats.get('/exam/:examId/progress', async (c) => {
                 JOIN scores curr ON s.id = curr.student_id AND curr.exam_id = ? AND curr.course_id = ?
                 JOIN scores prev ON s.id = prev.student_id AND prev.exam_id = ? AND prev.course_id = ?
             `
-            params.push(courseId)
-            params.push(previousExam.id, courseId)
+            params.push(examId, courseId, previousExam.id, courseId)
         } else {
             // 未选择科目时：对比总分（所有科目的总和）
             query = `
@@ -514,6 +513,7 @@ stats.get('/exam/:examId/progress', async (c) => {
                 GROUP BY s.id, s.name
                 HAVING COUNT(DISTINCT curr.course_id) > 0 AND COUNT(DISTINCT prev.course_id) > 0
             `
+            params.push(examId, previousExam.id)
         }
 
         const result = await c.env.DB.prepare(query).bind(...params).all()
