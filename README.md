@@ -98,8 +98,7 @@ npm run dev
 
 3. **查看部署状态**
    - GitHub Actions 会自动部署前端和后端
-   - 前端: https://bao-class.pages.dev
-   - 后端: https://api.980823.xyz
+   -
 
 ### 手动部署
 
@@ -169,8 +168,3 @@ bao-class/
 
 MIT License
 
-## � 链接
-
-- **在线演示**: https://bao-class.pages.dev
-- **API 地址**: https://api.980823.xyz
-- **GitHub**: https://github.com/Misaka450/bao-class

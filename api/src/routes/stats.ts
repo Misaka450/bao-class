@@ -371,7 +371,7 @@ stats.get('/exam/:examId/top-students', async (c) => {
                 s.id,
                 s.name,
                 s.student_id,
-                AVG(sc.score) as average_score
+                SUM(sc.score) as average_score
             FROM students s
             JOIN scores sc ON s.id = sc.student_id
             WHERE sc.exam_id = ?

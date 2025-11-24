@@ -86,12 +86,8 @@ export default function Dashboard() {
         if (exam) {
             const examCourses = exam.courses?.map(c => ({ id: c.course_id, name: c.course_name })) || [];
             setCourses(examCourses);
-            // Default to first course if available
-            if (examCourses.length > 0) {
-                setSelectedCourseId(examCourses[0].id.toString());
-            } else {
-                setSelectedCourseId('');
-            }
+            // 不默认选择科目，保持为空以显示全部科目（总分）
+            setSelectedCourseId('');
         }
     }, [selectedExamId, exams]);
 
