@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
+import { AppError } from '../utils/AppError'
 
 type Bindings = {
     DB: D1Database
@@ -128,7 +129,7 @@ analysis.get('/class/focus/:classId', async (c) => {
         })
     } catch (error) {
         console.error('Focus group error:', error)
-        return c.json({ error: 'Failed to generate focus group' }, 500)
+        throw new AppError('Failed to generate focus group', 500)
     }
 })
 

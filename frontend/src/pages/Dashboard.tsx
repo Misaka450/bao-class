@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Card, Row, Col, Select, Statistic, Spin, List, Avatar } from 'antd';
+import { useState, useEffect, useMemo } from 'react';
+import { Card, Row, Col, Statistic, Spin, List, Avatar } from 'antd';
 import {
     TrophyOutlined,
     CheckCircleOutlined,
@@ -7,140 +7,62 @@ import {
     RiseOutlined,
     FallOutlined,
 } from '@ant-design/icons';
-import { BarChart, Bar, XAxis, YAxis, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import type {
-    Stats,
-    Distribution,
-    TopStudent,
-    ProgressData,
-    Class,
-    Exam,
-    Course,
-} from '../types';
-import api from '../services/api';
+import FilterBar from '../components/FilterBar';
+import DistributionChart from '../components/DistributionChart';
+import { useClasses, useExams, useDashboardData } from '../hooks/useDashboard';
 
 export default function Dashboard() {
-    const [stats, setStats] = useState<Stats | null>(null);
-    const [distribution, setDistribution] = useState<Distribution[]>([]);
-    const [topStudents, setTopStudents] = useState<TopStudent[]>([]);
-    const [progress, setProgress] = useState<ProgressData>({ improved: [], declined: [] });
-    const [loading, setLoading] = useState(false);
-
-    const [classes, setClasses] = useState<Class[]>([]);
-    const [exams, setExams] = useState<Exam[]>([]);
-    const [courses, setCourses] = useState<Course[]>([]);
-
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [selectedExamId, setSelectedExamId] = useState<string>('');
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
 
-    // Fetch initial data (Classes)
-    useEffect(() => {
-        const fetchClasses = async () => {
-            try {
-                const data = await api.class.list();
-                setClasses(data);
-                if (data.length > 0) {
-                    setSelectedClassId(data[0].id.toString());
-                }
-            } catch (error) {
-                // Error already handled in request layer
-            }
-        };
-        fetchClasses();
-    }, []);
+    // 1. 获取班级列表
+    const { data: classes = [] } = useClasses();
 
-    // Fetch Exams when Class changes
-    useEffect(() => {
-        const fetchExams = async () => {
-            if (!selectedClassId) return;
-            try {
-                const data = await api.exam.list({ class_id: selectedClassId });
-                // Filter exams for the selected class
-                const classExams = data.filter((e: Exam) => e.class_id.toString() === selectedClassId);
-                setExams(classExams);
-                if (classExams.length > 0) {
-                    setSelectedExamId(classExams[0].id.toString());
-                } else {
-                    setSelectedExamId('');
-                    setStats(null);
-                    setDistribution([]);
-                    setTopStudents([]);
-                    setProgress({ improved: [], declined: [] });
-                }
-            } catch (error) {
-                // Error already handled in request layer
-            }
-        };
-        fetchExams();
-    }, [selectedClassId]);
+    // 2. 获取考试列表
+    const { data: exams = [] } = useExams(selectedClassId);
 
-    // Update Courses when Exam changes
-    useEffect(() => {
-        if (!selectedExamId) {
-            setCourses([]);
-            setSelectedCourseId('');
-            return;
-        }
+    // 3. 计算当前考试的科目列表
+    const courses = useMemo(() => {
+        if (!selectedExamId) return [];
         const exam = exams.find(e => e.id.toString() === selectedExamId);
-        if (exam) {
-            const examCourses = exam.courses?.map(c => ({ id: c.course_id, name: c.course_name })) || [];
-            setCourses(examCourses);
-            // 不默认选择科目，保持为空以显示全部科目（总分）
-            setSelectedCourseId('');
-        }
+        return exam?.courses?.map(c => ({ id: c.course_id, name: c.course_name })) || [];
     }, [selectedExamId, exams]);
 
-    // Fetch Dashboard Data
+    // 4. 获取仪表盘数据
+    const {
+        distribution,
+        stats,
+        topStudents,
+        progress,
+        isLoading
+    } = useDashboardData(selectedClassId, selectedExamId, selectedCourseId);
+
+    // 自动选择逻辑
     useEffect(() => {
-        const fetchDashboardData = async () => {
-            if (!selectedExamId) return;
+        if (classes.length > 0 && !selectedClassId) {
+            setSelectedClassId(classes[0].id.toString());
+        }
+    }, [classes, selectedClassId]);
 
-            setLoading(true);
-            try {
-                // 1. Distribution
-                const distData = await api.stats.getDistribution(
-                    selectedExamId,
-                    selectedCourseId || undefined
-                );
-                setDistribution(Array.isArray(distData) ? distData : []);
-
-                // 2. Stats
-                const statsData = await api.stats.getClassStats(selectedClassId, {
-                    examId: selectedExamId,
-                    courseId: selectedCourseId || undefined,
-                });
-                setStats(statsData);
-
-                // 3. Top Students
-                const topData = await api.stats.getTopStudents(selectedExamId, {
-                    limit: 5,
-                    courseId: selectedCourseId || undefined,
-                });
-                setTopStudents(topData);
-
-                // 4. Progress
-                const progressData = await api.stats.getProgress(
-                    selectedExamId,
-                    selectedCourseId || undefined
-                );
-                setProgress(progressData);
-            } catch (error) {
-                // Error already handled in request layer
-            } finally {
-                setLoading(false);
+    useEffect(() => {
+        if (exams.length > 0) {
+            // 如果当前选中的考试不在新的考试列表中，或者还没有选中考试，则选中第一个
+            const currentExamExists = exams.some(e => e.id.toString() === selectedExamId);
+            if (!currentExamExists || !selectedExamId) {
+                setSelectedExamId(exams[0].id.toString());
             }
-        };
+        } else if (exams.length === 0 && selectedExamId) {
+            setSelectedExamId('');
+        }
+    }, [exams, selectedExamId]);
 
-        fetchDashboardData();
-    }, [selectedExamId, selectedCourseId, selectedClassId]);
+    // 当考试改变时，重置科目选择
+    useEffect(() => {
+        setSelectedCourseId('');
+    }, [selectedExamId]);
 
-    const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
     const highestScore = topStudents.length > 0 ? topStudents[0].average_score : 0;
-
-    // Filtered lists for Selects (already handled by state updates, but for safety)
-    const filteredExams = exams;
-    const filteredCourses = courses;
 
     return (
         <div>
@@ -150,54 +72,19 @@ export default function Dashboard() {
             </div>
 
             {/* Filters */}
-            <Card style={{ marginBottom: 24 }}>
-                <Row gutter={[16, 16]}>
-                    <Col xs={24} sm={24} md={8}>
-                        <div style={{ marginBottom: 8, color: '#666' }}>班级</div>
-                        <Select
-                            value={selectedClassId}
-                            onChange={setSelectedClassId}
-                            style={{ width: '100%' }}
-                            placeholder="选择班级"
-                        >
-                            {classes.map((cls) => (
-                                <Select.Option key={cls.id} value={cls.id.toString()}>{cls.name}</Select.Option>
-                            ))}
-                        </Select>
-                    </Col>
-                    <Col xs={24} sm={24} md={8}>
-                        <div style={{ marginBottom: 8, color: '#666' }}>考试</div>
-                        <Select
-                            value={selectedExamId}
-                            onChange={setSelectedExamId}
-                            style={{ width: '100%' }}
-                            placeholder="选择考试"
-                            disabled={!selectedClassId}
-                        >
-                            {filteredExams.map((exam) => (
-                                <Select.Option key={exam.id} value={exam.id.toString()}>{exam.name}</Select.Option>
-                            ))}
-                        </Select>
-                    </Col>
-                    <Col xs={24} sm={24} md={8}>
-                        <div style={{ marginBottom: 8, color: '#666' }}>科目</div>
-                        <Select
-                            value={selectedCourseId}
-                            onChange={setSelectedCourseId}
-                            style={{ width: '100%' }}
-                            placeholder="全部科目"
-                            disabled={!selectedExamId}
-                            allowClear
-                        >
-                            {filteredCourses.map((course) => (
-                                <Select.Option key={course.id} value={course.id.toString()}>{course.name}</Select.Option>
-                            ))}
-                        </Select>
-                    </Col>
-                </Row>
-            </Card>
+            <FilterBar
+                classes={classes}
+                exams={exams}
+                courses={courses as any} // 类型兼容性处理
+                selectedClassId={selectedClassId}
+                selectedExamId={selectedExamId}
+                selectedCourseId={selectedCourseId}
+                onClassChange={setSelectedClassId}
+                onExamChange={setSelectedExamId}
+                onCourseChange={setSelectedCourseId}
+            />
 
-            {loading ? (
+            {isLoading ? (
                 <div style={{ textAlign: 'center', padding: 60 }}><Spin size="large" /></div>
             ) : (
                 <>
@@ -205,22 +92,10 @@ export default function Dashboard() {
                     <Col span={24}>
                         <Row gutter={[24, 24]}>
                             <Col xs={24} sm={24} md={24} lg={16}>
-                                <Card title={selectedCourseId ? "分数段分布" : "总分分布"} bodyStyle={{ height: 360 }}>
-                                    <div style={{ width: '100%', height: '100%', minHeight: 300 }}>
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={distribution} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                                <XAxis dataKey="range" axisLine={false} tickLine={false} />
-                                                <YAxis axisLine={false} tickLine={false} />
-                                                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
-                                                <Bar dataKey="count" name="人数" radius={[6, 6, 0, 0]}>
-                                                    {distribution.map((_, index) => (
-                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                                    ))}
-                                                </Bar>
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </Card>
+                                <DistributionChart
+                                    data={distribution}
+                                    isCourseSelected={!!selectedCourseId}
+                                />
                             </Col>
                             <Col xs={24} sm={24} md={24} lg={8}>
                                 <Card title="核心指标" bodyStyle={{ height: 360, display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>

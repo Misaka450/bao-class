@@ -1,0 +1,13 @@
+{
+    "name": "bao-class-monorepo",
+    "private": true,
+    "workspaces": [
+        "api",
+        "frontend",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev:api": "npm run dev --workspace=api",
+        "dev:frontend": "npm run dev --workspace=frontend"
+    }
+}
