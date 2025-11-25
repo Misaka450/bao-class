@@ -16,7 +16,7 @@ import profile from './routes/stats/profile';
 import classTrend from './routes/stats/class-trend';
 import classSubjectTrend from './routes/stats/class-subject-trend';
 import gradeComparison from './routes/stats/grade-comparison';
-import reports from './routes/reports';
+
 import importRoute from './routes/import';
 import init from './routes/init';
 import debug from './routes/debug';
@@ -81,7 +81,7 @@ app.route('/api/stats/class-trend', classTrend);
 app.route('/api/stats/class-subject-trend', classSubjectTrend);
 app.route('/api/stats/grade-comparison', gradeComparison);
 app.route('/api/analysis', analysis);
-app.route('/api/reports', reports);
+
 app.route('/api/import', importRoute);
 app.route('/api/upload', upload);
 app.route('/api/export', exportRoute);
