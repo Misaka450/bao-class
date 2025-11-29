@@ -40,8 +40,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     const menuItems: MenuProps['items'] = [
         {
             key: '/dashboard',
-            icon: <DashboardOutlined style={{ color: '#3b82f6', fontSize: '18px' }} />, // Blue
-            label: <span style={{ fontWeight: 500 }}>仪表盘</span>,
+            icon: <DashboardOutlined style={{ fontSize: '18px' }} />,
+            label: <span>仪表盘</span>,
             onClick: () => {
                 navigate('/dashboard');
                 if (isMobile) setMobileDrawerVisible(false);
@@ -49,8 +49,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         },
         {
             key: '/classes',
-            icon: <TeamOutlined style={{ color: '#10b981', fontSize: '18px' }} />, // Emerald
-            label: <span style={{ fontWeight: 500 }}>班级管理</span>,
+            icon: <TeamOutlined style={{ fontSize: '18px' }} />,
+            label: <span>班级管理</span>,
             onClick: () => {
                 navigate('/classes');
                 if (isMobile) setMobileDrawerVisible(false);
@@ -58,8 +58,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         },
         {
             key: '/students',
-            icon: <UserOutlined style={{ color: '#f59e0b', fontSize: '18px' }} />, // Amber
-            label: <span style={{ fontWeight: 500 }}>学生管理</span>,
+            icon: <UserOutlined style={{ fontSize: '18px' }} />,
+            label: <span>学生管理</span>,
             onClick: () => {
                 navigate('/students');
                 if (isMobile) setMobileDrawerVisible(false);
@@ -67,8 +67,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         },
         {
             key: 'teaching',
-            icon: <BookOutlined style={{ color: '#8b5cf6', fontSize: '18px' }} />, // Violet
-            label: <span style={{ fontWeight: 500 }}>教学管理</span>,
+            icon: <BookOutlined style={{ fontSize: '18px' }} />,
+            label: <span>教学管理</span>,
             children: [
                 {
                     key: '/courses',
@@ -98,8 +98,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         },
         {
             key: '/scores-list',
-            icon: <TableOutlined style={{ color: '#ec4899', fontSize: '18px' }} />, // Pink
-            label: <span style={{ fontWeight: 500 }}>成绩清单</span>,
+            icon: <TableOutlined style={{ fontSize: '18px' }} />,
+            label: <span>成绩清单</span>,
             onClick: () => {
                 navigate('/scores-list');
                 if (isMobile) setMobileDrawerVisible(false);
@@ -107,8 +107,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         },
         {
             key: '/audit-logs',
-            icon: <SafetyCertificateOutlined style={{ color: '#64748b', fontSize: '18px' }} />, // Slate
-            label: <span style={{ fontWeight: 500 }}>操作日志</span>,
+            icon: <SafetyCertificateOutlined style={{ fontSize: '18px' }} />,
+            label: <span>操作日志</span>,
             onClick: () => {
                 navigate('/audit-logs');
                 if (isMobile) setMobileDrawerVisible(false);
@@ -116,8 +116,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         },
         {
             key: 'analysis-group',
-            icon: <BulbOutlined style={{ color: '#ef4444', fontSize: '18px' }} />, // Red
-            label: <span style={{ fontWeight: 500 }}>数据分析</span>,
+            icon: <BulbOutlined style={{ fontSize: '18px' }} />,
+            label: <span>数据分析</span>,
             children: [
                 {
                     key: '/analysis/class',
@@ -154,21 +154,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     // 侧边栏内容组件
     const SidebarContent = () => (
         <>
-            <div
-                style={{
-                    height: 80,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: isMobile ? 18 : 20,
-                    fontWeight: 700,
-                    background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
-                    backgroundClip: 'text',
-                    WebkitBackgroundClip: 'text',
-                    color: 'transparent',
-                    letterSpacing: '0.5px',
-                }}
-            >
+            <div className="sidebar-logo">
                 {collapsed && !isMobile ? '成绩' : '成绩管理系统'}
             </div>
             <Menu
@@ -204,30 +190,26 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </Drawer>
             )}
 
-            <AntLayout style={{ background: '#f8fafc' }}>
-                <Header className="glass-header" style={{
-                    padding: isMobile ? '0 16px' : '0 24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: '#fff',
-                }}>
-                    <Button
-                        type="text"
-                        icon={
-                            isMobile
-                                ? <MenuUnfoldOutlined />
-                                : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
-                        }
-                        onClick={() => isMobile ? setMobileDrawerVisible(true) : setCollapsed(!collapsed)}
-                        style={{ fontSize: 16, width: 64, height: 64, color: '#1e293b' }}
-                    />
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                        <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', color: '#1e293b' }}>
-                            <Avatar icon={<UserOutlined />} style={{ marginRight: isMobile ? 0 : 8, backgroundColor: '#6366f1' }} />
-                            {!isMobile && <span style={{ fontWeight: 500 }}>{user?.name || user?.username}</span>}
-                        </div>
-                    </Dropdown>
+            <AntLayout style={{ background: 'var(--bg-color)' }}>
+                <Header className="glass-header" style={{ padding: isMobile ? '0 16px' : '0 24px' }}>
+                    <div className="header-content">
+                        <Button
+                            type="text"
+                            icon={
+                                isMobile
+                                    ? <MenuUnfoldOutlined />
+                                    : (collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />)
+                            }
+                            onClick={() => isMobile ? setMobileDrawerVisible(true) : setCollapsed(!collapsed)}
+                            style={{ fontSize: 16, width: 64, height: 64, color: 'var(--text-primary)' }}
+                        />
+                        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+                            <div className="header-user-info">
+                                <Avatar icon={<UserOutlined />} style={{ marginRight: isMobile ? 0 : 8, backgroundColor: 'var(--primary-color)' }} />
+                                {!isMobile && <span style={{ fontWeight: 500 }}>{user?.name || user?.username}</span>}
+                            </div>
+                        </Dropdown>
+                    </div>
                 </Header>
                 <Content
                     style={{

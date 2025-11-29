@@ -25,10 +25,10 @@ export default function FilterBar({
     onCourseChange,
 }: FilterBarProps) {
     return (
-        <Card style={{ marginBottom: 24 }}>
+        <Card className="filter-bar-card">
             <Row gutter={[16, 16]}>
                 <Col xs={24} sm={24} md={8}>
-                    <div style={{ marginBottom: 8, color: '#666' }}>班级</div>
+                    <div className="filter-label">班级</div>
                     <Select
                         value={selectedClassId}
                         onChange={onClassChange}
@@ -43,7 +43,7 @@ export default function FilterBar({
                     </Select>
                 </Col>
                 <Col xs={24} sm={24} md={8}>
-                    <div style={{ marginBottom: 8, color: '#666' }}>考试</div>
+                    <div className="filter-label">考试</div>
                     <Select
                         value={selectedExamId}
                         onChange={onExamChange}
@@ -59,7 +59,7 @@ export default function FilterBar({
                     </Select>
                 </Col>
                 <Col xs={24} sm={24} md={8}>
-                    <div style={{ marginBottom: 8, color: '#666' }}>科目</div>
+                    <div className="filter-label">科目</div>
                     <Select
                         value={selectedCourseId}
                         onChange={onCourseChange}

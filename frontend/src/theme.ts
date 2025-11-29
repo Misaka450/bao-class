@@ -9,13 +9,12 @@ export const lightTheme = {
         colorTextBase: '#1e293b', // Slate 800
         colorTextSecondary: '#64748b', // Slate 500
         borderRadius: 12,
-        fontFamily: "'Poppins', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
     },
     components: {
         Card: {
             colorBgContainer: '#ffffff',
-            boxShadowTertiary: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
             paddingLG: 24,
         },
         Layout: {
@@ -25,22 +24,22 @@ export const lightTheme = {
         },
         Menu: {
             itemBg: 'transparent',
-            itemColor: 'rgba(255, 255, 255, 0.7)',
-            itemSelectedBg: 'rgba(255, 255, 255, 0.2)',
-            itemSelectedColor: '#ffffff',
-            itemHoverBg: 'rgba(255, 255, 255, 0.1)',
-            itemHoverColor: '#ffffff',
+            itemColor: '#64748b',
+            itemSelectedBg: 'rgba(99, 102, 241, 0.1)',
+            itemSelectedColor: '#6366f1',
+            itemHoverBg: 'rgba(99, 102, 241, 0.05)',
+            itemHoverColor: '#6366f1',
         },
         Table: {
-            headerBg: '#f1f5f9', // Slate 100
-            headerColor: '#475569', // Slate 600
-            rowHoverBg: '#f8fafc',
-            borderColor: '#e2e8f0', // Slate 200
+            headerBg: '#f8fafc',
+            headerColor: '#64748b',
+            rowHoverBg: '#f1f5f9',
+            borderColor: '#e2e8f0',
         },
         Button: {
             borderRadius: 8,
             controlHeight: 40,
-            boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.2), 0 2px 4px -1px rgba(99, 102, 241, 0.1)',
+            boxShadow: '0 2px 4px 0 rgba(0, 0, 0, 0.05)',
         },
         Input: {
             controlHeight: 40,
@@ -48,11 +47,13 @@ export const lightTheme = {
             colorBorder: '#e2e8f0',
             activeBorderColor: '#6366f1',
             hoverBorderColor: '#818cf8',
+            borderRadius: 8,
         },
         Select: {
             controlHeight: 40,
             colorBgContainer: '#ffffff',
             colorBorder: '#e2e8f0',
+            borderRadius: 8,
         },
         Statistic: {
             titleFontSize: 14,

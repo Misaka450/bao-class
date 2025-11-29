@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Row, Col, Statistic, Spin, List, Avatar } from 'antd';
+import { Card, Row, Col, Statistic, Skeleton, List, Avatar } from 'antd';
 import {
     TrophyOutlined,
     CheckCircleOutlined,
@@ -66,9 +66,9 @@ export default function Dashboard() {
 
     return (
         <div>
-            <div style={{ marginBottom: 24 }}>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>数据仪表盘</h2>
-                <p style={{ margin: '4px 0 0 0', color: '#666' }}>综合数据分析与可视化</p>
+            <div className="dashboard-header">
+                <h2 className="dashboard-title">数据仪表盘</h2>
+                <p className="dashboard-subtitle">综合数据分析与可视化</p>
             </div>
 
             {/* Filters */}
@@ -85,7 +85,12 @@ export default function Dashboard() {
             />
 
             {isLoading ? (
-                <div style={{ textAlign: 'center', padding: 60 }}><Spin size="large" /></div>
+                <div style={{ padding: 24 }}>
+                    <Row gutter={[24, 24]}>
+                        <Col xs={24} lg={16}><Skeleton active paragraph={{ rows: 8 }} /></Col>
+                        <Col xs={24} lg={8}><Skeleton active paragraph={{ rows: 8 }} /></Col>
+                    </Row>
+                </div>
             ) : (
                 <>
                     {/* Main Stats & Distribution */}
@@ -98,19 +103,19 @@ export default function Dashboard() {
                                 />
                             </Col>
                             <Col xs={24} sm={24} md={24} lg={8}>
-                                <Card title="核心指标" bodyStyle={{ height: 360, display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>
+                                <Card title="核心指标" className="stat-card" bodyStyle={{ height: 360, display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>
                                     <Statistic
                                         title="最高分"
                                         value={highestScore}
                                         precision={1}
-                                        valueStyle={{ color: '#10b981', fontSize: '2rem' }}
+                                        valueStyle={{ color: '#10b981', fontSize: '2rem', fontFamily: 'Poppins' }}
                                         prefix={<TrophyOutlined />}
                                     />
                                     <Statistic
                                         title={selectedCourseId ? "平均分" : "平均总分"}
                                         value={stats?.average_score}
                                         precision={1}
-                                        valueStyle={{ color: '#3b82f6', fontSize: '2rem' }}
+                                        valueStyle={{ color: '#3b82f6', fontSize: '2rem', fontFamily: 'Poppins' }}
                                         prefix={<RiseOutlined />}
                                     />
                                     <Row gutter={16}>
@@ -119,7 +124,7 @@ export default function Dashboard() {
                                                 title="及格率"
                                                 value={stats?.pass_rate}
                                                 suffix="%"
-                                                valueStyle={{ color: '#f59e0b', fontSize: '1.2rem' }}
+                                                valueStyle={{ color: '#f59e0b', fontSize: '1.2rem', fontFamily: 'Poppins' }}
                                                 prefix={<CheckCircleOutlined />}
                                             />
                                         </Col>
@@ -128,7 +133,7 @@ export default function Dashboard() {
                                                 title="优秀率"
                                                 value={stats?.excellent_rate}
                                                 suffix="%"
-                                                valueStyle={{ color: '#8b5cf6', fontSize: '1.2rem' }}
+                                                valueStyle={{ color: '#8b5cf6', fontSize: '1.2rem', fontFamily: 'Poppins' }}
                                                 prefix={<StarOutlined />}
                                             />
                                         </Col>
@@ -153,7 +158,7 @@ export default function Dashboard() {
                                                     avatar={<Avatar style={{ backgroundColor: index < 3 ? '#f56a00' : '#7265e6' }}>{index + 1}</Avatar>}
                                                     title={item.name}
                                                 />
-                                                <div style={{ fontWeight: 'bold', color: '#10b981' }}>{item.average_score}分</div>
+                                                <div style={{ fontWeight: 'bold', color: '#10b981', fontFamily: 'Poppins' }}>{item.average_score}分</div>
                                             </List.Item>
                                         )}
                                     />
@@ -172,7 +177,7 @@ export default function Dashboard() {
                                                     avatar={<Avatar style={{ backgroundColor: '#87d068' }} icon={<RiseOutlined />} />}
                                                     title={item.student_name}
                                                 />
-                                                <div style={{ fontWeight: 'bold', color: '#10b981' }}>+{item.progress}</div>
+                                                <div style={{ fontWeight: 'bold', color: '#10b981', fontFamily: 'Poppins' }}>+{item.progress}</div>
                                             </List.Item>
                                         )}
                                     />
@@ -191,7 +196,7 @@ export default function Dashboard() {
                                                     avatar={<Avatar style={{ backgroundColor: '#ff4d4f' }} icon={<FallOutlined />} />}
                                                     title={item.student_name}
                                                 />
-                                                <div style={{ fontWeight: 'bold', color: '#ff4d4f' }}>{item.progress}</div>
+                                                <div style={{ fontWeight: 'bold', color: '#ff4d4f', fontFamily: 'Poppins' }}>{item.progress}</div>
                                             </List.Item>
                                         )}
                                     />
