@@ -4,9 +4,11 @@ import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell
 } from 'recharts';
-import { TrophyOutlined } from '@ant-design/icons';
+import { TrophyOutlined, RobotOutlined } from '@ant-design/icons';
 import type { Class } from '../types';
 import api from '../services/api';
+import StudentAlertsCard from '../components/StudentAlertsCard';
+import ExamQualityCard from '../components/ExamQualityCard';
 
 const { Title } = Typography;
 
@@ -64,6 +66,7 @@ export default function ClassAnalysis() {
     const [trendData, setTrendData] = useState<ClassTrendData | null>(null);
     const [subjectData, setSubjectData] = useState<SubjectTrendData | null>(null);
     const [gradeData, setGradeData] = useState<GradeComparisonData | null>(null);
+    const [latestExamId, setLatestExamId] = useState<number | undefined>(undefined);
 
     useEffect(() => {
         fetchClasses();
@@ -72,8 +75,20 @@ export default function ClassAnalysis() {
     useEffect(() => {
         if (selectedClassId) {
             fetchData(activeTab);
+            fetchLatestExam();
         }
     }, [selectedClassId, activeTab]);
+
+    const fetchLatestExam = async () => {
+        try {
+            const result = await api.exam.list({ class_id: selectedClassId });
+            if (result && result.length > 0) {
+                setLatestExamId(result[0].id);
+            }
+        } catch (error) {
+            console.error('Failed to fetch latest exam', error);
+        }
+    };
 
     const fetchClasses = async () => {
         try {
@@ -264,6 +279,17 @@ export default function ClassAnalysis() {
         );
     };
 
+    const renderAiTab = () => (
+        <Row gutter={[24, 24]}>
+            <Col xs={24} lg={14}>
+                <StudentAlertsCard classId={Number(selectedClassId)} />
+            </Col>
+            <Col xs={24} lg={10}>
+                <ExamQualityCard examId={latestExamId} />
+            </Col>
+        </Row>
+    );
+
     const items = [
         {
             key: 'overview',
@@ -279,6 +305,11 @@ export default function ClassAnalysis() {
             key: 'grade',
             label: '年级对比',
             children: renderGradeTab(),
+        },
+        {
+            key: 'ai',
+            label: <span><RobotOutlined /> AI 智能分析</span>,
+            children: renderAiTab(),
         },
     ];
 

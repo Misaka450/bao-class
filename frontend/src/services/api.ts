@@ -14,10 +14,10 @@ import type {
     ClassTrendData,
     SubjectTrendItem,
     GradeComparisonItem,
-    FocusGroupData,
     StudentScore,
     StudentScoreItem,
 } from '../types';
+import type { FocusGroupResult, ExamQuality } from '../types/models';
 
 // ==================== 认证 API ====================
 
@@ -144,7 +144,9 @@ export const statsApi = {
 
 export const analysisApi = {
     // 重点关注学生
-    getFocusGroup: (classId: string) => get<FocusGroupData>(`/api/analysis/class/focus/${classId}`),
+    getFocusGroup: (classId: string) => get<FocusGroupResult>(`/api/analysis/class/focus/${classId}`),
+    // 试卷质量分析
+    getExamQuality: (examId: number) => get<ExamQuality[]>(`/api/analysis/exam/quality/${examId}`),
 };
 
 // ==================== 导入/导出 API ====================

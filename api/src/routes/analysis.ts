@@ -133,4 +133,87 @@ analysis.get('/class/focus/:classId', async (c) => {
     }
 })
 
+// Exam Quality Analysis
+analysis.get('/exam/quality/:examId', async (c) => {
+    const examId = c.req.param('examId')
+
+    try {
+        // Get all courses for this exam
+        const courses = await c.env.DB.prepare(`
+            SELECT ec.course_id, c.name, ec.full_score
+            FROM exam_courses ec
+            JOIN courses c ON ec.course_id = c.id
+            WHERE ec.exam_id = ?
+        `).bind(examId).all()
+
+        const results = []
+
+        for (const course of (courses.results || [])) {
+            // Get all scores for this course in this exam
+            const scoresResult = await c.env.DB.prepare(`
+                SELECT score 
+                FROM scores 
+                WHERE exam_id = ? AND course_id = ?
+                ORDER BY score DESC
+            `).bind(examId, course.course_id).all()
+
+            const scores = (scoresResult.results || []).map((s: any) => s.score)
+            const count = scores.length
+
+            if (count === 0) continue
+
+            // 1. Basic Stats
+            const sum = scores.reduce((a, b) => a + b, 0)
+            const avg = sum / count
+            const max = Math.max(...scores)
+            const min = Math.min(...scores)
+
+            // 2. Standard Deviation
+            const squareDiffs = scores.map(score => Math.pow(score - avg, 2))
+            const avgSquareDiff = squareDiffs.reduce((a, b) => a + b, 0) / count
+            const stdDev = Math.sqrt(avgSquareDiff)
+
+            // 3. Difficulty (P) = Avg / FullScore
+            // P > 0.7 (Easy), 0.4-0.7 (Medium), < 0.4 (Hard)
+            const fullScore = Number(course.full_score) || 100
+            const difficulty = avg / fullScore
+
+            // 4. Discrimination (D) = (High Group Avg - Low Group Avg) / FullScore
+            // Top 27% vs Bottom 27%
+            const groupSize = Math.floor(count * 0.27)
+            let discrimination = 0
+
+            if (groupSize > 0) {
+                const highGroup = scores.slice(0, groupSize)
+                const lowGroup = scores.slice(count - groupSize)
+
+                const highAvg = highGroup.reduce((a, b) => a + b, 0) / groupSize
+                const lowAvg = lowGroup.reduce((a, b) => a + b, 0) / groupSize
+
+                discrimination = (highAvg - lowAvg) / fullScore
+            }
+
+            results.push({
+                course_id: course.course_id,
+                course_name: course.name,
+                full_score: fullScore,
+                stats: {
+                    count,
+                    avg: Number(avg.toFixed(1)),
+                    max,
+                    min,
+                    std_dev: Number(stdDev.toFixed(1)),
+                    difficulty: Number(difficulty.toFixed(2)),
+                    discrimination: Number(discrimination.toFixed(2))
+                }
+            })
+        }
+
+        return c.json(results)
+    } catch (error) {
+        console.error('Exam quality analysis error:', error)
+        throw new AppError('Failed to analyze exam quality', 500)
+    }
+})
+
 export default analysis

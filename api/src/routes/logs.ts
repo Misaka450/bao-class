@@ -57,4 +57,17 @@ logs.get('/', async (c) => {
     }
 })
 
+logs.delete('/', async (c) => {
+    try {
+        await c.env.DB.prepare('DELETE FROM audit_logs').run()
+        return c.json({ success: true, message: 'Logs cleared successfully' })
+    } catch (error) {
+        console.error('Clear logs error:', error)
+        return c.json({
+            error: 'Failed to clear logs',
+            message: error instanceof Error ? error.message : 'Unknown error'
+        }, 500)
+    }
+})
+
 export default logs

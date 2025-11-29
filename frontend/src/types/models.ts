@@ -50,3 +50,38 @@ export interface Score {
     exam_name?: string;
     course_name?: string;
 }
+
+// 试卷质量分析模型
+export interface ExamQuality {
+    course_id: number;
+    course_name: string;
+    full_score: number;
+    stats: {
+        count: number;
+        avg: number;
+        max: number;
+        min: number;
+        std_dev: number;
+        difficulty: number;
+        discrimination: number;
+    };
+}
+
+// 学情预警模型
+export interface StudentAlert {
+    id: number;
+    name: string;
+    type: 'critical' | 'regressing' | 'fluctuating' | 'imbalanced';
+    score?: number;
+    subject?: string;
+    drop_amount?: number;
+    score_diff?: number;
+    failed_score?: number;
+}
+
+export interface FocusGroupResult {
+    critical: StudentAlert[];
+    regressing: StudentAlert[];
+    fluctuating: StudentAlert[];
+    imbalanced: StudentAlert[];
+}
