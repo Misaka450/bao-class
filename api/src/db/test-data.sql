@@ -1,5 +1,5 @@
 -- 插入测试用户（密码已通过注册接口创建，这里仅作参考）
--- admin / admin123
+-- admin / baobao123
 -- teacher / teacher123
 
 -- 插入测试班级

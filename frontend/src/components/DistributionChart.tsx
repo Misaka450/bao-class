@@ -12,7 +12,7 @@ const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
 export default function DistributionChart({ data, isCourseSelected }: DistributionChartProps) {
     return (
         <Card title={isCourseSelected ? "分数段分布" : "总分分布"} bodyStyle={{ height: 360 }}>
-            <div style={{ width: '100%', height: '100%', minHeight: 300 }}>
+            <div style={{ width: '100%', height: 320 }}>
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={data} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                         <XAxis dataKey="range" axisLine={false} tickLine={false} />

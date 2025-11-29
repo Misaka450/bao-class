@@ -10,7 +10,7 @@ DELETE FROM users;
 
 -- Insert Users (Teachers and Admin)
 INSERT INTO users (username, password, role, name) VALUES
-('admin', '$2a$10$rVq8KqLGz5UdJfNhO5.KFO7g7uZQWJhqC6E6Z9e7hPp4X1E2xYqNO', 'admin', '系统管理员'),
+('admin', 'da79d42a1454e4ee765101570f2622c0b55cf63bd59e24bc4f8a5227a04481a9', 'admin', '系统管理员'),
 ('teacher1', '$2a$10$rVq8KqLGz5UdJfNhO5.KFO7g7uZQWJhqC6E6Z9e7hPp4X1E2xYqNO', 'teacher', '张老师'),
 ('teacher2', '$2a$10$rVq8KqLGz5UdJfNhO5.KFO7g7uZQWJhqC6E6Z9e7hPp4X1E2xYqNO', 'teacher', '李老师');
 
