@@ -125,7 +125,60 @@ ai.post('/generate-comment', async (c) => {
             }
         }
 
-        // 4. Construct prompt with more detailed student data
+        // 4. Calculate Semester Rank Trend
+        // Get all exams for this student's class to calculate ranks
+        const classExams = await c.env.DB.prepare(`
+            SELECT id, name, exam_date 
+            FROM exams 
+            WHERE class_id = ? 
+            ORDER BY exam_date ASC
+        `).bind(student.class_id).all();
+
+        let rankTrendText = '暂无排名数据';
+        let startRank = null;
+        let endRank = null;
+
+        if (classExams.results && classExams.results.length >= 2) {
+            const exams = classExams.results as any[];
+            const firstExamId = exams[0].id;
+            const lastExamId = exams[exams.length - 1].id;
+
+            // Get rank for first exam
+            const firstExamRank = await c.env.DB.prepare(`
+                SELECT rank FROM (
+                    SELECT student_id, RANK() OVER (ORDER BY SUM(score) DESC) as rank
+                    FROM scores
+                    WHERE exam_id = ?
+                    GROUP BY student_id
+                ) WHERE student_id = ?
+            `).bind(firstExamId, student_id).first();
+
+            // Get rank for last exam
+            const lastExamRank = await c.env.DB.prepare(`
+                SELECT rank FROM (
+                    SELECT student_id, RANK() OVER (ORDER BY SUM(score) DESC) as rank
+                    FROM scores
+                    WHERE exam_id = ?
+                    GROUP BY student_id
+                ) WHERE student_id = ?
+            `).bind(lastExamId, student_id).first();
+
+            if (firstExamRank && lastExamRank) {
+                startRank = firstExamRank.rank;
+                endRank = lastExamRank.rank;
+                const rankDiff = (startRank as number) - (endRank as number);
+
+                if (rankDiff > 0) {
+                    rankTrendText = `本学期排名进步显著，从期初的第${startRank}名提升至期末的第${endRank}名，前进了${rankDiff}名。`;
+                } else if (rankDiff < 0) {
+                    rankTrendText = `本学期排名有所下滑，从期初的第${startRank}名滑落至期末的第${endRank}名。`;
+                } else {
+                    rankTrendText = `本学期排名保持稳定，始终保持在第${startRank}名左右。`;
+                }
+            }
+        }
+
+        // 5. Construct prompt with semester context
         // First, let's get more detailed exam history for the student
         const examHistory = await c.env.DB.prepare(`
             SELECT 
@@ -166,15 +219,20 @@ ai.post('/generate-comment', async (c) => {
             examHistoryText = '\n暂无考试记录';
         }
 
-        const prompt = `你是一位经验丰富的班主任，请根据以下学生数据为${student.name}同学撰写一段期末评语。
+        const genderText = student.gender === 'female' ? '她' : '他';
+
+        const prompt = `你是一位经验丰富的班主任，请根据以下学生数据为${student.name}同学撰写一段**学期总结评语**。
 
 角色设定：
 - 语气：温暖、真诚、充满鼓励，像一位关爱学生的长者。
 - 风格：专业但亲切，避免官僚腔调。
+- 视角：回顾整个学期的成长轨迹，而不仅仅是最近一次考试。
 
 数据分析：
 - 姓名：${student.name}
+- 性别：${student.gender === 'female' ? '女' : '男'}
 - 班级：${student.class_name}
+- 学期排名变化：${rankTrendText}
 - 最近考试平均分：${avgScore.toFixed(1)}分
 - 成绩趋势：${trend} (${trendDescription})
 - 优势科目：${strongSubjects}
@@ -182,20 +240,30 @@ ai.post('/generate-comment', async (c) => {
 
 详细考试记录：${examHistoryText}
 
-评语结构要求（总字数约150字）：
-1. 开场：亲切地称呼学生，简要总结本学期的整体表现。
-2. 分析：具体点评成绩趋势和优劣势科目，肯定进步，指出不足。
-3. 建议：针对薄弱环节提出1-2条具体的、可执行的学习建议。
-4. 结语：表达对未来的期望和鼓励。
+参考范例（Few-Shot）：
+范例1（进步学生）：
+"${student.name}同学本学期表现令人欣喜！从期初的沉稳到期末的爆发，${genderText}用实际行动证明了"天道酬勤"。${strongSubjects}一直是${genderText}的强项，保持得非常出色。虽然${weakSubjects}还有提升空间，但只要保持这股韧劲，下学期定能更上一层楼。老师期待看到一个更加自信的你！"
 
-注意：直接输出评语内容，不要包含"好的"、"这是评语"等任何无关文字。`
+范例2（退步学生）：
+"${student.name}同学本学期经历了一些起伏，老师看在眼里，急在心里。期初${genderText}的基础很扎实，但近期似乎有些松懈，导致排名有所下滑。${strongSubjects}依然有优势，说明${genderText}的学习能力没有问题。假期建议重点攻克${weakSubjects}，调整好状态。老师相信，只要找回初心，${genderText}一定能重回巅峰！"
 
-        // 5. Call AI
+评语结构要求（总字数约150-200字）：
+1. 开场：亲切称呼，概括**本学期整体表现**。
+2. 分析：重点点评**学期排名变化**和**成绩走势**，肯定努力或指出松懈。
+3. 建议：针对薄弱环节提出具体的假期或下学期学习建议。
+4. 结语：表达对下学期的具体期望和鼓励。
+
+注意：
+- 必须使用"${genderText}"作为第三人称代词。
+- 必须提及学期初到学期末的变化。
+- 直接输出评语内容，不要包含任何无关文字。`
+
+        // 6. Call AI
         try {
             console.log('Calling AI model with prompt:', prompt);
             const response = await c.env.AI.run('@cf/openai/gpt-oss-20b' as any, {
                 input: prompt,
-                max_tokens: 200,
+                max_tokens: 300,
                 temperature: 0.7
             }) as any
 
@@ -243,7 +311,8 @@ ai.post('/generate-comment', async (c) => {
                     avg_score: avgScore.toFixed(1),
                     trend,
                     strong_subjects: strongSubjects,
-                    weak_subjects: weakSubjects
+                    weak_subjects: weakSubjects,
+                    rank_trend: rankTrendText
                 }
             })
         } catch (aiError: any) {
