@@ -27,7 +27,7 @@ ai.post('/generate-comment', async (c) => {
         }
 
         // 2. Fetch recent exam scores
-        const scores = await c.env.DB.prepare(`
+        let query = `
             SELECT 
                 e.name as exam_name,
                 e.exam_date,
@@ -38,40 +38,99 @@ ai.post('/generate-comment', async (c) => {
             JOIN exams e ON s.exam_id = e.id
             JOIN courses c ON s.course_id = c.id
             JOIN exam_courses ec ON s.exam_id = ec.exam_id AND s.course_id = ec.course_id
-            WHERE s.student_id = ? 
-            ${exam_ids && exam_ids.length > 0 ? 'AND s.exam_id IN (' + exam_ids.map(() => '?').join(',') + ')' : ''}
-            ORDER BY e.exam_date DESC
-        `).bind(student_id, ...(exam_ids || [])).all()
+            WHERE s.student_id = ?`;
+        
+        const params: any[] = [student_id];
+        
+        if (exam_ids && exam_ids.length > 0) {
+            query += ` AND s.exam_id IN (${exam_ids.map(() => '?').join(',')})`;
+            params.push(...exam_ids);
+        }
+        
+        query += ` ORDER BY e.exam_date DESC`;
+        
+        const scores = await c.env.DB.prepare(query).bind(...params).all()
 
         // 3. Calculate statistics
         const allScores = (scores.results || []) as any[]
-        const avgScore = allScores.reduce((sum, s) => sum + s.score, 0) / allScores.length
+        const avgScore = allScores.length > 0 ? allScores.reduce((sum, s) => sum + s.score, 0) / allScores.length : 0
 
-        // Group by course to find strong/weak subjects
-        const courseStats: Record<string, { total: number, count: number }> = {}
-        allScores.forEach((s: any) => {
-            if (!courseStats[s.course_name]) {
-                courseStats[s.course_name] = { total: 0, count: 0 }
-            }
-            courseStats[s.course_name].total += s.score
-            courseStats[s.course_name].count++
-        })
+        let strongSubjects = '';
+        let weakSubjects = '';
+        
+        if (allScores.length > 0) {
+            // Group by course to find strong/weak subjects
+            const courseStats: Record<string, { total: number, count: number }> = {}
+            allScores.forEach((s: any) => {
+                if (!courseStats[s.course_name]) {
+                    courseStats[s.course_name] = { total: 0, count: 0 }
+                }
+                courseStats[s.course_name].total += s.score
+                courseStats[s.course_name].count++
+            })
 
-        const courseAvgs = Object.entries(courseStats).map(([name, stats]) => ({
-            name,
-            avg: stats.total / stats.count
-        })).sort((a, b) => b.avg - a.avg)
+            const courseAvgs = Object.entries(courseStats).map(([name, stats]) => ({
+                name,
+                avg: stats.total / stats.count
+            })).sort((a, b) => b.avg - a.avg)
 
-        const strongSubjects = courseAvgs.slice(0, 2).map(c => c.name).join('、')
-        const weakSubjects = courseAvgs.slice(-2).map(c => c.name).join('、')
+            strongSubjects = courseAvgs.slice(0, 2).map(c => c.name).join('、')
+            weakSubjects = courseAvgs.slice(-2).map(c => c.name).join('、')
+        }
 
         // Determine trend (simple: compare first half vs second half)
-        const mid = Math.floor(allScores.length / 2)
-        const recentAvg = allScores.slice(0, mid).reduce((sum, s) => sum + s.score, 0) / mid
-        const olderAvg = allScores.slice(mid).reduce((sum, s) => sum + s.score, 0) / (allScores.length - mid)
-        const trend = recentAvg > olderAvg + 5 ? '进步' : recentAvg < olderAvg - 5 ? '退步' : '稳定'
+        let trend = '稳定';
+        if (allScores.length >= 4) {  // Need at least 4 scores to determine trend
+            const mid = Math.floor(allScores.length / 2);
+            const recentScores = allScores.slice(0, mid);  // More recent exams
+            const olderScores = allScores.slice(mid);     // Older exams
+            
+            const recentAvg = recentScores.reduce((sum, s) => sum + s.score, 0) / recentScores.length;
+            const olderAvg = olderScores.reduce((sum, s) => sum + s.score, 0) / olderScores.length;
+            trend = recentAvg > olderAvg + 5 ? '进步' : recentAvg < olderAvg - 5 ? '退步' : '稳定';
+        }
 
-        // 4. Construct prompt
+        // 4. Construct prompt with more detailed student data
+        // First, let's get more detailed exam history for the student
+        const examHistory = await c.env.DB.prepare(`
+            SELECT 
+                e.id as exam_id,
+                e.name as exam_name,
+                e.exam_date,
+                c.name as subject_name,
+                s.score,
+                ec.full_score
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            JOIN courses c ON s.course_id = c.id
+            JOIN exam_courses ec ON s.exam_id = ec.exam_id AND s.course_id = ec.course_id
+            WHERE s.student_id = ?
+            ORDER BY e.exam_date ASC, c.name ASC
+        `).bind(student_id).all();
+        
+        // Format the exam history for the prompt
+        let examHistoryText = '';
+        if (examHistory.results && examHistory.results.length > 0) {
+            // Group by exam
+            const exams: {[key: string]: any[]} = {};
+            examHistory.results.forEach((row: any) => {
+                if (!exams[row.exam_name]) {
+                    exams[row.exam_name] = [];
+                }
+                exams[row.exam_name].push(row);
+            });
+            
+            // Format each exam
+            for (const [examName, subjects] of Object.entries(exams)) {
+                examHistoryText += `\n${examName} (${subjects[0].exam_date}):`;
+                subjects.forEach((subject: any) => {
+                    examHistoryText += ` ${subject.subject_name} ${subject.score}/${subject.full_score}分;`;
+                });
+            }
+        } else {
+            examHistoryText = '\n暂无考试记录';
+        }
+        
         const prompt = `你是一位资深教师，请根据以下学生数据生成一段100字左右的期末评语。
 要求：客观、具体、有建设性，语言温和鼓励。
 
@@ -83,31 +142,79 @@ ai.post('/generate-comment', async (c) => {
 - 优势科目：${strongSubjects}
 - 薄弱科目：${weakSubjects}
 
+详细考试记录：${examHistoryText}
+
 请生成评语（只返回评语内容，不要包含其他说明）：`
 
         // 5. Call AI
-        const response = await c.env.AI.run('@cf/qwen/qwen1.5-14b-chat-awq', {
-            messages: [
-                { role: 'system', content: '你是一位经验丰富的小学教师，擅长撰写学生评语。' },
-                { role: 'user', content: prompt }
-            ],
-            max_tokens: 200,
-            temperature: 0.7
-        }) as any
+        try {
+            console.log('Calling AI model with prompt:', prompt);
+            const response = await c.env.AI.run('@cf/openai/gpt-oss-120b' as any, {
+                input: prompt,
+                max_tokens: 200,
+                temperature: 0.7
+            }) as any
+            
+            console.log('AI response:', JSON.stringify(response, null, 2));
 
-        const comment = response.response || response.result?.response || '评语生成失败'
-
-        return c.json({
-            success: true,
-            comment: comment.trim(),
-            metadata: {
-                student_name: student.name,
-                avg_score: avgScore.toFixed(1),
-                trend,
-                strong_subjects: strongSubjects,
-                weak_subjects: weakSubjects
+            // Handle the complex response format from @cf/openai/gpt-oss-120b
+            let comment = '评语生成失败';
+            
+            // Check if response has output array with messages
+            if (response.output && Array.isArray(response.output)) {
+                // Look for the message with type 'message' and role 'assistant'
+                const messageOutput = response.output.find((item: any) => 
+                    item.type === 'message' && item.role === 'assistant' && item.content);
+                
+                if (messageOutput && Array.isArray(messageOutput.content)) {
+                    // Look for the output_text content
+                    const textContent = messageOutput.content.find((content: any) => 
+                        content.type === 'output_text' && content.text);
+                    
+                    if (textContent && textContent.text) {
+                        comment = textContent.text;
+                    }
+                }
             }
-        })
+            
+            // Fallback to simpler formats
+            if (comment === '评语生成失败') {
+                comment = response.response || 
+                          response.result?.response || 
+                          response.result || 
+                          (typeof response === 'string' ? response : '评语生成失败') || 
+                          '评语生成失败';
+            }
+            
+            // Ensure comment is a string
+            if (typeof comment !== 'string') {
+                comment = '评语生成失败';
+            }
+            
+            return c.json({
+                success: true,
+                comment: comment.trim(),
+                metadata: {
+                    student_name: student.name,
+                    avg_score: avgScore.toFixed(1),
+                    trend,
+                    strong_subjects: strongSubjects,
+                    weak_subjects: weakSubjects
+                }
+            })
+        } catch (aiError: any) {
+            console.error('AI generation error:', aiError);
+            console.error('AI error details:', {
+                name: aiError.name,
+                message: aiError.message,
+                stack: aiError.stack,
+                cause: aiError.cause
+            });
+            
+            // Return a more detailed error message
+            const errorMessage = `AI调用失败: ${aiError.message || aiError.toString()}`;
+            throw new AppError(errorMessage, 500);
+        }
     } catch (error) {
         console.error('Generate comment error:', error)
         throw new AppError('Failed to generate comment', 500)
