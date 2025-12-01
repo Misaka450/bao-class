@@ -101,9 +101,74 @@ gradeComparison.get('/:classId', async (c) => {
         // Find current class rank
         const currentClassData = classesData.find(c => c.class_id.toString() === classId)
 
-        // Get previous exam rank change (optional enhancement)
+        // Get previous exam rank change
         let rankChange = 0
-        // TODO: Implement rank change calculation by comparing with previous exam
+
+        // Find the previous exam (same grade, before current exam date)
+        const previousExam = await c.env.DB.prepare(`
+            SELECT e.id, e.name, e.exam_date
+            FROM exams e
+            WHERE e.class_id IN (
+                SELECT id FROM classes WHERE grade = ?
+            )
+            AND e.exam_date < ?
+            ORDER BY e.exam_date DESC
+            LIMIT 1
+        `).bind(classInfo.grade, examInfo.exam_date).first<{ id: number, name: string, exam_date: string }>()
+
+        if (previousExam) {
+            // Calculate ranks for the previous exam using the same logic
+            const previousClassesData: Array<{
+                class_id: number,
+                average_score: number,
+                rank?: number
+            }> = []
+
+            for (const cls of gradeClasses.results) {
+                // Find the previous exam for this class
+                const classPrevExam = await c.env.DB.prepare(
+                    'SELECT id FROM exams WHERE class_id = ? AND name = ? AND exam_date = ?'
+                ).bind(cls.id, previousExam.name, previousExam.exam_date).first<{ id: number }>()
+
+                if (!classPrevExam) continue
+
+                // Calculate average total score for previous exam
+                const prevAvgQuery = `
+                    SELECT AVG(student_totals.total_score) as average_score
+                    FROM students st
+                    LEFT JOIN (
+                        SELECT student_id, SUM(score) as total_score
+                        FROM scores
+                        WHERE exam_id = ?
+                        GROUP BY student_id
+                    ) student_totals ON st.id = student_totals.student_id
+                    WHERE st.class_id = ?
+                `
+
+                const prevAvgResult = await c.env.DB.prepare(prevAvgQuery).bind(classPrevExam.id, cls.id).first<{
+                    average_score: number
+                }>()
+
+                previousClassesData.push({
+                    class_id: cls.id,
+                    average_score: prevAvgResult?.average_score ? parseFloat(Number(prevAvgResult.average_score).toFixed(2)) : 0
+                })
+            }
+
+            // Sort and assign ranks for previous exam
+            previousClassesData.sort((a, b) => b.average_score - a.average_score)
+            previousClassesData.forEach((cls, index) => {
+                cls.rank = index + 1
+            })
+
+            // Find previous rank for current class
+            const previousClassData = previousClassesData.find(c => c.class_id.toString() === classId)
+            const previousRank = previousClassData?.rank || 0
+            const currentRank = currentClassData?.rank || 0
+
+            // Calculate rank change (positive = improved, negative = declined)
+            rankChange = previousRank - currentRank
+        }
 
         return c.json({
             exam_info: {

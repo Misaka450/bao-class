@@ -1,5 +1,6 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
+import { rateLimiter } from '../middleware/rate-limiter'
 import { AppError } from '../utils/AppError'
 
 type Bindings = {
@@ -11,6 +12,9 @@ const ai = new Hono<{ Bindings: Bindings }>()
 
 // Apply auth middleware
 ai.use('*', authMiddleware)
+
+// Apply strict rate limiting to AI endpoint (3 requests per minute per user)
+ai.use('/generate-comment', rateLimiter(60 * 1000, 3))
 
 // Generate student comment
 ai.post('/generate-comment', async (c) => {

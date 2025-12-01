@@ -330,12 +330,17 @@ stats.get('/scores-list', async (c) => {
                 sc.score,
                 e.id as exam_id,
                 e.name as exam_name,
-                (SELECT SUM(score) FROM scores WHERE exam_id = e.id AND student_id = s.id) as exam_total
+                totals.exam_total
             FROM students s
             LEFT JOIN classes c ON s.class_id = c.id
             LEFT JOIN scores sc ON s.id = sc.student_id
             LEFT JOIN exams e ON sc.exam_id = e.id
             LEFT JOIN courses co ON sc.course_id = co.id
+            LEFT JOIN (
+                SELECT student_id, exam_id, SUM(score) as exam_total
+                FROM scores
+                GROUP BY student_id, exam_id
+            ) totals ON s.id = totals.student_id AND e.id = totals.exam_id
             WHERE 1=1
         `
 
