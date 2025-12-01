@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ConfigProvider } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
+import { lightTheme } from './theme';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -37,7 +38,7 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <ConfigProvider locale={zhCN}>
+      <ConfigProvider locale={zhCN} theme={lightTheme}>
         {token ? (
           <Layout>
             <Routes>
