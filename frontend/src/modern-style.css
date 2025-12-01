@@ -41,14 +41,23 @@ body {
     justify-content: space-between;
 }
 
-.text-primary { color: var(--text-primary); }
-.text-secondary { color: var(--text-secondary); }
-.font-poppins { font-family: 'Poppins', sans-serif; }
+.text-primary {
+    color: var(--text-primary);
+}
+
+.text-secondary {
+    color: var(--text-secondary);
+}
+
+.font-poppins {
+    font-family: 'Poppins', sans-serif;
+}
 
 /* Sidebar Styles */
 .modern-sidebar {
     background: var(--glass-bg) !important;
-    backdrop-filter: blur(10px); /* Reduced blur for performance */
+    backdrop-filter: blur(10px);
+    /* Reduced blur for performance */
     -webkit-backdrop-filter: blur(10px);
     box-shadow: 4px 0 24px 0 rgba(0, 0, 0, 0.04);
     z-index: 100;
@@ -127,13 +136,13 @@ body {
 
 /* Card Styles */
 .ant-card {
-    border: 1px solid rgba(255, 255, 255, 0.6) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
     margin-bottom: 24px;
-    border-radius: 16px !important; /* Slightly reduced radius */
+    border-radius: 16px !important;
+    /* Slightly reduced radius */
     box-shadow: var(--shadow-sm) !important;
     transition: all 0.3s ease;
-    background: rgba(255, 255, 255, 0.8) !important;
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 1) !important;
 }
 
 .ant-card:hover {
@@ -196,7 +205,12 @@ body {
 }
 
 /* Typography */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     color: var(--text-primary);
     font-family: 'Poppins', sans-serif;
 }
