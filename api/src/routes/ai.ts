@@ -78,16 +78,51 @@ ai.post('/generate-comment', async (c) => {
             weakSubjects = courseAvgs.slice(-2).map(c => c.name).join('、')
         }
 
-        // Determine trend (simple: compare first half vs second half)
+        // Enhanced trend analysis with more comprehensive progress/decline detection
         let trend = '稳定';
-        if (allScores.length >= 4) {  // Need at least 4 scores to determine trend
-            const mid = Math.floor(allScores.length / 2);
-            const recentScores = allScores.slice(0, mid);  // More recent exams
-            const olderScores = allScores.slice(mid);     // Older exams
+        let trendDescription = '成绩保持稳定';
+        
+        if (allScores.length >= 3) {
+            // Sort scores by date to analyze chronological progression
+            const sortedScores = [...allScores].sort((a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime());
             
-            const recentAvg = recentScores.reduce((sum, s) => sum + s.score, 0) / recentScores.length;
-            const olderAvg = olderScores.reduce((sum, s) => sum + s.score, 0) / olderScores.length;
-            trend = recentAvg > olderAvg + 5 ? '进步' : recentAvg < olderAvg - 5 ? '退步' : '稳定';
+            // Calculate overall trend using linear regression slope
+            const n = sortedScores.length;
+            let sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
+            
+            sortedScores.forEach((score, index) => {
+                const x = index + 1;
+                const y = score.score;
+                sum_x += x;
+                sum_y += y;
+                sum_xy += x * y;
+                sum_xx += x * x;
+            });
+            
+            const slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
+            
+            // Also calculate recent vs oldest performance
+            const oldestScore = sortedScores[0].score;
+            const newestScore = sortedScores[sortedScores.length - 1].score;
+            const scoreChange = newestScore - oldestScore;
+            
+            // Determine trend based on both slope and score change
+            if (slope > 2 || scoreChange > 10) {
+                trend = '显著进步';
+                trendDescription = `整体呈上升趋势，最近成绩比初期提高了${scoreChange.toFixed(1)}分`;
+            } else if (slope > 0.5 || scoreChange > 5) {
+                trend = '进步';
+                trendDescription = `稳步提升中，最近成绩比初期提高了${scoreChange.toFixed(1)}分`;
+            } else if (slope < -2 || scoreChange < -10) {
+                trend = '显著退步';
+                trendDescription = `整体呈下降趋势，最近成绩比初期下降了${Math.abs(scoreChange).toFixed(1)}分`;
+            } else if (slope < -0.5 || scoreChange < -5) {
+                trend = '退步';
+                trendDescription = `有所下滑，最近成绩比初期下降了${Math.abs(scoreChange).toFixed(1)}分`;
+            } else {
+                trend = '稳定';
+                trendDescription = `成绩保持稳定，波动范围在${Math.abs(scoreChange).toFixed(1)}分以内`;
+            }
         }
 
         // 4. Construct prompt with more detailed student data
@@ -131,25 +166,24 @@ ai.post('/generate-comment', async (c) => {
             examHistoryText = '\n暂无考试记录';
         }
         
-        const prompt = `你是一位资深教师，请根据以下学生数据生成一段100字左右的期末评语。
-要求：客观、具体、有建设性，语言温和鼓励。
+        const prompt = `你是一位资深教师，请根据以下学生数据生成一段100字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。
 
 学生信息：
 - 姓名：${student.name}
 - 班级：${student.class_name}
 - 最近考试平均分：${avgScore.toFixed(1)}分
-- 成绩趋势：${trend}
+- 成绩趋势：${trend} (${trendDescription})
 - 优势科目：${strongSubjects}
 - 薄弱科目：${weakSubjects}
 
 详细考试记录：${examHistoryText}
 
-请生成评语（只返回评语内容，不要包含其他说明）：`
+期末评语：`
 
         // 5. Call AI
         try {
             console.log('Calling AI model with prompt:', prompt);
-            const response = await c.env.AI.run('@cf/openai/gpt-oss-120b' as any, {
+            const response = await c.env.AI.run('@cf/openai/gpt-oss-20b' as any, {
                 input: prompt,
                 max_tokens: 200,
                 temperature: 0.7
@@ -157,7 +191,7 @@ ai.post('/generate-comment', async (c) => {
             
             console.log('AI response:', JSON.stringify(response, null, 2));
 
-            // Handle the complex response format from @cf/openai/gpt-oss-120b
+            // Handle the complex response format from @cf/openai/gpt-oss-20b
             let comment = '评语生成失败';
             
             // Check if response has output array with messages
