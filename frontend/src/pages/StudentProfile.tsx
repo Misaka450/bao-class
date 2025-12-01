@@ -216,39 +216,9 @@ export default function StudentProfile() {
                             </div>
                         )}
                     </Card>
-
-                    <Card
-                        title={<span><RobotOutlined style={{ color: '#1890ff', marginRight: 8 }} />AI 智能评语</span>}
-                        bordered={false}
-                        style={{ marginTop: 24 }}
-                        extra={
-                            <Button
-                                type="primary"
-                                size="small"
-                                icon={aiComment ? <ReloadOutlined /> : <RobotOutlined />}
-                                onClick={handleGenerateComment}
-                                loading={generatingComment}
-                            >
-                                {aiComment ? '重新生成' : '一键生成'}
-                            </Button>
-                        }
-                    >
-                        {aiComment ? (
-                            <div style={{ background: '#f6ffed', padding: 16, borderRadius: 8, border: '1px solid #b7eb8f' }}>
-                                <Paragraph style={{ marginBottom: 0, fontSize: 15, lineHeight: 1.8 }}>
-                                    {aiComment}
-                                </Paragraph>
-                            </div>
-                        ) : (
-                            <Empty
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                description="点击上方按钮生成个性化评语"
-                            />
-                        )}
-                    </Card>
                 </Col>
 
-                {/* Charts */}
+                {/* Charts and AI Comment */}
                 <Col xs={24} md={16}>
                     <Row gutter={[24, 24]}>
                         <Col span={24}>
@@ -285,10 +255,42 @@ export default function StudentProfile() {
                                 </div>
                             </Card>
                         </Col>
+                        <Col span={24}>
+                            <Card
+                                title={<span><RobotOutlined style={{ color: '#1890ff', marginRight: 8 }} />AI 智能评语</span>}
+                                bordered={false}
+                                extra={
+                                    <Button
+                                        type="primary"
+                                        size="small"
+                                        icon={aiComment ? <ReloadOutlined /> : <RobotOutlined />}
+                                        onClick={handleGenerateComment}
+                                        loading={generatingComment}
+                                    >
+                                        {aiComment ? '重新生成' : '一键生成'}
+                                    </Button>
+                                }
+                            >
+                                {aiComment ? (
+                                    <div style={{ background: '#f6ffed', padding: 16, borderRadius: 8, border: '1px solid #b7eb8f' }}>
+                                        <Paragraph style={{ marginBottom: 0, fontSize: 15, lineHeight: 1.8 }}>
+                                            {aiComment}
+                                        </Paragraph>
+                                    </div>
+                                ) : (
+                                    <Empty
+                                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                        description="点击上方按钮生成个性化评语"
+                                    />
+                                )}
+                            </Card>
+                        </Col>
                     </Row>
                 </Col>
+            </Row>
 
-                {/* History Table */}
+            {/* History Table */}
+            <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
                 <Col span={24}>
                     <Card title="历史考试记录" bordered={false}>
                         <Table
