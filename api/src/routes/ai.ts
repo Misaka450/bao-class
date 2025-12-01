@@ -256,6 +256,7 @@ ai.post('/generate-comment', async (c) => {
 注意：
 - 必须使用"${genderText}"作为第三人称代词。
 - 必须提及学期初到学期末的变化。
+- **绝对禁止**使用Markdown格式（如**加粗**），只输出纯文本。
 - 直接输出评语内容，不要包含任何无关文字。`
 
         // 6. Call AI
@@ -303,9 +304,12 @@ ai.post('/generate-comment', async (c) => {
                 comment = '评语生成失败';
             }
 
+            // Post-processing: Remove Markdown formatting (asterisks)
+            comment = comment.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+
             return c.json({
                 success: true,
-                comment: comment.trim(),
+                comment: comment,
                 metadata: {
                     student_name: student.name,
                     avg_score: avgScore.toFixed(1),
