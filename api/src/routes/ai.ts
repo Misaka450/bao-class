@@ -221,7 +221,95 @@ ai.post('/generate-comment', async (c) => {
 
         const genderText = student.gender === 'female' ? '她' : '他';
 
-        const prompt = `你是一位经验丰富的班主任，请根据以下学生数据为${student.name}同学撰写一段**学期总结评语**。
+        // Count number of unique exams for this student
+        const examCount = examHistory.results && examHistory.results.length > 0
+            ? Object.keys(examHistory.results.reduce((acc: any, row: any) => {
+                acc[row.exam_id] = true;
+                return acc;
+            }, {})).length
+            : 0;
+
+        let prompt = '';
+
+        // Different prompts based on exam count
+        if (examCount === 1) {
+            // Single exam: focus on current performance only, NO comparison
+            prompt = `你是一位经验丰富的班主任，请根据以下学生数据为${student.name}同学撰写一段阶段性评语。
+
+角色设定：
+- 语气：温暖、真诚、充满鼓励，像一位关爱学生的长者。
+- 风格：专业但亲切，避免官僚腔调。
+- 视角：评价当前的学习表现和状态，给予具体建议。
+
+数据分析：
+- 姓名：${student.name}
+- 性别：${student.gender === 'female' ? '女' : '男'}
+- 班级：${student.class_name}
+- 本次考试平均分：${avgScore.toFixed(1)}分
+- 优势科目：${strongSubjects}
+- 薄弱科目：${weakSubjects}
+
+详细考试记录：${examHistoryText}
+
+参考范例：
+范例1（成绩优秀）：
+${student.name}同学在本次考试中表现出色！${strongSubjects}掌握得很扎实，展现了良好的学习能力。${weakSubjects}虽然还有提升空间，但只要继续保持认真的学习态度，相信下次一定会有进步。老师期待看到${genderText}继续努力，全面发展！
+
+范例2（成绩一般）：
+${student.name}同学在本次考试中的表现基本符合预期。${strongSubjects}是${genderText}的优势所在，要继续保持。${weakSubjects}需要加强练习，建议课后多做习题，巩固基础知识。老师相信，只要${genderText}肯下功夫，成绩一定会有明显提升！
+
+评语结构要求（总字数约120-150字）：
+1. 开场：亲切称呼，概括本次考试的整体表现。
+2. 分析：点评优势科目和薄弱科目的具体情况。
+3. 建议：针对薄弱环节提出具体的学习建议。
+4. 结语：表达对未来的期望和鼓励。
+
+注意：
+- 必须使用${genderText}作为第三人称代词。
+- 严格禁止提及进步、退步、期初、学期变化等对比性描述，因为只有一次考试数据。
+- 绝对禁止使用Markdown格式（如加粗），只输出纯文本。
+- 直接输出评语内容，不要包含任何无关文字。`;
+        } else if (examCount === 2) {
+            // Two exams: simple comparison
+            prompt = `你是一位经验丰富的班主任，请根据以下学生数据为${student.name}同学撰写一段阶段性评语。
+
+角色设定：
+- 语气：温暖、真诚、充满鼓励，像一位关爱学生的长者。
+- 风格：专业但亲切，避免官僚腔调。
+- 视角：对比两次考试的表现变化。
+
+数据分析：
+- 姓名：${student.name}
+- 性别：${student.gender === 'female' ? '女' : '男'}
+- 班级：${student.class_name}
+- 最近考试平均分：${avgScore.toFixed(1)}分
+- 成绩趋势：${trend} (${trendDescription})
+- 优势科目：${strongSubjects}
+- 薄弱科目：${weakSubjects}
+
+详细考试记录：${examHistoryText}
+
+参考范例：
+范例1（有进步）：
+${student.name}同学这段时间的学习状态不错！对比两次考试，${genderText}的成绩有明显提升，${strongSubjects}发挥稳定。${weakSubjects}虽然还需加强，但只要保持这股学习劲头，相信会越来越好。继续加油！
+
+范例2（有退步）：
+${student.name}同学这段时间的学习需要调整一下状态。对比两次考试，成绩有所波动。${strongSubjects}依然是优势，但${weakSubjects}需要重点关注。建议课后多复习，找到适合自己的学习方法。老师相信${genderText}能够迎头赶上！
+
+评语结构要求（总字数约120-150字）：
+1. 开场：亲切称呼，简要对比两次考试。
+2. 分析：点评成绩变化和科目表现。
+3. 建议：提出具体的学习建议。
+4. 结语：表达鼓励和期望。
+
+注意：
+- 必须使用${genderText}作为第三人称代词。
+- 只提及两次考试的对比，不要过度解读趋势。
+- 绝对禁止使用Markdown格式（如加粗），只输出纯文本。
+- 直接输出评语内容，不要包含任何无关文字。`;
+        } else {
+            // Three or more exams: full semester summary
+            prompt = `你是一位经验丰富的班主任，请根据以下学生数据为${student.name}同学撰写一段学期总结评语。
 
 角色设定：
 - 语气：温暖、真诚、充满鼓励，像一位关爱学生的长者。
@@ -240,28 +328,30 @@ ai.post('/generate-comment', async (c) => {
 
 详细考试记录：${examHistoryText}
 
-参考范例（Few-Shot）：
+参考范例：
 范例1（进步学生）：
-"${student.name}同学本学期表现令人欣喜！从期初的沉稳到期末的爆发，${genderText}用实际行动证明了"天道酬勤"。${strongSubjects}一直是${genderText}的强项，保持得非常出色。虽然${weakSubjects}还有提升空间，但只要保持这股韧劲，下学期定能更上一层楼。老师期待看到一个更加自信的你！"
+${student.name}同学本学期表现令人欣喜！从期初的沉稳到期末的爆发，${genderText}用实际行动证明了天道酬勤。${strongSubjects}一直是${genderText}的强项，保持得非常出色。虽然${weakSubjects}还有提升空间，但只要保持这股韧劲，下学期定能更上一层楼。老师期待看到一个更加自信的你！
 
 范例2（退步学生）：
-"${student.name}同学本学期经历了一些起伏，老师看在眼里，急在心里。期初${genderText}的基础很扎实，但近期似乎有些松懈，导致排名有所下滑。${strongSubjects}依然有优势，说明${genderText}的学习能力没有问题。假期建议重点攻克${weakSubjects}，调整好状态。老师相信，只要找回初心，${genderText}一定能重回巅峰！"
+${student.name}同学本学期经历了一些起伏，老师看在眼里，急在心里。期初${genderText}的基础很扎实，但近期似乎有些松懈，导致排名有所下滑。${strongSubjects}依然有优势，说明${genderText}的学习能力没有问题。假期建议重点攻克${weakSubjects}，调整好状态。老师相信，只要找回初心，${genderText}一定能重回巅峰！
 
 评语结构要求（总字数约150-200字）：
-1. 开场：亲切称呼，概括**本学期整体表现**。
-2. 分析：重点点评**学期排名变化**和**成绩走势**，肯定努力或指出松懈。
+1. 开场：亲切称呼，概括本学期整体表现。
+2. 分析：重点点评学期排名变化和成绩走势，肯定努力或指出松懈。
 3. 建议：针对薄弱环节提出具体的假期或下学期学习建议。
 4. 结语：表达对下学期的具体期望和鼓励。
 
 注意：
-- 必须使用"${genderText}"作为第三人称代词。
+- 必须使用${genderText}作为第三人称代词。
 - 必须提及学期初到学期末的变化。
-- **绝对禁止**使用Markdown格式（如**加粗**），只输出纯文本。
-- 直接输出评语内容，不要包含任何无关文字。`
+- 绝对禁止使用Markdown格式（如加粗），只输出纯文本。
+- 直接输出评语内容，不要包含任何无关文字。`;
+        }
 
         // 6. Call AI
         try {
             console.log('Calling AI model with prompt:', prompt);
+            console.log('Exam count:', examCount);
             const response = await c.env.AI.run('@cf/openai/gpt-oss-20b' as any, {
                 input: prompt,
                 max_tokens: 300,
@@ -316,7 +406,8 @@ ai.post('/generate-comment', async (c) => {
                     trend,
                     strong_subjects: strongSubjects,
                     weak_subjects: weakSubjects,
-                    rank_trend: rankTrendText
+                    rank_trend: rankTrendText,
+                    exam_count: examCount
                 }
             })
         } catch (aiError: any) {
