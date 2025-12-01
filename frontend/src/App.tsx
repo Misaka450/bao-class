@@ -1,23 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, Spin } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { lightTheme } from './theme';
 import Layout from './components/Layout';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Classes from './pages/Classes';
-import Students from './pages/Students';
-import Courses from './pages/Courses';
-import Exams from './pages/Exams';
-import ScoresList from './pages/ScoresList';
-import Import from './pages/Import';
-import StudentProfile from './pages/StudentProfile';
-import ClassAnalysis from './pages/ClassAnalysis';
-import ManagementAlerts from './pages/ManagementAlerts';
-import AuditLogs from './pages/AuditLogs';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuthStore } from './store/authStore';
+
+// Optimize: lazy load all page components to reduce initial bundle size
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Classes = lazy(() => import('./pages/Classes'));
+const Students = lazy(() => import('./pages/Students'));
+const Courses = lazy(() => import('./pages/Courses'));
+const Exams = lazy(() => import('./pages/Exams'));
+const ScoresList = lazy(() => import('./pages/ScoresList'));
+const Import = lazy(() => import('./pages/Import'));
+const StudentProfile = lazy(() => import('./pages/StudentProfile'));
+const ClassAnalysis = lazy(() => import('./pages/ClassAnalysis'));
+const ManagementAlerts = lazy(() => import('./pages/ManagementAlerts'));
+const AuditLogs = lazy(() => import('./pages/AuditLogs'));
 
 function App() {
   const { token } = useAuthStore();
@@ -39,27 +41,29 @@ function App() {
   return (
     <ErrorBoundary>
       <ConfigProvider locale={zhCN} theme={lightTheme}>
-        {token ? (
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/classes" element={<Classes />} />
-              <Route path="/students" element={<Students />} />
-              <Route path="/courses" element={<Courses />} />
-              <Route path="/exams" element={<Exams />} />
-              <Route path="/scores-list" element={<ScoresList />} />
-              <Route path="/import" element={<Import />} />
-              <Route path="/student-profile/:id" element={<StudentProfile />} />
-              <Route path="/analysis/class" element={<ClassAnalysis />} />
-              <Route path="/analysis/alerts" element={<ManagementAlerts />} />
-              <Route path="/management-alerts" element={<ManagementAlerts />} />
-              <Route path="/audit-logs" element={<AuditLogs />} />
-            </Routes>
-          </Layout>
-        ) : (
-          <Login />
-        )}
+        <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><Spin size="large" /></div>}>
+          {token ? (
+            <Layout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/classes" element={<Classes />} />
+                <Route path="/students" element={<Students />} />
+                <Route path="/courses" element={<Courses />} />
+                <Route path="/exams" element={<Exams />} />
+                <Route path="/scores-list" element={<ScoresList />} />
+                <Route path="/import" element={<Import />} />
+                <Route path="/student-profile/:id" element={<StudentProfile />} />
+                <Route path="/analysis/class" element={<ClassAnalysis />} />
+                <Route path="/analysis/alerts" element={<ManagementAlerts />} />
+                <Route path="/management-alerts" element={<ManagementAlerts />} />
+                <Route path="/audit-logs" element={<AuditLogs />} />
+              </Routes>
+            </Layout>
+          ) : (
+            <Login />
+          )}
+        </Suspense>
       </ConfigProvider>
     </ErrorBoundary>
   );
