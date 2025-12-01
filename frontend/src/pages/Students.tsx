@@ -15,7 +15,16 @@ export default function Students() {
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [form] = Form.useForm();
     const [searchText, setSearchText] = useState('');
+    const [debouncedSearchText, setDebouncedSearchText] = useState('');
     const [filterClassId, setFilterClassId] = useState<string>('');
+
+    // Optimize: debounce search text (native implementation)
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearchText(searchText);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchText]);
 
     useEffect(() => {
         fetchStudents();
@@ -141,37 +150,17 @@ export default function Students() {
                             删除
                         </Button>
                     </Popconfirm>
-                </Space>
-            ),
-        },
-    ], [renderClassName, navigate]);
-
-    // Optimize: memoize filtered students
-    const filteredStudents = useMemo(() =>
-        students.filter(student => {
-            const matchesSearch = searchText === '' ||
-                student.name.toLowerCase().includes(searchText.toLowerCase()) ||
-                student.student_id.toLowerCase().includes(searchText.toLowerCase());
-            const matchesClass = filterClassId === '' || student.class_id.toString() === filterClassId;
-            return matchesSearch && matchesClass;
-        }),
-        [students, searchText, filterClassId]
-    );
-
-    return (
-        <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
                     <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>学生管理</h2>
                     <p style={{ margin: '4px 0 0 0', color: '#666' }}>管理所有在校学生信息</p>
                 </div>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
                     添加学生
                 </Button>
-            </div>
+            </div >
 
-            {/* Search and Filter Section */}
-            <Row gutter={16} style={{ marginBottom: 16 }}>
+        {/* Search and Filter Section */ }
+        < Row gutter = { 16} style = {{ marginBottom: 16 }
+}>
                 <Col span={8}>
                     <Input
                         placeholder="搜索姓名或学号"
@@ -194,7 +183,7 @@ export default function Students() {
                         ))}
                     </Select>
                 </Col>
-            </Row>
+            </Row >
 
             <Table
                 columns={columns}
@@ -248,6 +237,6 @@ export default function Students() {
                     </Form.Item>
                 </Form>
             </Modal>
-        </div>
+        </div >
     );
 }
