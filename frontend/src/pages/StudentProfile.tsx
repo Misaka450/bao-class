@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Button, Progress } from 'antd';
-import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Button, Progress, Empty } from 'antd';
+import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import { useAuthStore } from '../store/authStore';
+import api from '../services/api';
 import { API_BASE_URL } from '../config';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 interface StudentProfileData {
     student: {
@@ -63,6 +64,8 @@ export default function StudentProfile() {
     const navigate = useNavigate();
     const [data, setData] = useState<StudentProfileData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [aiComment, setAiComment] = useState<string>('');
+    const [generatingComment, setGeneratingComment] = useState(false);
     const token = useAuthStore((state) => state.token);
 
     useEffect(() => {
@@ -84,6 +87,26 @@ export default function StudentProfile() {
             message.error('获取学生档案失败');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleGenerateComment = async () => {
+        if (!data?.student?.id) return;
+
+        setGeneratingComment(true);
+        try {
+            const res = await api.ai.generateComment({
+                student_id: data.student.id
+            });
+            if (res.success) {
+                setAiComment(res.comment);
+                message.success('评语生成成功');
+            }
+        } catch (error) {
+            console.error('Generate comment error:', error);
+            message.error('评语生成失败，请稍后重试');
+        } finally {
+            setGeneratingComment(false);
         }
     };
 
@@ -191,6 +214,36 @@ export default function StudentProfile() {
                                     ))}
                                 </div>
                             </div>
+                        )}
+                    </Card>
+
+                    <Card
+                        title={<span><RobotOutlined style={{ color: '#1890ff', marginRight: 8 }} />AI 智能评语</span>}
+                        bordered={false}
+                        style={{ marginTop: 24 }}
+                        extra={
+                            <Button
+                                type="primary"
+                                size="small"
+                                icon={aiComment ? <ReloadOutlined /> : <RobotOutlined />}
+                                onClick={handleGenerateComment}
+                                loading={generatingComment}
+                            >
+                                {aiComment ? '重新生成' : '一键生成'}
+                            </Button>
+                        }
+                    >
+                        {aiComment ? (
+                            <div style={{ background: '#f6ffed', padding: 16, borderRadius: 8, border: '1px solid #b7eb8f' }}>
+                                <Paragraph style={{ marginBottom: 0, fontSize: 15, lineHeight: 1.8 }}>
+                                    {aiComment}
+                                </Paragraph>
+                            </div>
+                        ) : (
+                            <Empty
+                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                description="点击上方按钮生成个性化评语"
+                            />
                         )}
                     </Card>
                 </Col>

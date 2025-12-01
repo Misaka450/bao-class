@@ -86,9 +86,9 @@ ai.post('/generate-comment', async (c) => {
 请生成评语（只返回评语内容，不要包含其他说明）：`
 
         // 5. Call AI
-        const response = await c.env.AI.run('@cf/openai/gpt-oss-120b', {
+        const response = await c.env.AI.run('@cf/qwen/qwen1.5-14b-chat-awq', {
             messages: [
-                { role: 'system', content: '你是一位经验丰富的中学教师，擅长撰写学生评语。' },
+                { role: 'system', content: '你是一位经验丰富的小学教师，擅长撰写学生评语。' },
                 { role: 'user', content: prompt }
             ],
             max_tokens: 200,

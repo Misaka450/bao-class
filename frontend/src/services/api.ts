@@ -190,6 +190,17 @@ export const logsApi = {
     },
 };
 
+// ==================== AI API ====================
+
+export const aiApi = {
+    generateComment: (data: { student_id: number; exam_ids?: number[] }) =>
+        post<{
+            success: boolean;
+            comment: string;
+            metadata: any;
+        }>('/api/ai/generate-comment', data),
+};
+
 // ==================== 默认导出 ====================
 
 const api = {
@@ -204,6 +215,7 @@ const api = {
     import: importApi,
     export: exportApi,
     logs: logsApi,
+    ai: aiApi,
 };
 
 export default api;
