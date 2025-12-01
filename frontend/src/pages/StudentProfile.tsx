@@ -102,23 +102,9 @@ export default function StudentProfile() {
                 setAiComment(res.comment);
                 message.success('评语生成成功');
             }
-        } catch (error: any) {
+        } catch (error) {
             console.error('Generate comment error:', error);
-
-            // Enhanced error handling with specific user feedback
-            let errorMessage = '评语生成失败，请稍后重试';
-
-            if (error.response?.status === 429) {
-                errorMessage = '请求过于频繁，请稍后再试';
-            } else if (error.response?.status === 401 || error.response?.status === 403) {
-                errorMessage = '身份验证失败，请重新登录';
-            } else if (error.response?.data?.message) {
-                errorMessage = error.response.data.message;
-            } else if (error.message === 'Network Error' || !navigator.onLine) {
-                errorMessage = '网络连接异常，请检查网络后重试';
-            }
-
-            message.error(errorMessage);
+            message.error('评语生成失败，请稍后重试');
         } finally {
             setGeneratingComment(false);
         }

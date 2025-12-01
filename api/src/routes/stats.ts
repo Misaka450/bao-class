@@ -502,7 +502,7 @@ stats.get('/exam/:examId/progress', async (c) => {
                 JOIN scores curr ON s.id = curr.student_id AND curr.exam_id = ? AND curr.course_id = ?
                 JOIN scores prev ON s.id = prev.student_id AND prev.exam_id = ? AND prev.course_id = ?
             `
-            params.push(examId, courseId, previousExam.id, courseId)
+            params.push(examId, courseId, previousExam.id as number, courseId)
         } else {
             // 未选择科目时：对比总分（所有科目的总和）
             query = `
@@ -518,7 +518,7 @@ stats.get('/exam/:examId/progress', async (c) => {
                 GROUP BY s.id, s.name
                 HAVING COUNT(DISTINCT curr.course_id) > 0 AND COUNT(DISTINCT prev.course_id) > 0
             `
-            params.push(examId, previousExam.id)
+            params.push(examId, previousExam.id as number)
         }
 
         const result = await c.env.DB.prepare(query).bind(...params).all()

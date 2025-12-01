@@ -54,41 +54,38 @@ gradeComparison.get('/:classId', async (c) => {
             rank?: number
         }> = []
 
-        for (const cls of gradeClasses.results) {
-            // Find the exam with same name for this class
-            const classExam = await c.env.DB.prepare(
-                'SELECT id FROM exams WHERE class_id = ? AND name = ? AND exam_date = ?'
-            ).bind(cls.id, examInfo.name, examInfo.exam_date).first<{ id: number }>()
+        // Optimize: Fix N+1 query - fetch all class data in one query
+        const allClassesData = await c.env.DB.prepare(`
+            SELECT 
+                c.id as class_id,
+                c.name as class_name,
+                e.id as exam_id,
+                COUNT(DISTINCT st.id) as student_count,
+                AVG(totals.total_score) as average_score
+            FROM classes c
+            JOIN exams e ON c.id = e.class_id
+            LEFT JOIN students st ON c.id = st.class_id
+            LEFT JOIN (
+                SELECT student_id, SUM(score) as total_score
+                FROM scores
+                WHERE exam_id IN (
+                    SELECT id FROM exams WHERE class_id IN (
+                        SELECT id FROM classes WHERE grade = ?
+                    ) AND name = ? AND exam_date = ?
+                )
+                GROUP BY student_id
+            ) totals ON st.id = totals.student_id
+            WHERE c.grade = ? AND e.name = ? AND e.exam_date = ?
+            GROUP BY c.id, c.name, e.id
+        `).bind(classInfo.grade, examInfo.name, examInfo.exam_date, classInfo.grade, examInfo.name, examInfo.exam_date).all()
 
-            if (!classExam) continue
-
-            // Calculate average total score for this class in this exam
-            const avgQuery = `
-                SELECT 
-                    COUNT(DISTINCT st.id) as student_count,
-                    AVG(student_totals.total_score) as average_score
-                FROM students st
-                LEFT JOIN (
-                    SELECT 
-                        student_id,
-                        SUM(score) as total_score
-                    FROM scores
-                    WHERE exam_id = ?
-                    GROUP BY student_id
-                ) student_totals ON st.id = student_totals.student_id
-                WHERE st.class_id = ?
-            `
-
-            const avgResult = await c.env.DB.prepare(avgQuery).bind(classExam.id, cls.id).first<{
-                student_count: number,
-                average_score: number
-            }>()
-
+        // Process results
+        for (const row of (allClassesData.results || []) as any[]) {
             classesData.push({
-                class_id: cls.id,
-                class_name: cls.name,
-                average_score: avgResult?.average_score ? parseFloat(Number(avgResult.average_score).toFixed(2)) : 0,
-                student_count: avgResult?.student_count || 0
+                class_id: row.class_id,
+                class_name: row.class_name,
+                average_score: row.average_score ? parseFloat(Number(row.average_score).toFixed(2)) : 0,
+                student_count: row.student_count || 0
             })
         }
 

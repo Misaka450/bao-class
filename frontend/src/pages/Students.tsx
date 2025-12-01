@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
@@ -81,7 +81,14 @@ export default function Students() {
         }
     };
 
-    const columns: ColumnsType<Student> = [
+    // Optimize: memoize class name rendering
+    const renderClassName = useCallback((classId: number) => {
+        const cls = classes.find((c) => c.id === classId);
+        return cls?.name || classId;
+    }, [classes]);
+
+    // Optimize: memoize columns definition
+    const columns: ColumnsType<Student> = useMemo(() => [
         {
             title: 'ID',
             dataIndex: 'id',
@@ -102,10 +109,7 @@ export default function Students() {
             title: '班级',
             dataIndex: 'class_id',
             key: 'class_id',
-            render: (classId) => {
-                const cls = classes.find((c) => c.id === classId);
-                return cls?.name || classId;
-            },
+            render: renderClassName,
         },
         {
             title: '操作',
@@ -140,7 +144,19 @@ export default function Students() {
                 </Space>
             ),
         },
-    ];
+    ], [renderClassName, navigate]);
+
+    // Optimize: memoize filtered students
+    const filteredStudents = useMemo(() =>
+        students.filter(student => {
+            const matchesSearch = searchText === '' ||
+                student.name.toLowerCase().includes(searchText.toLowerCase()) ||
+                student.student_id.toLowerCase().includes(searchText.toLowerCase());
+            const matchesClass = filterClassId === '' || student.class_id.toString() === filterClassId;
+            return matchesSearch && matchesClass;
+        }),
+        [students, searchText, filterClassId]
+    );
 
     return (
         <div>
@@ -182,13 +198,7 @@ export default function Students() {
 
             <Table
                 columns={columns}
-                dataSource={students.filter(student => {
-                    const matchesSearch = searchText === '' ||
-                        student.name.toLowerCase().includes(searchText.toLowerCase()) ||
-                        student.student_id.toLowerCase().includes(searchText.toLowerCase());
-                    const matchesClass = filterClassId === '' || student.class_id.toString() === filterClassId;
-                    return matchesSearch && matchesClass;
-                })}
+                dataSource={filteredStudents}
                 rowKey="id"
                 loading={loading}
                 pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 条` }}

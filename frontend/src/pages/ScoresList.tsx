@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Table, Card, Select, Row, Col, message, Spin, Button } from 'antd';
 import { TableOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
@@ -42,8 +42,24 @@ export default function ScoresList() {
     const [selectedExamName, setSelectedExamName] = useState<string>(''); // 改为按考试名称筛选
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
     const [loading, setLoading] = useState(false);
-    const [subjects, setSubjects] = useState<string[]>([]);
     const token = useAuthStore((state) => state.token);
+
+    // Optimize: memoize subjects extraction from scores data
+    const subjects = useMemo(() => {
+        const subjectsSet = new Set<string>();
+        scoresData.forEach(student => {
+            if (student.scores) {
+                Object.keys(student.scores).forEach(subject => subjectsSet.add(subject));
+            }
+        });
+        return Array.from(subjectsSet).sort();
+    }, [scoresData]);
+
+    // Optimize: memoize unique exam names
+    const uniqueExamNames = useMemo(() =>
+        Array.from(new Set(exams.map(e => e.name))).sort(),
+        [exams]
+    );
 
     useEffect(() => {
         fetchClasses();
@@ -125,15 +141,6 @@ export default function ScoresList() {
             }
 
             setScoresData(data);
-
-            // Extract unique subjects
-            const subjectsSet = new Set<string>();
-            data.forEach(student => {
-                if (student.scores) {
-                    Object.keys(student.scores).forEach(subject => subjectsSet.add(subject));
-                }
-            });
-            setSubjects(Array.from(subjectsSet).sort());
         } catch (error) {
             message.error('获取成绩数据失败');
         } finally {
@@ -249,9 +256,6 @@ export default function ScoresList() {
             defaultSortOrder: 'descend' as const,
         }] : []),
     ];
-
-    // 获取唯一的考试名称列表
-    const uniqueExamNames = Array.from(new Set(exams.map(e => e.name))).sort();
 
     return (
         <div>
