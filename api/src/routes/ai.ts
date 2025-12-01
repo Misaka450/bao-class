@@ -46,7 +46,7 @@ ai.post('/generate-comment', async (c) => {
             JOIN exam_courses ec ON s.exam_id = ec.exam_id AND s.course_id = ec.course_id
             WHERE s.student_id = ?`;
 
-        const params: any[] = [student_id];
+        const params: (string | number)[] = [student_id];
 
         if (exam_ids && exam_ids.length > 0) {
             query += ` AND s.exam_id IN (${exam_ids.map(() => '?').join(',')})`;

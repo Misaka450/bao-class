@@ -33,7 +33,7 @@ classTrend.get('/:classId', async (c) => {
             JOIN students st ON s.student_id = st.id
         `
 
-        const params: any[] = []
+        const params: (string | number)[] = []
 
         if (courseId) {
             query += ` WHERE st.class_id = ? AND s.course_id = ?`

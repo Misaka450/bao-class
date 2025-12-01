@@ -46,7 +46,7 @@ scores.get('/', async (c) => {
                 AND ec.exam_id = ?
         `
 
-        const params: any[] = [classId, examId]
+        const params: (string | number)[] = [classId, examId]
 
         if (courseId) {
             query += ` AND c.id = ?`

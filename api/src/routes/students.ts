@@ -16,7 +16,7 @@ students.use('*', authMiddleware)
 students.get('/', async (c) => {
     const classId = c.req.query('class_id')
     let query = 'SELECT * FROM students'
-    const params: any[] = []
+    const params: (string | number)[] = []
 
     if (classId) {
         query += ' WHERE class_id = ?'

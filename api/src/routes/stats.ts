@@ -44,7 +44,7 @@ stats.get('/class/:classId', async (c) => {
 
         // Build query based on whether we're filtering by course
         let query: string
-        const params: any[] = [targetExamId]
+        const params: (string | number)[] = [targetExamId]
 
         if (targetCourseId) {
             query = `
@@ -152,7 +152,7 @@ stats.get('/class/:classId/history', async (c) => {
             JOIN scores s ON s.exam_id = e.id
         `
 
-        const params: any[] = [classId]
+        const params: (string | number)[] = [classId]
 
         if (courseId) {
             query += ` JOIN exam_courses ec ON ec.exam_id = e.id AND ec.course_id = ?`
@@ -184,7 +184,7 @@ stats.get('/exam/:examId/distribution', async (c) => {
 
     try {
         let query: string
-        const params: any[] = [examId]
+        const params: (string | number)[] = [examId]
         let allRanges: string[]
 
         if (courseId) {
@@ -344,7 +344,7 @@ stats.get('/scores-list', async (c) => {
             WHERE 1=1
         `
 
-        const params: any[] = []
+        const params: (string | number)[] = []
 
         if (classId) {
             query += ` AND s.class_id = ?`
@@ -409,7 +409,7 @@ stats.get('/exam/:examId/top-students', async (c) => {
 
     try {
         let query: string
-        const params: any[] = []
+        const params: (string | number)[] = []
 
         if (courseId) {
             // 单科：直接取该科分数（不使用AVG或SUM，因为有UNIQUE约束）
@@ -487,7 +487,7 @@ stats.get('/exam/:examId/progress', async (c) => {
 
         // Build query to compare scores
         let query: string
-        const params: any[] = []
+        const params: (string | number)[] = []
 
         if (courseId) {
             // 选择科目时：直接对比单科分数（每个学生每科只有一个分数）

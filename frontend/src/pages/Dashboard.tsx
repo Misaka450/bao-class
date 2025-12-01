@@ -62,7 +62,11 @@ export default function Dashboard() {
         setSelectedCourseId('');
     }, [selectedExamId]);
 
-    const highestScore = topStudents.length > 0 ? topStudents[0].average_score : 0;
+    // Optimize: memoize highest score calculation
+    const highestScore = useMemo(() =>
+        topStudents.length > 0 ? topStudents[0].average_score : 0,
+        [topStudents]
+    );
 
     return (
         <div>
