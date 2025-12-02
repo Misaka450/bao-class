@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Button, Progress, Empty } from 'antd';
-import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Button, Progress, Empty, Modal, Input, List, Popconfirm } from 'antd';
+import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined, ClockCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import api from '../services/api';
 import { useStudentProfile } from '../hooks/useStudentProfile';
@@ -14,6 +14,11 @@ export default function StudentProfile() {
     const { data, isLoading: loading, error } = useStudentProfile(id ? Number(id) : undefined);
     const [aiComment, setAiComment] = useState<string>('');
     const [generatingComment, setGeneratingComment] = useState(false);
+    const [commentHistory, setCommentHistory] = useState<any[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+    const [editingCommentText, setEditingCommentText] = useState('');
+    const [commentSource, setCommentSource] = useState<string>('');
 
     useEffect(() => {
         if (error) {
@@ -21,23 +26,80 @@ export default function StudentProfile() {
         }
     }, [error]);
 
+    // Load comment history when component mounts
+    useEffect(() => {
+        if (data?.student?.id) {
+            loadCommentHistory();
+        }
+    }, [data?.student?.id]);
+
+    const loadCommentHistory = async () => {
+        if (!data?.student?.id) return;
+        setLoadingHistory(true);
+        try {
+            const res = await api.ai.getCommentHistory(data.student.id);
+            if (res.success) {
+                setCommentHistory(res.comments);
+            }
+        } catch (error) {
+            console.error('Load comment history error:', error);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
     const handleGenerateComment = async () => {
         if (!data?.student?.id) return;
 
         setGeneratingComment(true);
+        setCommentSource('');
         try {
             const res = await api.ai.generateComment({
                 student_id: data.student.id
             });
             if (res.success) {
                 setAiComment(res.comment);
-                message.success('评语生成成功');
+                setCommentSource(res.cached ? `缓存 (${res.source === 'kv' ? 'KV' : '数据库'})` : 'AI 生成');
+                if (res.cached) {
+                    message.success('评语加载成功（来自缓存）');
+                } else {
+                    message.success('评语生成成功');
+                    // Reload history after new generation
+                    await loadCommentHistory();
+                }
             }
         } catch (error) {
             console.error('Generate comment error:', error);
             message.error('评语生成失败，请稍后重试');
         } finally {
             setGeneratingComment(false);
+        }
+    };
+
+    const handleEditComment = (id: number, text: string) => {
+        setEditingCommentId(id);
+        setEditingCommentText(text);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingCommentId) return;
+        try {
+            await api.ai.updateComment(editingCommentId, editingCommentText);
+            message.success('评语已更新');
+            setEditingCommentId(null);
+            await loadCommentHistory();
+        } catch (error) {
+            message.error('更新失败');
+        }
+    };
+
+    const handleDeleteComment = async (id: number) => {
+        try {
+            await api.ai.deleteComment(id);
+            message.success('评语已删除');
+            await loadCommentHistory();
+        } catch (error) {
+            message.error('删除失败');
         }
     };
 
@@ -68,6 +130,23 @@ export default function StudentProfile() {
 
     return (
         <div style={{ padding: 24 }}>
+            {/* Edit Comment Modal */}
+            <Modal
+                title="编辑评语"
+                open={editingCommentId !== null}
+                onOk={handleSaveEdit}
+                onCancel={() => setEditingCommentId(null)}
+                okText="保存"
+                cancelText="取消"
+            >
+                <Input.TextArea
+                    value={editingCommentText}
+                    onChange={(e) => setEditingCommentText(e.target.value)}
+                    rows={6}
+                    placeholder="请输入评语内容"
+                />
+            </Modal>
+
             <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
                 <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)}>返回</Button>
                 <Title level={2} style={{ margin: 0 }}>学生全息档案</Title>
@@ -203,16 +282,74 @@ export default function StudentProfile() {
                                 }
                             >
                                 {aiComment ? (
-                                    <div style={{ background: '#f6ffed', padding: 16, borderRadius: 8, border: '1px solid #b7eb8f' }}>
-                                        <Paragraph style={{ marginBottom: 0, fontSize: 15, lineHeight: 1.8 }}>
-                                            {aiComment}
-                                        </Paragraph>
-                                    </div>
+                                    <>
+                                        <div style={{ background: '#f6ffed', padding: 16, borderRadius: 8, border: '1px solid #b7eb8f', marginBottom: 8 }}>
+                                            <Paragraph style={{ marginBottom: 0, fontSize: 15, lineHeight: 1.8 }}>
+                                                {aiComment}
+                                            </Paragraph>
+                                        </div>
+                                        {commentSource && (
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                <ClockCircleOutlined /> 来源：{commentSource}
+                                            </Text>
+                                        )}
+                                    </>
                                 ) : (
                                     <Empty
                                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                                         description="点击上方按钮生成个性化评语"
                                     />
+                                )}
+                            </Card>
+                        </Col>
+                        <Col span={24}>
+                            <Card
+                                title="评语历史记录"
+                                bordered={false}
+                                loading={loadingHistory}
+                            >
+                                {commentHistory.length > 0 ? (
+                                    <List
+                                        dataSource={commentHistory}
+                                        renderItem={(item: any) => (
+                                            <List.Item
+                                                key={item.id}
+                                                actions={[
+                                                    <Button
+                                                        key="edit"
+                                                        size="small"
+                                                        icon={<EditOutlined />}
+                                                        onClick={() => handleEditComment(item.id, item.comment)}
+                                                    >
+                                                        编辑
+                                                    </Button>,
+                                                    <Popconfirm
+                                                        key="delete"
+                                                        title="确定删除此评语？"
+                                                        onConfirm={() => handleDeleteComment(item.id)}
+                                                    >
+                                                        <Button size="small" danger icon={<DeleteOutlined />}>
+                                                            删除
+                                                        </Button>
+                                                    </Popconfirm>
+                                                ]}
+                                            >
+                                                <List.Item.Meta
+                                                    title={
+                                                        <span>
+                                                            {new Date(item.created_at).toLocaleString('zh-CN')}
+                                                            {item.edited === 1 && (
+                                                                <Tag color="orange" style={{ marginLeft: 8 }}>已编辑</Tag>
+                                                            )}
+                                                        </span>
+                                                    }
+                                                    description={item.comment}
+                                                />
+                                            </List.Item>
+                                        )}
+                                    />
+                                ) : (
+                                    <Empty description="暂无历史评语" />
                                 )}
                             </Card>
                         </Col>

@@ -200,7 +200,26 @@ export const aiApi = {
             success: boolean;
             comment: string;
             metadata: any;
+            cached?: boolean;
+            source?: string;
         }>('/api/ai/generate-comment', data),
+    getCommentHistory: (studentId: number) =>
+        get<{
+            success: boolean;
+            comments: Array<{
+                id: number;
+                exam_id: number | null;
+                comment: string;
+                metadata: any;
+                edited: number;
+                created_at: string;
+                updated_at: string;
+            }>;
+        }>(`/api/ai/comments/${studentId}`),
+    updateComment: (id: number, comment: string) =>
+        put<{ success: boolean }>(`/api/ai/comments/${id}`, { comment }),
+    deleteComment: (id: number) =>
+        del(`/api/ai/comments/${id}`),
 };
 
 // ==================== 默认导出 ====================
