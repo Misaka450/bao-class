@@ -17,6 +17,8 @@ ai.post('/generate-comment', async (c) => {
     const { student_id, exam_ids } = await c.req.json()
 
     try {
+        console.log('Starting AI comment generation for student_id:', student_id);
+        
         // 1. Fetch student info
         const student = await c.env.DB.prepare(
             'SELECT s.*, cl.name as class_name FROM students s JOIN classes cl ON s.class_id = cl.id WHERE s.id = ?'
@@ -25,6 +27,8 @@ ai.post('/generate-comment', async (c) => {
         if (!student) {
             throw new AppError('Student not found', 404)
         }
+        
+        console.log('Found student:', student.name);
 
         // 2. Fetch recent exam scores
         let query = `
@@ -50,6 +54,7 @@ ai.post('/generate-comment', async (c) => {
         query += ` ORDER BY e.exam_date DESC`;
 
         const scores = await c.env.DB.prepare(query).bind(...params).all()
+        console.log('Fetched scores:', scores.results?.length || 0);
 
         // 3. Calculate statistics
         const allScores = (scores.results || []) as any[]
@@ -179,6 +184,9 @@ ai.post('/generate-comment', async (c) => {
 详细考试记录：${examHistoryText}
 
 期末评语：`
+
+        console.log('Generated prompt:', prompt);
+        console.log('Prompt length:', prompt.length);
 
         // 5. Call AI
         try {
