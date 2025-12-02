@@ -166,36 +166,53 @@ ai.post('/generate-comment', async (c) => {
             examHistoryText = '\n暂无考试记录';
         }
 
-        const prompt = `你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。
-
-学生信息：
+        // 5. Call AI with @cf/qwen/qwen3-30b-a3b-fp8 model
+        try {
+            console.log('Calling AI model @cf/qwen/qwen3-30b-a3b-fp8');
+            const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
+                messages: [
+                    { role: "system", content: "你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。" },
+                    { role: "user", content: `学生信息：
 - 姓名：${student.name}
 - 班级：${student.class_name}
 - 最近考试平均分：${avgScore.toFixed(1)}分
 - 成绩趋势：${trend} (${trendDescription})
 - 优势科目：${strongSubjects}
 - 薄弱科目：${weakSubjects}
-
-详细考试记录：${examHistoryText}
-
-期末评语：`
-
-        // 5. Call AI
-        try {
-            console.log('Calling AI model with prompt:', prompt);
-            const response = await c.env.AI.run('@cf/openai/gpt-oss-20b' as any, {
-                input: prompt,
+- 详细考试记录：${examHistoryText}` }
+                ],
                 max_tokens: 200,
                 temperature: 0.7
             }) as any
 
             console.log('AI response:', JSON.stringify(response, null, 2));
 
-            // Handle the complex response format from @cf/openai/gpt-oss-20b
+            // Handle different response formats from various AI models
             let comment = '评语生成失败';
 
-            // Check if response has output array with messages
-            if (response.output && Array.isArray(response.output)) {
+            // Try simple response format first (used by Qwen and many models)
+            if (response.response && typeof response.response === 'string') {
+                comment = response.response;
+            }
+            // Try result.response format
+            else if (response.result?.response && typeof response.result.response === 'string') {
+                comment = response.result.response;
+            }
+            // Try direct string response
+            else if (typeof response === 'string') {
+                comment = response;
+            }
+            // Try choices array format (used by OpenAI compatible models)
+            else if (response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
+                const choice = response.choices[0];
+                if (choice.message?.content) {
+                    comment = choice.message.content;
+                } else if (choice.text) {
+                    comment = choice.text;
+                }
+            }
+            // Try complex output array format (used by some models)
+            else if (response.output && Array.isArray(response.output)) {
                 // Look for the message with type 'message' and role 'assistant'
                 const messageOutput = response.output.find((item: any) =>
                     item.type === 'message' && item.role === 'assistant' && item.content);
@@ -210,19 +227,19 @@ ai.post('/generate-comment', async (c) => {
                     }
                 }
             }
-
-            // Fallback to simpler formats
-            if (comment === '评语生成失败') {
-                comment = response.response ||
-                    response.result?.response ||
-                    response.result ||
-                    (typeof response === 'string' ? response : '评语生成失败') ||
-                    '评语生成失败';
+            // Try Qwen model specific format
+            else if (response.data && typeof response.data === 'string') {
+                comment = response.data;
+            }
+            // Try another Qwen format with message property
+            else if (response.message && typeof response.message === 'string') {
+                comment = response.message;
             }
 
             // Ensure comment is a string
-            if (typeof comment !== 'string') {
-                comment = '评语生成失败';
+            if (typeof comment !== 'string' || comment === '评语生成失败') {
+                console.error('Failed to parse AI response. Response structure:', JSON.stringify(response, null, 2));
+                throw new Error('AI 模型返回了无效的响应格式');
             }
 
             return c.json({
