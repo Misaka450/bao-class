@@ -16,6 +16,9 @@ ai.use('*', authMiddleware)
 // Generate student comment
 ai.post('/generate-comment', async (c) => {
     const { student_id, exam_ids, force_regenerate } = await c.req.json()
+    
+    // Add debug log
+    console.log('Received request with parameters:', { student_id, exam_ids, force_regenerate });
 
     try {
         console.log('Starting AI comment generation for student_id:', student_id);
