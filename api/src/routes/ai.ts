@@ -1,221 +1,124 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
 import { AppError } from '../utils/AppError'
+import { Env } from '../types'
 
 type Bindings = {
     DB: D1Database
     AI: Ai
-    KV: KVNamespace
 }
 
-const ai = new Hono<{ Bindings: Bindings }>()
+const ai = new Hono<{ Bindings: Env }>()
 
 // Apply auth middleware
 ai.use('*', authMiddleware)
 
-// Helper: 生成缓存 key
-function getCacheKey(studentId: number, latestExamId: number | null): string {
-    return `ai_comment:${studentId}:${latestExamId || 'all'}`
-}
-
-// Helper: 优化的 Prompt 生成
-function generateOptimizedPrompt(data: {
-    studentName: string
-    className: string
-    avgScore: number
-    trend: string
-    trendDescription: string
-    strongSubjects: string
-    weakSubjects: string
-    examHistoryText: string
-}): string {
-    return `# 任务角色
-你是一位有 20 年教学经验的资深班主任，善于观察学生成长，用温暖而专业的语言给予学生鼓励和建议。
-
-## 任务说明
-请为学生撰写一段 **120-150 字**的期末评语。
-
-## 评语要求
-1. **语气**：温和、鼓励、真诚，体现对学生的关心
-2. **内容**：客观具体，结合数据，避免空洞表扬
-3. **结构**：成绩表现 → 优势肯定 → 改进建议
-4. **格式**：直接输出评语正文，以"${data.studentName}同学"开头
-
-## 学生数据
-
-**基本信息**
-- 姓名：${data.studentName}
-- 班级：${data.className}
-
-**学业表现**
-- 最近平均分：${data.avgScore.toFixed(1)} 分
-- 成绩趋势：${data.trend}（${data.trendDescription}）
-- 优势科目：${data.strongSubjects}
-- 薄弱科目：${data.weakSubjects}
-
-**考试历史**${data.examHistoryText}
-
-## 输出要求
-直接输出评语，不要包含任何解释、思考过程或其他内容。评语必须以"${data.studentName}同学"开头。`
-}
-
 // Generate student comment
 ai.post('/generate-comment', async (c) => {
-    const { student_id } = await c.req.json()
+    const { student_id, exam_ids } = await c.req.json()
 
     try {
-        console.log('[AI] Starting comment generation for student_id:', student_id);
+        console.log('Starting AI comment generation for student_id:', student_id);
+        
+        // 1. Check KV cache first
+        const cacheKey = `ai_comment_${student_id}`;
+        try {
+            const cachedComment = await c.env.KV.get(cacheKey);
+            if (cachedComment) {
+                console.log('Returning cached comment for student_id:', student_id);
+                return c.json({
+                    success: true,
+                    comment: cachedComment,
+                    cached: true,
+                    source: 'kv'
+                });
+            }
+        } catch (kvError) {
+            console.warn('KV cache read failed:', kvError);
+        }
 
-        // 优化查询：一次性获取所有需要的数据
-        const studentData = await c.env.DB.prepare(`
-            SELECT 
-                s.id,
-                s.name,
-                c.name as class_name
+        // 2. Get student info
+        const student = await c.env.DB.prepare(`
+            SELECT s.id, s.name, c.name as class_name
             FROM students s
             JOIN classes c ON s.class_id = c.id
             WHERE s.id = ?
         `).bind(student_id).first() as any;
 
-        if (!studentData) {
+        if (!student) {
             throw new AppError('Student not found', 404)
         }
 
-        // 获取最新考试 ID 用于缓存 key
-        const latestExam = await c.env.DB.prepare(`
-            SELECT MAX(e.id) as latest_exam_id
-            FROM exams e
-            JOIN scores s ON e.id = s.exam_id
+        console.log('Student info:', student);
+
+        // 3. Get student's average score and subject analysis
+        const scoreResult = await c.env.DB.prepare(`
+            SELECT 
+                AVG(s.score) as avg_score,
+                COUNT(s.score) as total_exams
+            FROM scores s
             WHERE s.student_id = ?
         `).bind(student_id).first() as any;
 
-        const latestExamId = latestExam?.latest_exam_id || null;
-        const cacheKey = getCacheKey(student_id, latestExamId);
+        const avgScore = scoreResult?.avg_score || 0;
+        console.log('Average score:', avgScore);
 
-        // 1. 先查 KV 缓存（7天 TTL）
-        try {
-            if (c.env.KV) {
-                const cachedComment = await c.env.KV.get(cacheKey, 'json') as any;
-                if (cachedComment) {
-                    console.log('[AI] Cache hit (KV):', cacheKey);
-                    return c.json({
-                        success: true,
-                        comment: cachedComment.comment,
-                        metadata: cachedComment.metadata,
-                        cached: true,
-                        source: 'kv'
-                    })
-                }
-            }
-        } catch (kvError) {
-            console.warn('[AI] KV cache read failed, falling back to DB:', kvError);
-        }
-
-        // 2. 查数据库历史记录
-        const dbComment = await c.env.DB.prepare(`
-            SELECT comment, metadata, created_at
-            FROM ai_comments
-            WHERE student_id = ? AND exam_id IS ?
-            ORDER BY created_at DESC
-            LIMIT 1
-        `).bind(student_id, latestExamId).first() as any;
-
-        if (dbComment) {
-            console.log('[AI] Cache hit (DB)');
-            const result = {
-                comment: dbComment.comment,
-                metadata: JSON.parse(dbComment.metadata || '{}'),
-                cached: true,
-                source: 'database'
-            };
-
-            // 回写到 KV 缓存
-            try {
-                if (c.env.KV) {
-                    await c.env.KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 * 60 * 24 * 7 });
-                }
-            } catch (kvError) {
-                console.warn('[AI] KV cache write failed:', kvError);
-            }
-
-            return c.json({ success: true, ...result })
-        }
-
-        console.log('[AI] Cache miss, generating new comment...');
-
-        // 3. 缓存未命中，执行 AI 生成
-        // 合并查询优化：一次性获取所有统计数据
-        const stats = await c.env.DB.prepare(`
-            WITH student_scores AS (
-                SELECT 
-                    s.score,
-                    e.exam_date,
-                    c.name as course_name,
-                    e.name as exam_name,
-                    ec.full_score
-                FROM scores s
-                JOIN exams e ON s.exam_id = e.id
-                JOIN courses c ON s.course_id = c.id
-                JOIN exam_courses ec ON s.exam_id = ec.exam_id AND s.course_id = ec.course_id
-                WHERE s.student_id = ?
-                ORDER BY e.exam_date ASC
-            )
+        // 4. Get subject-wise performance
+        const subjectScores = await c.env.DB.prepare(`
             SELECT 
-                AVG(score) as avg_score,
-                COUNT(*) as total_scores,
-                json_group_array(
-                    json_object(
-                        'score', score,
-                        'exam_date', exam_date,
-                        'course_name', course_name,
-                        'exam_name', exam_name,
-                        'full_score', full_score
-                    )
-                ) as all_data
-            FROM student_scores
-        `).bind(student_id).first() as any;
+                c.name as course_name,
+                AVG(s.score) as avg_score
+            FROM scores s
+            JOIN courses c ON s.course_id = c.id
+            WHERE s.student_id = ?
+            GROUP BY c.id, c.name
+            ORDER BY avg_score DESC
+        `).bind(student_id).all() as any;
 
-        const avgScore = stats?.avg_score || 0;
-        const allData = stats?.all_data ? JSON.parse(stats.all_data) : [];
+        console.log('Subject scores:', subjectScores);
 
-        // 计算科目表现
-        const subjectMap = new Map<string, number[]>();
-        allData.forEach((item: any) => {
-            if (!subjectMap.has(item.course_name)) {
-                subjectMap.set(item.course_name, []);
-            }
-            subjectMap.get(item.course_name)!.push(item.score);
-        });
+        let strongSubjects = '暂无';
+        let weakSubjects = '暂无';
+        
+        if (subjectScores.results && subjectScores.results.length > 0) {
+            const courseAvgs = subjectScores.results.map((row: any) => ({
+                name: row.course_name,
+                avg: row.avg_score
+            })).sort((a: any, b: any) => b.avg - a.avg)
 
-        const subjectAvgs = Array.from(subjectMap.entries())
-            .map(([name, scores]) => ({
-                name,
-                avg: scores.reduce((a, b) => a + b, 0) / scores.length
-            }))
-            .sort((a, b) => b.avg - a.avg);
+            strongSubjects = courseAvgs.slice(0, 2).map((c: any) => c.name).join('、')
+            weakSubjects = courseAvgs.slice(-2).map((c: any) => c.name).join('、')
+        }
 
-        const strongSubjects = subjectAvgs.length > 0
-            ? subjectAvgs.slice(0, 2).map(s => s.name).join('、')
-            : '暂无';
-        const weakSubjects = subjectAvgs.length > 0
-            ? subjectAvgs.slice(-2).map(s => s.name).join('、')
-            : '暂无';
-
-        // 趋势分析
+        // 5. Enhanced trend analysis
         let trend = '稳定';
         let trendDescription = '成绩保持稳定';
 
-        if (allData.length >= 3) {
-            const sortedScores = [...allData].sort((a: any, b: any) =>
-                new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime()
-            );
+        // Get all scores for trend analysis
+        const allScoresResult = await c.env.DB.prepare(`
+            SELECT 
+                s.score,
+                e.exam_date
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            WHERE s.student_id = ?
+            ORDER BY e.exam_date ASC
+        `).bind(student_id).all() as any;
 
+        const allScores = allScoresResult.results || [];
+        console.log('All scores for trend analysis:', allScores);
+
+        if (allScores.length >= 3) {
+            // Sort scores by date to analyze chronological progression
+            const sortedScores = [...allScores].sort((a: any, b: any) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime());
+
+            // Calculate overall trend using linear regression slope
             const n = sortedScores.length;
             let sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
 
-            sortedScores.forEach((item: any, index: number) => {
+            sortedScores.forEach((score: any, index: number) => {
                 const x = index + 1;
-                const y = item.score;
+                const y = score.score;
                 sum_x += x;
                 sum_y += y;
                 sum_xy += x * y;
@@ -223,8 +126,13 @@ ai.post('/generate-comment', async (c) => {
             });
 
             const slope = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
-            const scoreChange = sortedScores[n - 1].score - sortedScores[0].score;
 
+            // Also calculate recent vs oldest performance
+            const oldestScore = sortedScores[0].score;
+            const newestScore = sortedScores[sortedScores.length - 1].score;
+            const scoreChange = newestScore - oldestScore;
+
+            // Determine trend based on both slope and score change
             if (slope > 2 || scoreChange > 10) {
                 trend = '显著进步';
                 trendDescription = `整体呈上升趋势，最近成绩比初期提高了${scoreChange.toFixed(1)}分`;
@@ -243,184 +151,165 @@ ai.post('/generate-comment', async (c) => {
             }
         }
 
-        // 格式化考试历史
-        const examMap = new Map<string, any[]>();
-        allData.forEach((item: any) => {
-            if (!examMap.has(item.exam_name)) {
-                examMap.set(item.exam_name, []);
-            }
-            examMap.get(item.exam_name)!.push(item);
-        });
+        // 6. Construct prompt with more detailed student data
+        // First, let's get more detailed exam history for the student
+        const examHistory = await c.env.DB.prepare(`
+            SELECT 
+                e.id as exam_id,
+                e.name as exam_name,
+                e.exam_date,
+                c.name as subject_name,
+                s.score,
+                ec.full_score
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            JOIN courses c ON s.course_id = c.id
+            JOIN exam_courses ec ON s.exam_id = ec.exam_id AND s.course_id = ec.course_id
+            WHERE s.student_id = ?
+            ORDER BY e.exam_date ASC, c.name ASC
+        `).bind(student_id).all() as any;
 
+        // Format the exam history for the prompt
         let examHistoryText = '';
-        examMap.forEach((subjects, examName) => {
-            examHistoryText += `\n- ${examName} (${subjects[0].exam_date}): `;
-            examHistoryText += subjects.map((s: any) =>
-                `${s.course_name} ${s.score}/${s.full_score}分`
-            ).join(', ');
-        });
+        if (examHistory.results && examHistory.results.length > 0) {
+            // Group by exam
+            const exams: { [key: string]: any[] } = {};
+            examHistory.results.forEach((row: any) => {
+                if (!exams[row.exam_name]) {
+                    exams[row.exam_name] = [];
+                }
+                exams[row.exam_name].push(row);
+            });
 
-        if (!examHistoryText) {
-            examHistoryText = '\n- 暂无考试记录';
+            // Format each exam
+            for (const [examName, subjects] of Object.entries(exams)) {
+                examHistoryText += `\n${examName} (${subjects[0].exam_date}):`;
+                subjects.forEach((subject: any) => {
+                    examHistoryText += ` ${subject.subject_name} ${subject.score}/${subject.full_score}分;`;
+                });
+            }
+        } else {
+            examHistoryText = '\n暂无考试记录';
         }
 
-        // 生成优化的 Prompt
-        const prompt = generateOptimizedPrompt({
-            studentName: studentData.name,
-            className: studentData.class_name,
-            avgScore,
-            trend,
-            trendDescription,
-            strongSubjects,
-            weakSubjects,
-            examHistoryText
-        });
+        const prompt = `你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。
 
-        console.log('[AI] Prompt generated, length:', prompt.length);
+学生信息：
+- 姓名：${student.name}
+- 班级：${student.class_name}
+- 最近考试平均分：${avgScore.toFixed(1)}分
+- 成绩趋势：${trend} (${trendDescription})
+- 优势科目：${strongSubjects}
+- 薄弱科目：${weakSubjects}
 
-        // 调用 AI
+详细考试记录：${examHistoryText}
+
+请生成期末评语：`;
+
+        console.log('Generated prompt:', prompt);
+        console.log('Prompt length:', prompt.length);
+
+        // 7. Call AI with @cf/openai/gpt-oss-20b model
         try {
-            const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
-                messages: [
-                    { role: "user", content: prompt }
-                ],
-                max_tokens: 220,
+            console.log('Calling AI model @cf/openai/gpt-oss-20b with prompt:', prompt);
+            const response = await c.env.AI.run('@cf/openai/gpt-oss-20b' as any, {
+                input: prompt,
+                max_tokens: 200,
                 temperature: 0.7
             }) as any
 
-            console.log('[AI] Response received');
+            console.log('AI response:', JSON.stringify(response, null, 2));
 
+            // Handle the complex response format from @cf/openai/gpt-oss-20b
             let comment = '评语生成失败';
 
-            if (response.response && typeof response.response === 'string') {
-                comment = response.response;
-            } else if (response.result?.response && typeof response.result.response === 'string') {
-                comment = response.result.response;
-            } else if (typeof response === 'string') {
-                comment = response;
+            // Check if response has output array with messages
+            if (response.output && Array.isArray(response.output)) {
+                // Look for the message with type 'message' and role 'assistant'
+                const messageOutput = response.output.find((item: any) =>
+                    item.type === 'message' && item.role === 'assistant' && item.content);
+
+                if (messageOutput && Array.isArray(messageOutput.content)) {
+                    // Look for the output_text content
+                    const textContent = messageOutput.content.find((content: any) =>
+                        content.type === 'output_text' && content.text);
+
+                    if (textContent && textContent.text) {
+                        comment = textContent.text;
+                    }
+                }
             }
 
-            if (typeof comment !== 'string' || comment === '评语生成失败') {
-                console.error('[AI] Unexpected response format:', response);
+            // Fallback to simpler formats
+            if (comment === '评语生成失败') {
+                comment = response.response ||
+                    response.result?.response ||
+                    response.result ||
+                    (typeof response === 'string' ? response : '评语生成失败') ||
+                    '评语生成失败';
+            }
+
+            // Ensure comment is a string
+            if (typeof comment !== 'string') {
                 comment = '评语生成失败';
             }
 
-            const metadata = {
-                student_name: studentData.name,
-                avg_score: avgScore.toFixed(1),
-                trend,
-                strong_subjects: strongSubjects,
-                weak_subjects: weakSubjects
-            };
-
-            // 保存到数据库
-            await c.env.DB.prepare(`
-                INSERT INTO ai_comments (student_id, exam_id, comment, metadata)
-                VALUES (?, ?, ?, ?)
-            `).bind(
-                student_id,
-                latestExamId,
-                comment.trim(),
-                JSON.stringify(metadata)
-            ).run();
-
-            // 写入 KV 缓存（7天过期）
-            try {
-                if (c.env.KV) {
-                    const cacheData = {
-                        comment: comment.trim(),
-                        metadata
-                    };
-                    await c.env.KV.put(cacheKey, JSON.stringify(cacheData), {
-                        expirationTtl: 60 * 60 * 24 * 7
-                    });
+            // 8. Save to KV cache
+            if (comment !== '评语生成失败') {
+                try {
+                    await c.env.KV.put(cacheKey, comment, { expirationTtl: 3600 }); // Cache for 1 hour
+                } catch (kvError) {
+                    console.warn('KV cache save failed:', kvError);
                 }
-            } catch (kvError) {
-                console.warn('[AI] KV cache write failed:', kvError);
+                
+                // 9. Save to database for history
+                try {
+                    await c.env.DB.prepare(`
+                        INSERT INTO ai_comments (student_id, comment, metadata)
+                        VALUES (?, ?, ?)
+                    `).bind(
+                        student_id, 
+                        comment, 
+                        JSON.stringify({
+                            avg_score: avgScore.toFixed(1),
+                            trend,
+                            strong_subjects: strongSubjects,
+                            weak_subjects: weakSubjects
+                        })
+                    ).run();
+                } catch (dbError) {
+                    console.warn('Database save failed:', dbError);
+                }
             }
 
-            console.log('[AI] Comment saved to DB and KV cache');
-
             return c.json({
-                success: true,
+                success: comment !== '评语生成失败',
                 comment: comment.trim(),
-                metadata,
-                cached: false
+                cached: false,
+                metadata: {
+                    student_name: student.name,
+                    avg_score: avgScore.toFixed(1),
+                    trend,
+                    strong_subjects: strongSubjects,
+                    weak_subjects: weakSubjects
+                }
             })
         } catch (aiError: any) {
-            console.error('[AI] Generation error:', aiError);
-            throw new AppError(`AI调用失败: ${aiError.message || aiError.toString()}`, 500);
+            console.error('AI generation error:', aiError);
+            console.error('AI error details:', {
+                name: aiError.name,
+                message: aiError.message,
+                stack: aiError.stack,
+                cause: aiError.cause
+            });
+
+            // Return a more detailed error message
+            const errorMessage = `AI调用失败: ${aiError.message || aiError.toString()}`;
+            throw new AppError(errorMessage, 500);
         }
     } catch (error) {
-        console.error('[AI] Generate comment error:', error)
+        console.error('Generate comment error:', error)
         throw new AppError('Failed to generate comment', 500)
-    }
-})
-
-// Get comment history for a student
-ai.get('/comments/:student_id', async (c) => {
-    const studentId = parseInt(c.req.param('student_id'))
-
-    try {
-        const comments = await c.env.DB.prepare(`
-            SELECT 
-                id,
-                exam_id,
-                comment,
-                metadata,
-                edited,
-                created_at,
-                updated_at
-            FROM ai_comments
-            WHERE student_id = ?
-            ORDER BY created_at DESC
-        `).bind(studentId).all()
-
-        return c.json({
-            success: true,
-            comments: comments.results?.map((r: any) => ({
-                ...r,
-                metadata: JSON.parse(r.metadata || '{}')
-            })) || []
-        })
-    } catch (error) {
-        console.error('[AI] Get comment history error:', error)
-        throw new AppError('Failed to get comment history', 500)
-    }
-})
-
-// Update a comment
-ai.put('/comments/:id', async (c) => {
-    const commentId = parseInt(c.req.param('id'))
-    const { comment } = await c.req.json()
-
-    try {
-        await c.env.DB.prepare(`
-            UPDATE ai_comments
-            SET comment = ?, edited = 1
-            WHERE id = ?
-        `).bind(comment, commentId).run()
-
-        return c.json({ success: true })
-    } catch (error) {
-        console.error('[AI] Update comment error:', error)
-        throw new AppError('Failed to update comment', 500)
-    }
-})
-
-// Delete a comment
-ai.delete('/comments/:id', async (c) => {
-    const commentId = parseInt(c.req.param('id'))
-
-    try {
-        await c.env.DB.prepare(`
-            DELETE FROM ai_comments WHERE id = ?
-        `).bind(commentId).run()
-
-        return c.json({ success: true })
-    } catch (error) {
-        console.error('[AI] Delete comment error:', error)
-        throw new AppError('Failed to delete comment', 500)
     }
 })
 

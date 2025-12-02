@@ -53,6 +53,7 @@ export default function StudentProfile() {
 
         setGeneratingComment(true);
         setCommentSource('');
+        setAiComment(''); // Clear previous comment
         try {
             const res = await api.ai.generateComment({
                 student_id: data.student.id
@@ -67,6 +68,8 @@ export default function StudentProfile() {
                     // Reload history after new generation
                     await loadCommentHistory();
                 }
+            } else {
+                message.error('评语生成失败，请稍后重试');
             }
         } catch (error) {
             console.error('Generate comment error:', error);
