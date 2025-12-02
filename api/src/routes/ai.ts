@@ -183,7 +183,7 @@ ai.post('/generate-comment', async (c) => {
         // 5. Call AI
         try {
             console.log('Calling AI model with prompt:', prompt);
-            const response = await c.env.AI.run('@cf/openai/gpt-oss-20b' as any, {
+            const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
                 input: prompt,
                 max_tokens: 200,
                 temperature: 0.7
@@ -191,7 +191,7 @@ ai.post('/generate-comment', async (c) => {
 
             console.log('AI response:', JSON.stringify(response, null, 2));
 
-            // Handle the complex response format from @cf/openai/gpt-oss-20b
+            // Handle the complex response format from @cf/qwen/qwen3-30b-a3b-fp8
             let comment = '评语生成失败';
 
             // Check if response has output array with messages
