@@ -17,80 +17,88 @@ ai.post('/generate-comment', async (c) => {
     const { student_id, exam_ids } = await c.req.json()
 
     try {
-        // 1. Fetch student info
-        const student = await c.env.DB.prepare(
-            'SELECT s.*, cl.name as class_name FROM students s JOIN classes cl ON s.class_id = cl.id WHERE s.id = ?'
-        ).bind(student_id).first()
+        console.log('Starting AI comment generation for student_id:', student_id);
+        
+        // 1. Get student info
+        const student = await c.env.DB.prepare(`
+            SELECT s.id, s.name, c.name as class_name
+            FROM students s
+            JOIN classes c ON s.class_id = c.id
+            WHERE s.id = ?
+        `).bind(student_id).first() as any;
 
         if (!student) {
             throw new AppError('Student not found', 404)
         }
 
-        // 2. Fetch recent exam scores
-        let query = `
+        console.log('Student info:', student);
+
+        // 2. Get student's average score and subject analysis
+        const scoreResult = await c.env.DB.prepare(`
             SELECT 
-                e.name as exam_name,
-                e.exam_date,
-                c.name as course_name,
-                s.score,
-                ec.full_score
+                AVG(s.score) as avg_score,
+                COUNT(s.score) as total_exams
             FROM scores s
-            JOIN exams e ON s.exam_id = e.id
+            WHERE s.student_id = ?
+        `).bind(student_id).first() as any;
+
+        const avgScore = scoreResult?.avg_score || 0;
+        console.log('Average score:', avgScore);
+
+        // 3. Get subject-wise performance
+        const subjectScores = await c.env.DB.prepare(`
+            SELECT 
+                c.name as course_name,
+                AVG(s.score) as avg_score
+            FROM scores s
             JOIN courses c ON s.course_id = c.id
-            JOIN exam_courses ec ON s.exam_id = ec.exam_id AND s.course_id = ec.course_id
-            WHERE s.student_id = ?`;
+            WHERE s.student_id = ?
+            GROUP BY c.id, c.name
+            ORDER BY avg_score DESC
+        `).bind(student_id).all() as any;
 
-        const params: any[] = [student_id];
+        console.log('Subject scores:', subjectScores);
 
-        if (exam_ids && exam_ids.length > 0) {
-            query += ` AND s.exam_id IN (${exam_ids.map(() => '?').join(',')})`;
-            params.push(...exam_ids);
-        }
+        let strongSubjects = '暂无';
+        let weakSubjects = '暂无';
+        
+        if (subjectScores.results && subjectScores.results.length > 0) {
+            const courseAvgs = subjectScores.results.map((row: any) => ({
+                name: row.course_name,
+                avg: row.avg_score
+            })).sort((a: any, b: any) => b.avg - a.avg)
 
-        query += ` ORDER BY e.exam_date DESC`;
-
-        const scores = await c.env.DB.prepare(query).bind(...params).all()
-
-        // 3. Calculate statistics
-        const allScores = (scores.results || []) as any[]
-        const avgScore = allScores.length > 0 ? allScores.reduce((sum, s) => sum + s.score, 0) / allScores.length : 0
-
-        let strongSubjects = '';
-        let weakSubjects = '';
-
-        if (allScores.length > 0) {
-            // Group by course to find strong/weak subjects
-            const courseStats: Record<string, { total: number, count: number }> = {}
-            allScores.forEach((s: any) => {
-                if (!courseStats[s.course_name]) {
-                    courseStats[s.course_name] = { total: 0, count: 0 }
-                }
-                courseStats[s.course_name].total += s.score
-                courseStats[s.course_name].count++
-            })
-
-            const courseAvgs = Object.entries(courseStats).map(([name, stats]) => ({
-                name,
-                avg: stats.total / stats.count
-            })).sort((a, b) => b.avg - a.avg)
-
-            strongSubjects = courseAvgs.slice(0, 2).map(c => c.name).join('、')
-            weakSubjects = courseAvgs.slice(-2).map(c => c.name).join('、')
+            strongSubjects = courseAvgs.slice(0, 2).map((c: any) => c.name).join('、')
+            weakSubjects = courseAvgs.slice(-2).map((c: any) => c.name).join('、')
         }
 
         // Enhanced trend analysis with more comprehensive progress/decline detection
         let trend = '稳定';
         let trendDescription = '成绩保持稳定';
 
+        // Get all scores for trend analysis
+        const allScoresResult = await c.env.DB.prepare(`
+            SELECT 
+                s.score,
+                e.exam_date
+            FROM scores s
+            JOIN exams e ON s.exam_id = e.id
+            WHERE s.student_id = ?
+            ORDER BY e.exam_date ASC
+        `).bind(student_id).all() as any;
+
+        const allScores = allScoresResult.results || [];
+        console.log('All scores for trend analysis:', allScores);
+
         if (allScores.length >= 3) {
             // Sort scores by date to analyze chronological progression
-            const sortedScores = [...allScores].sort((a, b) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime());
+            const sortedScores = [...allScores].sort((a: any, b: any) => new Date(a.exam_date).getTime() - new Date(b.exam_date).getTime());
 
             // Calculate overall trend using linear regression slope
             const n = sortedScores.length;
             let sum_x = 0, sum_y = 0, sum_xy = 0, sum_xx = 0;
 
-            sortedScores.forEach((score, index) => {
+            sortedScores.forEach((score: any, index: number) => {
                 const x = index + 1;
                 const y = score.score;
                 sum_x += x;
@@ -141,7 +149,7 @@ ai.post('/generate-comment', async (c) => {
             JOIN exam_courses ec ON s.exam_id = ec.exam_id AND s.course_id = ec.course_id
             WHERE s.student_id = ?
             ORDER BY e.exam_date ASC, c.name ASC
-        `).bind(student_id).all();
+        `).bind(student_id).all() as any;
 
         // Format the exam history for the prompt
         let examHistoryText = '';
@@ -166,53 +174,39 @@ ai.post('/generate-comment', async (c) => {
             examHistoryText = '\n暂无考试记录';
         }
 
-        // 5. Call AI with @cf/qwen/qwen3-30b-a3b-fp8 model
-        try {
-            console.log('Calling AI model @cf/qwen/qwen3-30b-a3b-fp8');
-            const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
-                messages: [
-                    { role: "system", content: "你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。" },
-                    { role: "user", content: `学生信息：
+        const prompt = `你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。
+
+学生信息：
 - 姓名：${student.name}
 - 班级：${student.class_name}
 - 最近考试平均分：${avgScore.toFixed(1)}分
 - 成绩趋势：${trend} (${trendDescription})
 - 优势科目：${strongSubjects}
 - 薄弱科目：${weakSubjects}
-- 详细考试记录：${examHistoryText}` }
-                ],
+
+详细考试记录：${examHistoryText}
+
+请生成期末评语：`;
+
+        console.log('Generated prompt:', prompt);
+        console.log('Prompt length:', prompt.length);
+
+        // 5. Call AI with @cf/openai/gpt-oss-20b model
+        try {
+            console.log('Calling AI model @cf/openai/gpt-oss-20b with prompt:', prompt);
+            const response = await c.env.AI.run('@cf/openai/gpt-oss-20b' as any, {
+                input: prompt,
                 max_tokens: 200,
                 temperature: 0.7
             }) as any
 
             console.log('AI response:', JSON.stringify(response, null, 2));
 
-            // Handle different response formats from various AI models
+            // Handle the complex response format from @cf/openai/gpt-oss-20b
             let comment = '评语生成失败';
 
-            // Try simple response format first (used by Qwen and many models)
-            if (response.response && typeof response.response === 'string') {
-                comment = response.response;
-            }
-            // Try result.response format
-            else if (response.result?.response && typeof response.result.response === 'string') {
-                comment = response.result.response;
-            }
-            // Try direct string response
-            else if (typeof response === 'string') {
-                comment = response;
-            }
-            // Try choices array format (used by OpenAI compatible models)
-            else if (response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
-                const choice = response.choices[0];
-                if (choice.message?.content) {
-                    comment = choice.message.content;
-                } else if (choice.text) {
-                    comment = choice.text;
-                }
-            }
-            // Try complex output array format (used by some models)
-            else if (response.output && Array.isArray(response.output)) {
+            // Check if response has output array with messages
+            if (response.output && Array.isArray(response.output)) {
                 // Look for the message with type 'message' and role 'assistant'
                 const messageOutput = response.output.find((item: any) =>
                     item.type === 'message' && item.role === 'assistant' && item.content);
@@ -227,19 +221,19 @@ ai.post('/generate-comment', async (c) => {
                     }
                 }
             }
-            // Try Qwen model specific format
-            else if (response.data && typeof response.data === 'string') {
-                comment = response.data;
-            }
-            // Try another Qwen format with message property
-            else if (response.message && typeof response.message === 'string') {
-                comment = response.message;
+
+            // Fallback to simpler formats
+            if (comment === '评语生成失败') {
+                comment = response.response ||
+                    response.result?.response ||
+                    response.result ||
+                    (typeof response === 'string' ? response : '评语生成失败') ||
+                    '评语生成失败';
             }
 
             // Ensure comment is a string
-            if (typeof comment !== 'string' || comment === '评语生成失败') {
-                console.error('Failed to parse AI response. Response structure:', JSON.stringify(response, null, 2));
-                throw new Error('AI 模型返回了无效的响应格式');
+            if (typeof comment !== 'string') {
+                comment = '评语生成失败';
             }
 
             return c.json({
