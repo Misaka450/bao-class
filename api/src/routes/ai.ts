@@ -93,16 +93,22 @@ ai.post('/generate-comment', async (c) => {
         const cacheKey = getCacheKey(student_id, latestExamId);
 
         // 1. 先查 KV 缓存（7天 TTL）
-        const cachedComment = await c.env.KV.get(cacheKey, 'json') as any;
-        if (cachedComment) {
-            console.log('[AI] Cache hit (KV):', cacheKey);
-            return c.json({
-                success: true,
-                comment: cachedComment.comment,
-                metadata: cachedComment.metadata,
-                cached: true,
-                source: 'kv'
-            })
+        try {
+            if (c.env.KV) {
+                const cachedComment = await c.env.KV.get(cacheKey, 'json') as any;
+                if (cachedComment) {
+                    console.log('[AI] Cache hit (KV):', cacheKey);
+                    return c.json({
+                        success: true,
+                        comment: cachedComment.comment,
+                        metadata: cachedComment.metadata,
+                        cached: true,
+                        source: 'kv'
+                    })
+                }
+            }
+        } catch (kvError) {
+            console.warn('[AI] KV cache read failed, falling back to DB:', kvError);
         }
 
         // 2. 查数据库历史记录
@@ -124,7 +130,13 @@ ai.post('/generate-comment', async (c) => {
             };
 
             // 回写到 KV 缓存
-            await c.env.KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 * 60 * 24 * 7 });
+            try {
+                if (c.env.KV) {
+                    await c.env.KV.put(cacheKey, JSON.stringify(result), { expirationTtl: 60 * 60 * 24 * 7 });
+                }
+            } catch (kvError) {
+                console.warn('[AI] KV cache write failed:', kvError);
+            }
 
             return c.json({ success: true, ...result })
         }
@@ -313,13 +325,19 @@ ai.post('/generate-comment', async (c) => {
             ).run();
 
             // 写入 KV 缓存（7天过期）
-            const cacheData = {
-                comment: comment.trim(),
-                metadata
-            };
-            await c.env.KV.put(cacheKey, JSON.stringify(cacheData), {
-                expirationTtl: 60 * 60 * 24 * 7
-            });
+            try {
+                if (c.env.KV) {
+                    const cacheData = {
+                        comment: comment.trim(),
+                        metadata
+                    };
+                    await c.env.KV.put(cacheKey, JSON.stringify(cacheData), {
+                        expirationTtl: 60 * 60 * 24 * 7
+                    });
+                }
+            } catch (kvError) {
+                console.warn('[AI] KV cache write failed:', kvError);
+            }
 
             console.log('[AI] Comment saved to DB and KV cache');
 
