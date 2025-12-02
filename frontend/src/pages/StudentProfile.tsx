@@ -54,8 +54,12 @@ export default function StudentProfile() {
         setGeneratingComment(true);
         setCommentSource('');
         
+        // Always force regenerate when clicking the regenerate button
         // Check if we're regenerating (there's already a comment)
         const isRegenerating = !!aiComment;
+        
+        // Add debug log
+        console.log('Handle generate comment, isRegenerating:', isRegenerating);
         
         setAiComment(''); // Clear previous comment after checking
         
@@ -64,6 +68,10 @@ export default function StudentProfile() {
                 student_id: data.student.id,
                 force_regenerate: isRegenerating // Pass force_regenerate flag when regenerating
             });
+            
+            // Add debug log
+            console.log('API response:', res);
+            
             if (res.success) {
                 setAiComment(res.comment);
                 setCommentSource(res.cached ? `缓存 (${res.source === 'kv' ? 'KV' : '数据库'})` : 'AI 生成');
