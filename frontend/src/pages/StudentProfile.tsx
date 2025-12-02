@@ -154,8 +154,8 @@ export default function StudentProfile() {
                     <Row gutter={[24, 24]}>
                         <Col span={24}>
                             <Card title="成绩与排名双轴趋势" bordered={false}>
-                                <div style={{ height: 300, minHeight: 300 }}>
-                                    <ResponsiveContainer width="100%" height={300}>
+                                <div style={{ height: 300, minHeight: 300, width: '100%' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
                                         <ComposedChart data={data.history}>
                                             <CartesianGrid strokeDasharray="3 3" />
                                             <XAxis dataKey="exam_name" angle={-15} textAnchor="end" height={60} />
@@ -172,8 +172,8 @@ export default function StudentProfile() {
                         </Col>
                         <Col span={24}>
                             <Card title="学科能力雷达 (Z-Score)" bordered={false}>
-                                <div style={{ height: 300, minHeight: 300 }}>
-                                    <ResponsiveContainer width="100%" height={300}>
+                                <div style={{ height: 300, minHeight: 300, width: '100%' }}>
+                                    <ResponsiveContainer width="100%" height="100%">
                                         <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.radar}>
                                             <PolarGrid />
                                             <PolarAngleAxis dataKey="subject" />

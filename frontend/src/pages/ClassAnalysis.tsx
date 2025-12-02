@@ -61,7 +61,7 @@ export default function ClassAnalysis() {
             </Col>
             <Col span={24}>
                 <Card title="及格率与优秀率走势 (%)" bordered={false}>
-                    <div style={{ height: 350, minHeight: 350 }}>
+                    <div style={{ height: 350, minHeight: 350, width: '100%' }}>
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={trendData?.trends || []}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -94,7 +94,7 @@ export default function ClassAnalysis() {
             <Row gutter={[24, 24]}>
                 <Col xs={24} lg={12}>
                     <Card title="各科目及格率对比 (最新考试)" bordered={false}>
-                        <div style={{ height: 350, minHeight: 350 }}>
+                        <div style={{ height: 350, minHeight: 350, width: '100%' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
                                     <PolarGrid />
@@ -110,7 +110,7 @@ export default function ClassAnalysis() {
                 </Col>
                 <Col xs={24} lg={12}>
                     <Card title="各科目平均分走势" bordered={false}>
-                        <div style={{ height: 350, minHeight: 350 }}>
+                        <div style={{ height: 350, minHeight: 350, width: '100%' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <LineChart>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -172,7 +172,7 @@ export default function ClassAnalysis() {
                 </Col>
                 <Col span={24}>
                     <Card title="年级各班平均分对比" bordered={false}>
-                        <div style={{ height: 400, minHeight: 400 }}>
+                        <div style={{ height: 400, minHeight: 400, width: '100%' }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={gradeData.classes} layout="vertical" margin={{ left: 20 }}>
                                     <CartesianGrid strokeDasharray="3 3" />

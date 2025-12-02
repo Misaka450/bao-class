@@ -206,6 +206,15 @@ ai.post('/generate-comment', async (c) => {
             else if (typeof response === 'string') {
                 comment = response;
             }
+            // Try choices array format (used by OpenAI compatible models)
+            else if (response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
+                const choice = response.choices[0];
+                if (choice.message?.content) {
+                    comment = choice.message.content;
+                } else if (choice.text) {
+                    comment = choice.text;
+                }
+            }
             // Try complex output array format (used by some models)
             else if (response.output && Array.isArray(response.output)) {
                 // Look for the message with type 'message' and role 'assistant'
@@ -221,6 +230,14 @@ ai.post('/generate-comment', async (c) => {
                         comment = textContent.text;
                     }
                 }
+            }
+            // Try Qwen model specific format
+            else if (response.data && typeof response.data === 'string') {
+                comment = response.data;
+            }
+            // Try another Qwen format with message property
+            else if (response.message && typeof response.message === 'string') {
+                comment = response.message;
             }
 
             // Ensure comment is a string
