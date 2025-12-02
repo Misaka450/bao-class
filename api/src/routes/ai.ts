@@ -256,15 +256,16 @@ ai.post('/generate-comment', async (c) => {
                 comment = '评语生成失败';
             }
 
-            // 8. Save to KV cache
+            // 8. Save to KV cache and database
             if (comment !== '评语生成失败') {
                 try {
+                    // Update KV cache
                     await c.env.KV.put(cacheKey, comment, { expirationTtl: 3600 }); // Cache for 1 hour
                 } catch (kvError) {
                     console.warn('KV cache save failed:', kvError);
                 }
                 
-                // 9. Save to database for history
+                // Save to database for history
                 try {
                     await c.env.DB.prepare(`
                         INSERT INTO ai_comments (student_id, comment, metadata)
