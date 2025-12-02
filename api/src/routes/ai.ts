@@ -18,7 +18,7 @@ ai.post('/generate-comment', async (c) => {
 
     try {
         console.log('Starting AI comment generation for student_id:', student_id);
-        
+
         // 1. Get student info
         const student = await c.env.DB.prepare(`
             SELECT s.id, s.name, c.name as class_name
@@ -61,7 +61,7 @@ ai.post('/generate-comment', async (c) => {
 
         let strongSubjects = '暂无';
         let weakSubjects = '暂无';
-        
+
         if (subjectScores.results && subjectScores.results.length > 0) {
             const courseAvgs = subjectScores.results.map((row: any) => ({
                 name: row.course_name,
@@ -117,19 +117,19 @@ ai.post('/generate-comment', async (c) => {
             // Determine trend based on both slope and score change
             if (slope > 2 || scoreChange > 10) {
                 trend = '显著进步';
-                trendDescription = `整体呈上升趋势，最近成绩比初期提高了${scoreChange.toFixed(1)}分`;
+                trendDescription = `整体呈上升趋势,最近成绩比初期提高了${scoreChange.toFixed(1)}分`;
             } else if (slope > 0.5 || scoreChange > 5) {
                 trend = '进步';
-                trendDescription = `稳步提升中，最近成绩比初期提高了${scoreChange.toFixed(1)}分`;
+                trendDescription = `稳步提升中,最近成绩比初期提高了${scoreChange.toFixed(1)}分`;
             } else if (slope < -2 || scoreChange < -10) {
                 trend = '显著退步';
-                trendDescription = `整体呈下降趋势，最近成绩比初期下降了${Math.abs(scoreChange).toFixed(1)}分`;
+                trendDescription = `整体呈下降趋势,最近成绩比初期下降了${Math.abs(scoreChange).toFixed(1)}分`;
             } else if (slope < -0.5 || scoreChange < -5) {
                 trend = '退步';
-                trendDescription = `有所下滑，最近成绩比初期下降了${Math.abs(scoreChange).toFixed(1)}分`;
+                trendDescription = `有所下滑,最近成绩比初期下降了${Math.abs(scoreChange).toFixed(1)}分`;
             } else {
                 trend = '稳定';
-                trendDescription = `成绩保持稳定，波动范围在${Math.abs(scoreChange).toFixed(1)}分以内`;
+                trendDescription = `成绩保持稳定,波动范围在${Math.abs(scoreChange).toFixed(1)}分以内`;
             }
         }
 
@@ -174,65 +174,51 @@ ai.post('/generate-comment', async (c) => {
             examHistoryText = '\n暂无考试记录';
         }
 
-        const prompt = `你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。
+        const prompt = `你是一位资深教师,请根据以下学生数据生成一段150字左右的期末评语。要求:客观、具体、有建设性,语言温和鼓励。只需返回评语内容,不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头,直接描述学生的表现和建议。
 
-学生信息：
-- 姓名：${student.name}
-- 班级：${student.class_name}
-- 最近考试平均分：${avgScore.toFixed(1)}分
-- 成绩趋势：${trend} (${trendDescription})
-- 优势科目：${strongSubjects}
-- 薄弱科目：${weakSubjects}
+学生信息:
+- 姓名:${student.name}
+- 班级:${student.class_name}
+- 最近考试平均分:${avgScore.toFixed(1)}分
+- 成绩趋势:${trend} (${trendDescription})
+- 优势科目:${strongSubjects}
+- 薄弱科目:${weakSubjects}
 
-详细考试记录：${examHistoryText}
+详细考试记录:${examHistoryText}
 
-请生成期末评语：`;
+请生成期末评语:`;
 
         console.log('Generated prompt:', prompt);
         console.log('Prompt length:', prompt.length);
 
-        // 5. Call AI with @cf/openai/gpt-oss-20b model
+        // 5. Call AI with @cf/qwen/qwen3-30b-a3b-fp8 model
         try {
-            console.log('Calling AI model @cf/openai/gpt-oss-20b with prompt:', prompt);
-            const response = await c.env.AI.run('@cf/openai/gpt-oss-20b' as any, {
-                input: prompt,
+            console.log('Calling AI model @cf/qwen/qwen3-30b-a3b-fp8 with prompt:', prompt);
+            const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
+                messages: [
+                    { role: "user", content: prompt }
+                ],
                 max_tokens: 200,
                 temperature: 0.7
             }) as any
 
             console.log('AI response:', JSON.stringify(response, null, 2));
 
-            // Handle the complex response format from @cf/openai/gpt-oss-20b
+            // Handle the response format from @cf/qwen/qwen3-30b-a3b-fp8
             let comment = '评语生成失败';
 
-            // Check if response has output array with messages
-            if (response.output && Array.isArray(response.output)) {
-                // Look for the message with type 'message' and role 'assistant'
-                const messageOutput = response.output.find((item: any) =>
-                    item.type === 'message' && item.role === 'assistant' && item.content);
-
-                if (messageOutput && Array.isArray(messageOutput.content)) {
-                    // Look for the output_text content
-                    const textContent = messageOutput.content.find((content: any) =>
-                        content.type === 'output_text' && content.text);
-
-                    if (textContent && textContent.text) {
-                        comment = textContent.text;
-                    }
-                }
-            }
-
-            // Fallback to simpler formats
-            if (comment === '评语生成失败') {
-                comment = response.response ||
-                    response.result?.response ||
-                    response.result ||
-                    (typeof response === 'string' ? response : '评语生成失败') ||
-                    '评语生成失败';
+            // Qwen models typically return response directly
+            if (response.response && typeof response.response === 'string') {
+                comment = response.response;
+            } else if (response.result?.response && typeof response.result.response === 'string') {
+                comment = response.result.response;
+            } else if (typeof response === 'string') {
+                comment = response;
             }
 
             // Ensure comment is a string
-            if (typeof comment !== 'string') {
+            if (typeof comment !== 'string' || comment === '评语生成失败') {
+                console.error('Unexpected response format:', response);
                 comment = '评语生成失败';
             }
 
