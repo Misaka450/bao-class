@@ -92,57 +92,98 @@ export interface StudentProfileData {
         student_id: string;
         class_name: string;
     };
-    latest_exam: {
-        exam_name: string;
-        exam_date: string;
-        total_score: number;
-        average_score: number;
-        class_rank: number;
-    } | null;
-    scores_by_exam: Array<{
+    history: {
+        exam_id: number;
         exam_name: string;
         exam_date: string;
         total_score: number;
         class_rank: number;
-        scores: Array<{
-            course_name: string;
+        class_avg: number;
+        total_students: number;
+        subjects?: {
+            subject: string;
             score: number;
-        }>;
-    }>;
-    trend_data: Array<{
-        exam_name: string;
-        total_score: number;
-        class_rank: number;
-    }>;
-    subject_ability: Array<{
-        course_name: string;
-        z_score: number;
-    }>;
+            class_avg: number;
+            class_rank: number;
+        }[];
+    }[];
+    radar: {
+        subject: string;
+        score: number;
+        classAvg: number;
+        zScore: number;
+        fullMark: number;
+    }[];
+    weak_subjects: {
+        subject: string;
+        score: number;
+        zScore: number;
+        reason: string;
+    }[];
+    advantage_subjects?: {
+        subject: string;
+        score: number;
+        zScore: number;
+        advantage: number;
+        reason: string;
+    }[];
+    statistics?: {
+        progress_rate: number;
+        rank_progress: number;
+        percentile: number;
+        total_exams: number;
+    };
 }
 
 // ==================== 班级分析类型 ====================
 
-export interface ClassTrendData {
+export interface ClassTrendItem {
     exam_name: string;
     exam_date: string;
-    avg_score: number;
+    average_score: number;
     pass_rate: number;
     excellent_rate: number;
 }
 
-export interface SubjectPassRate {
-    course_name: string;
-    pass_rate: number;
+export interface ClassTrendData {
+    class_name: string;
+    trends: ClassTrendItem[];
 }
 
 export interface SubjectTrendItem {
     exam_name: string;
-    [key: string]: any; // 动态科目字段
+    exam_date: string;
+    average_score: number;
+    pass_rate: number;
 }
 
-export interface GradeComparisonItem {
+export interface SubjectTrendData {
     class_name: string;
-    avg_score: number;
+    subjects: {
+        course_name: string;
+        trends: SubjectTrendItem[];
+    }[];
+}
+
+export interface GradeComparisonClass {
+    class_id: number;
+    class_name: string;
+    average_score: number;
+    student_count: number;
+    rank: number;
+}
+
+export interface GradeComparisonData {
+    exam_info: {
+        exam_name: string;
+        exam_date: string;
+    };
+    classes: GradeComparisonClass[];
+    current_class: {
+        class_id: number;
+        rank: number;
+        rank_change: number;
+    };
 }
 
 // ==================== 预警数据类型 ====================
@@ -174,9 +215,10 @@ export interface StudentScore {
 }
 
 export interface StudentScoreItem {
-    id: number;
-    name: string;
-    student_id: string;
+    student_id: number;
+    student_name: string;
+    student_number: string;
     class_name: string;
-    scores?: { [key: string]: number };
+    scores: { [key: string]: number };
+    total: number;
 }

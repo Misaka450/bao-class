@@ -32,7 +32,7 @@ export default defineConfig({
           // Charts library
           'vendor-charts': ['recharts'],
           // Other vendors
-          'vendor-misc': ['zustand', 'xlsx', 'dayjs'],
+          'vendor-misc': ['zustand', 'xlsx', 'dayjs', '@tanstack/react-query'],
         },
       },
     },

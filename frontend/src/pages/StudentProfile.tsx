@@ -3,92 +3,23 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Button, Progress, Empty } from 'antd';
 import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
-import { useAuthStore } from '../store/authStore';
 import api from '../services/api';
-import { API_BASE_URL } from '../config';
+import { useStudentProfile } from '../hooks/useStudentProfile';
 
 const { Title, Text, Paragraph } = Typography;
-
-interface StudentProfileData {
-    student: {
-        id: number;
-        name: string;
-        student_id: string;
-        class_name: string;
-    };
-    history: {
-        exam_id: number;
-        exam_name: string;
-        exam_date: string;
-        total_score: number;
-        class_rank: number;
-        class_avg: number;
-        total_students: number;
-        subjects?: {
-            subject: string;
-            score: number;
-            class_avg: number;
-            class_rank: number;
-        }[];
-    }[];
-    radar: {
-        subject: string;
-        score: number;
-        classAvg: number;
-        zScore: number;
-        fullMark: number;
-    }[];
-    weak_subjects: {
-        subject: string;
-        score: number;
-        zScore: number;
-        reason: string;
-    }[];
-    advantage_subjects?: {
-        subject: string;
-        score: number;
-        zScore: number;
-        advantage: number;
-        reason: string;
-    }[];
-    statistics?: {
-        progress_rate: number;
-        rank_progress: number;
-        percentile: number;
-        total_exams: number;
-    };
-}
 
 export default function StudentProfile() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const [data, setData] = useState<StudentProfileData | null>(null);
-    const [loading, setLoading] = useState(true);
+    const { data, isLoading: loading, error } = useStudentProfile(id ? Number(id) : undefined);
     const [aiComment, setAiComment] = useState<string>('');
     const [generatingComment, setGeneratingComment] = useState(false);
-    const token = useAuthStore((state) => state.token);
 
     useEffect(() => {
-        if (id) {
-            fetchProfile(id);
-        }
-    }, [id]);
-
-    const fetchProfile = async (studentId: string) => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/stats/profile/${studentId}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (!res.ok) throw new Error('Failed to fetch profile');
-            const json = await res.json();
-            setData(json);
-        } catch (error) {
+        if (error) {
             message.error('获取学生档案失败');
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [error]);
 
     const handleGenerateComment = async () => {
         if (!data?.student?.id) return;

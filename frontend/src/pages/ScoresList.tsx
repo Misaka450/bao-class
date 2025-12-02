@@ -1,32 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Table, Card, Select, Row, Col, message, Spin, Button } from 'antd';
 import { TableOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import * as XLSX from 'xlsx';
-import { useAuthStore } from '../store/authStore';
-import { API_BASE_URL } from '../config';
-
-interface ScoreData {
-    student_id: number;
-    student_name: string;
-    student_number: string;
-    class_name: string;
-    scores: { [key: string]: number };
-    total: number;
-}
-
-interface Class {
-    id: number;
-    name: string;
-}
-
-interface Exam {
-    id: number;
-    name: string;
-    class_name?: string;
-    exam_date?: string;
-    class_id?: number;
-}
+import { useScoresList } from '../hooks/useScoresList';
+import { useClassList } from '../hooks/useClassList';
+import { useExamList } from '../hooks/useExamList';
+import { useCourseList } from '../hooks/useCourseList';
+import type { StudentScoreItem } from '../types';
 
 interface Course {
     id: number;
@@ -34,20 +15,34 @@ interface Course {
 }
 
 export default function ScoresList() {
-    const [scoresData, setScoresData] = useState<ScoreData[]>([]);
-    const [classes, setClasses] = useState<Class[]>([]);
-    const [exams, setExams] = useState<Exam[]>([]);
-    const [courses, setCourses] = useState<Course[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [selectedExamName, setSelectedExamName] = useState<string>(''); // 改为按考试名称筛选
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
-    const [loading, setLoading] = useState(false);
-    const token = useAuthStore((state) => state.token);
+
+    // Optimize: use React Query for all data fetching
+    const { data: classes = [] } = useClassList();
+    const { data: exams = [] } = useExamList();
+    const { data: allCourses = [] } = useCourseList();
+    const { data: scoresData = [], isLoading: loading } = useScoresList({
+        classId: selectedClassId,
+        examName: selectedExamName,
+        courseId: selectedCourseId
+    });
+
+    // 去重课程（根据课程名称）
+    const courses = useMemo(() => {
+        return allCourses.reduce((acc: Course[], course: Course) => {
+            if (!acc.find(c => c.name === course.name)) {
+                acc.push(course);
+            }
+            return acc;
+        }, []);
+    }, [allCourses]);
 
     // Optimize: memoize subjects extraction from scores data
     const subjects = useMemo(() => {
         const subjectsSet = new Set<string>();
-        scoresData.forEach(student => {
+        scoresData.forEach((student: StudentScoreItem) => {
             if (student.scores) {
                 Object.keys(student.scores).forEach(subject => subjectsSet.add(subject));
             }
@@ -60,93 +55,6 @@ export default function ScoresList() {
         Array.from(new Set(exams.map(e => e.name))).sort(),
         [exams]
     );
-
-    useEffect(() => {
-        fetchClasses();
-        fetchExams();
-        fetchCourses();
-    }, []);
-
-    useEffect(() => {
-        fetchScoresData();
-    }, [selectedClassId, selectedExamName, selectedCourseId]);
-
-    const fetchClasses = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/classes`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            setClasses(data);
-        } catch (error) {
-            message.error('获取班级列表失败');
-        }
-    };
-
-    const fetchExams = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/exams`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            setExams(data);
-        } catch (error) {
-            message.error('获取考试列表失败');
-        }
-    };
-
-    const fetchCourses = async () => {
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/courses`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            const data = await res.json();
-            // 去重课程（根据课程名称）
-            const uniqueCourses = data.reduce((acc: Course[], course: Course) => {
-                if (!acc.find(c => c.name === course.name)) {
-                    acc.push(course);
-                }
-                return acc;
-            }, []);
-            setCourses(uniqueCourses);
-        } catch (error) {
-            message.error('获取课程列表失败');
-        }
-    };
-
-    const fetchScoresData = async () => {
-        setLoading(true);
-        try {
-            let url = `${API_BASE_URL}/api/stats/scores-list`;
-            const params = new URLSearchParams();
-            if (selectedClassId) params.append('classId', selectedClassId);
-            if (selectedExamName) params.append('examName', selectedExamName); // 改为按考试名称查询
-            if (selectedCourseId) params.append('courseId', selectedCourseId);
-            if (params.toString()) url += `?${params.toString()}`;
-
-            const res = await fetch(url, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-
-            if (!res.ok) {
-                throw new Error('Failed to fetch data');
-            }
-
-            const data = await res.json();
-
-            if (!Array.isArray(data)) {
-                console.error('Invalid data format:', data);
-                setScoresData([]);
-                return;
-            }
-
-            setScoresData(data);
-        } catch (error) {
-            message.error('获取成绩数据失败');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleExport = () => {
         if (scoresData.length === 0) {
@@ -188,7 +96,7 @@ export default function ScoresList() {
     };
 
     // Build dynamic columns
-    const columns: ColumnsType<ScoreData> = [
+    const columns: ColumnsType<StudentScoreItem> = [
         {
             title: '排名',
             key: 'rank',
@@ -239,7 +147,7 @@ export default function ScoresList() {
 
                 return <span style={{ color, fontWeight }}>{score}</span>;
             },
-            sorter: (a: ScoreData, b: ScoreData) => {
+            sorter: (a: StudentScoreItem, b: StudentScoreItem) => {
                 const scoreA = a.scores?.[subject] || 0;
                 const scoreB = b.scores?.[subject] || 0;
                 return scoreA - scoreB;
@@ -252,7 +160,7 @@ export default function ScoresList() {
             key: 'total',
             width: 70,
             render: (total: number) => <strong>{total}</strong>,
-            sorter: (a: ScoreData, b: ScoreData) => a.total - b.total,
+            sorter: (a: StudentScoreItem, b: StudentScoreItem) => a.total - b.total,
             defaultSortOrder: 'descend' as const,
         }] : []),
     ];

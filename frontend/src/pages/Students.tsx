@@ -150,17 +150,32 @@ export default function Students() {
                             删除
                         </Button>
                     </Popconfirm>
+                </Space>
+            ),
+        },
+    ], [classes, navigate, handleDelete]);
+
+    const filteredStudents = students.filter(student => {
+        const matchName = student.name.includes(debouncedSearchText) || student.student_id.includes(debouncedSearchText);
+        const matchClass = filterClassId ? student.class_id.toString() === filterClassId : true;
+        return matchName && matchClass;
+    });
+
+    return (
+        <div>
+            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
                     <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>学生管理</h2>
                     <p style={{ margin: '4px 0 0 0', color: '#666' }}>管理所有在校学生信息</p>
                 </div>
                 <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
                     添加学生
                 </Button>
-            </div >
+            </div>
 
-        {/* Search and Filter Section */ }
-        < Row gutter = { 16} style = {{ marginBottom: 16 }
-}>
+            {/* Search and Filter Section */}
+            < Row gutter={16} style={{ marginBottom: 16 }
+            }>
                 <Col span={8}>
                     <Input
                         placeholder="搜索姓名或学号"

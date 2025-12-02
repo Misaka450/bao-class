@@ -12,8 +12,8 @@ import type {
     ProgressData,
     StudentProfileData,
     ClassTrendData,
-    SubjectTrendItem,
-    GradeComparisonItem,
+    SubjectTrendData,
+    GradeComparisonData,
     StudentScore,
     StudentScoreItem,
 } from '../types';
@@ -120,22 +120,24 @@ export const statsApi = {
 
     // 班级趋势
     getClassTrend: (classId: number) =>
-        get<ClassTrendData[]>(`/api/stats/class-trend/${classId}`),
+        get<ClassTrendData>(`/api/stats/class-trend/${classId}`),
 
     // 班级科目趋势
     getClassSubjectTrend: (classId: number) =>
-        get<SubjectTrendItem[]>(`/api/stats/class-subject-trend/${classId}`),
+        get<SubjectTrendData>(`/api/stats/class-subject-trend/${classId}`),
 
     // 年级对比
     getGradeComparison: (classId: number, examId: number) =>
-        get<GradeComparisonItem[]>(`/api/stats/grade-comparison/${classId}/${examId}`),
+        get<GradeComparisonData>(`/api/stats/grade-comparison/${classId}/${examId}`),
 
     // 成绩列表
-    getScoresList: (params: { class_id?: string; exam_id?: string; course_id?: string }) => {
+    // 成绩列表
+    getScoresList: (params: { classId?: string; examId?: string; examName?: string; courseId?: string }) => {
         const query = new URLSearchParams();
-        if (params.class_id) query.append('class_id', params.class_id);
-        if (params.exam_id) query.append('exam_id', params.exam_id);
-        if (params.course_id) query.append('course_id', params.course_id);
+        if (params.classId) query.append('classId', params.classId);
+        if (params.examId) query.append('examId', params.examId);
+        if (params.examName) query.append('examName', params.examName);
+        if (params.courseId) query.append('courseId', params.courseId);
         return get<StudentScoreItem[]>(`/api/stats/scores-list?${query.toString()}`);
     },
 };

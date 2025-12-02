@@ -5,125 +5,40 @@ import {
     AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell
 } from 'recharts';
 import { TrophyOutlined, RobotOutlined } from '@ant-design/icons';
-import type { Class } from '../types';
-import api from '../services/api';
 import StudentAlertsCard from '../components/StudentAlertsCard';
 import ExamQualityCard from '../components/ExamQualityCard';
+import { useClassList } from '../hooks/useClassList';
+import { useExamList } from '../hooks/useExamList';
+import { useClassTrend, useClassSubjectTrend, useGradeComparison } from '../hooks/useClassAnalysis';
 
 const { Title } = Typography;
 
-// Interfaces
-interface ClassTrendData {
-    class_name: string;
-    trends: {
-        exam_name: string;
-        exam_date: string;
-        average_score: number;
-        pass_rate: number;
-        excellent_rate: number;
-    }[];
-}
-
-interface SubjectTrendData {
-    class_name: string;
-    subjects: {
-        course_name: string;
-        trends: {
-            exam_name: string;
-            exam_date: string;
-            average_score: number;
-            pass_rate: number;
-        }[];
-    }[];
-}
-
-interface GradeComparisonData {
-    exam_info: {
-        exam_name: string;
-        exam_date: string;
-    };
-    classes: {
-        class_id: number;
-        class_name: string;
-        average_score: number;
-        student_count: number;
-        rank: number;
-    }[];
-    current_class: {
-        class_id: number;
-        rank: number;
-        rank_change: number;
-    };
-}
-
 export default function ClassAnalysis() {
-    const [classes, setClasses] = useState<Class[]>([]);
+    const { data: classes = [] } = useClassList();
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [activeTab, setActiveTab] = useState('overview');
-    const [loading, setLoading] = useState(false);
 
-    // Data states
-    const [trendData, setTrendData] = useState<ClassTrendData | null>(null);
-    const [subjectData, setSubjectData] = useState<SubjectTrendData | null>(null);
-    const [gradeData, setGradeData] = useState<GradeComparisonData | null>(null);
-    const [latestExamId, setLatestExamId] = useState<number | undefined>(undefined);
-
+    // Auto-select first class
     useEffect(() => {
-        fetchClasses();
-    }, []);
-
-    useEffect(() => {
-        if (selectedClassId) {
-            fetchData(activeTab);
-            fetchLatestExam();
+        if (classes.length > 0 && !selectedClassId) {
+            setSelectedClassId(classes[0].id.toString());
         }
-    }, [selectedClassId, activeTab]);
+    }, [classes]);
 
-    const fetchLatestExam = async () => {
-        try {
-            const result = await api.exam.list({ class_id: selectedClassId });
-            if (result && result.length > 0) {
-                setLatestExamId(result[0].id);
-            }
-        } catch (error) {
-            console.error('Failed to fetch latest exam', error);
-        }
-    };
+    // Data hooks
+    const { data: trendData, isLoading: loadingTrend } = useClassTrend(selectedClassId ? Number(selectedClassId) : undefined);
+    const { data: subjectData, isLoading: loadingSubject } = useClassSubjectTrend(selectedClassId ? Number(selectedClassId) : undefined);
 
-    const fetchClasses = async () => {
-        try {
-            const data = await api.class.list();
-            setClasses(data);
-            if (data.length > 0) {
-                setSelectedClassId(data[0].id.toString());
-            }
-        } catch (error) {
-            // Error already handled in request layer
-        }
-    };
+    // Latest exam for grade comparison
+    const { data: exams = [] } = useExamList({ classId: selectedClassId, enabled: !!selectedClassId });
+    const latestExamId = exams.length > 0 ? exams[0].id : undefined;
 
-    const fetchData = async (tab: string) => {
-        if (!selectedClassId) return;
-        setLoading(true);
-        try {
-            if (tab === 'overview') {
-                const data = await api.stats.getClassTrend(Number(selectedClassId));
-                setTrendData(data as any);
-            } else if (tab === 'subject') {
-                const data = await api.stats.getClassSubjectTrend(Number(selectedClassId));
-                setSubjectData(data as any);
-            } else if (tab === 'grade') {
-                // Grade comparison needs exam ID, using first available exam
-                // This is a simplified approach - in real scenario, we'd need to select an exam
-                const data = await api.stats.getGradeComparison(Number(selectedClassId), 1);
-                setGradeData(data as any);
-            }
-        } catch (error) {
-            // Error already handled in request layer
-        } finally {
-            setLoading(false);
-        }
-    };
+    const { data: gradeData, isLoading: loadingGrade } = useGradeComparison(
+        selectedClassId ? Number(selectedClassId) : undefined,
+        latestExamId
+    );
+
+    const loading = loadingTrend || loadingSubject || loadingGrade;
 
     // Render functions for each tab
     const renderOverviewTab = () => (
@@ -203,7 +118,7 @@ export default function ClassAnalysis() {
                                     <YAxis domain={[0, 100]} />
                                     <Tooltip />
                                     <Legend />
-                                    {subjectData.subjects.map((sub, index) => (
+                                    {subjectData.subjects.map((sub: any, index: number) => (
                                         <Line
                                             key={sub.course_name}
                                             data={sub.trends}
@@ -248,7 +163,7 @@ export default function ClassAnalysis() {
                             <Col span={8}>
                                 <Statistic
                                     title="平均分"
-                                    value={gradeData.classes.find(c => c.class_id === gradeData.current_class.class_id)?.average_score || 0}
+                                    value={gradeData.classes.find((c: any) => c.class_id === gradeData.current_class.class_id)?.average_score || 0}
                                     precision={1}
                                 />
                             </Col>
@@ -266,7 +181,7 @@ export default function ClassAnalysis() {
                                     <Tooltip />
                                     <Legend />
                                     <Bar dataKey="average_score" name="平均总分" fill="#1890ff" barSize={30}>
-                                        {gradeData.classes.map((entry, index) => (
+                                        {gradeData.classes.map((entry: any, index: number) => (
                                             <Cell key={`cell-${index}`} fill={entry.class_id === gradeData.current_class.class_id ? '#ff7300' : '#1890ff'} />
                                         ))}
                                     </Bar>
@@ -326,7 +241,7 @@ export default function ClassAnalysis() {
                     style={{ width: 200 }}
                     placeholder="选择班级"
                 >
-                    {classes.map((cls) => (
+                    {classes.map((cls: any) => (
                         <Select.Option key={cls.id} value={cls.id.toString()}>
                             {cls.name}
                         </Select.Option>

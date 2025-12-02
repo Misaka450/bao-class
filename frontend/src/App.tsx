@@ -7,6 +7,9 @@ import Layout from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { useAuthStore } from './store/authStore';
 
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/queryClient';
+
 // Optimize: lazy load all page components to reduce initial bundle size
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
@@ -40,31 +43,33 @@ function App() {
 
   return (
     <ErrorBoundary>
-      <ConfigProvider locale={zhCN} theme={lightTheme}>
-        <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><Spin size="large" /></div>}>
-          {token ? (
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/classes" element={<Classes />} />
-                <Route path="/students" element={<Students />} />
-                <Route path="/courses" element={<Courses />} />
-                <Route path="/exams" element={<Exams />} />
-                <Route path="/scores-list" element={<ScoresList />} />
-                <Route path="/import" element={<Import />} />
-                <Route path="/student-profile/:id" element={<StudentProfile />} />
-                <Route path="/analysis/class" element={<ClassAnalysis />} />
-                <Route path="/analysis/alerts" element={<ManagementAlerts />} />
-                <Route path="/management-alerts" element={<ManagementAlerts />} />
-                <Route path="/audit-logs" element={<AuditLogs />} />
-              </Routes>
-            </Layout>
-          ) : (
-            <Login />
-          )}
-        </Suspense>
-      </ConfigProvider>
+      <QueryClientProvider client={queryClient}>
+        <ConfigProvider locale={zhCN} theme={lightTheme}>
+          <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><Spin size="large" /></div>}>
+            {token ? (
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/classes" element={<Classes />} />
+                  <Route path="/students" element={<Students />} />
+                  <Route path="/courses" element={<Courses />} />
+                  <Route path="/exams" element={<Exams />} />
+                  <Route path="/scores-list" element={<ScoresList />} />
+                  <Route path="/import" element={<Import />} />
+                  <Route path="/student-profile/:id" element={<StudentProfile />} />
+                  <Route path="/analysis/class" element={<ClassAnalysis />} />
+                  <Route path="/analysis/alerts" element={<ManagementAlerts />} />
+                  <Route path="/management-alerts" element={<ManagementAlerts />} />
+                  <Route path="/audit-logs" element={<AuditLogs />} />
+                </Routes>
+              </Layout>
+            ) : (
+              <Login />
+            )}
+          </Suspense>
+        </ConfigProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   );
 }

@@ -2,51 +2,28 @@ import { useState, useEffect } from 'react';
 import { Card, Select, Spin, Typography, Row, Col, Empty, Tag, List, Button, Space } from 'antd';
 import { FallOutlined, RiseOutlined, WarningOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import type { Class, FocusGroupData, AlertStudent } from '../types';
-import api from '../services/api';
+import type { AlertStudent } from '../types';
+import { useClassList } from '../hooks/useClassList';
+import { useFocusGroup } from '../hooks/useFocusGroup';
 
 const { Title } = Typography;
 
 export default function ManagementAlerts() {
-    const [classes, setClasses] = useState<Class[]>([]);
-    const [selectedClassId, setSelectedClassId] = useState<string>('');
-    const [data, setData] = useState<FocusGroupData | null>(null);
-    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const [selectedClassId, setSelectedClassId] = useState<string>('');
 
+    const { data: classes = [], isLoading: loadingClasses } = useClassList();
+
+    // Set default selected class when classes are loaded
     useEffect(() => {
-        fetchClasses();
-    }, []);
-
-    useEffect(() => {
-        if (selectedClassId) {
-            fetchAlerts(selectedClassId);
+        if (classes.length > 0 && !selectedClassId) {
+            setSelectedClassId(classes[0].id.toString());
         }
-    }, [selectedClassId]);
+    }, [classes, selectedClassId]);
 
-    const fetchClasses = async () => {
-        try {
-            const data = await api.class.list();
-            setClasses(data);
-            if (data.length > 0) {
-                setSelectedClassId(data[0].id.toString());
-            }
-        } catch (error) {
-            // Error already handled in request layer
-        }
-    };
+    const { data, isLoading: loadingAlerts } = useFocusGroup(selectedClassId || undefined);
 
-    const fetchAlerts = async (classId: string) => {
-        setLoading(true);
-        try {
-            const data = await api.analysis.getFocusGroup(classId);
-            setData(data);
-        } catch (error) {
-            // Error already handled in request layer
-        } finally {
-            setLoading(false);
-        }
-    };
+    const loading = loadingClasses || loadingAlerts;
 
     const renderStudentList = (students: AlertStudent[], type: 'critical' | 'regressing' | 'fluctuating' | 'imbalanced') => {
         if (!students || students.length === 0) return <Empty description="无相关学生" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
@@ -108,6 +85,7 @@ export default function ManagementAlerts() {
                     onChange={setSelectedClassId}
                     style={{ width: 200 }}
                     placeholder="选择班级"
+                    loading={loadingClasses}
                 >
                     {classes.map((cls) => (
                         <Select.Option key={cls.id} value={cls.id.toString()}>
