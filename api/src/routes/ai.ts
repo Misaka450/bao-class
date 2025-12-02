@@ -37,6 +37,8 @@ ai.post('/generate-comment', async (c) => {
             } catch (kvError) {
                 console.warn('KV cache read failed:', kvError);
             }
+        } else {
+            console.log('Force regenerate requested for student_id:', student_id);
         }
 
         // 2. Get student info
@@ -260,7 +262,9 @@ ai.post('/generate-comment', async (c) => {
             if (comment !== '评语生成失败') {
                 try {
                     // Update KV cache
+                    console.log('Updating KV cache for student_id:', student_id);
                     await c.env.KV.put(cacheKey, comment, { expirationTtl: 3600 }); // Cache for 1 hour
+                    console.log('KV cache updated successfully for student_id:', student_id);
                 } catch (kvError) {
                     console.warn('KV cache save failed:', kvError);
                 }
@@ -280,6 +284,7 @@ ai.post('/generate-comment', async (c) => {
                             weak_subjects: weakSubjects
                         })
                     ).run();
+                    console.log('Database updated successfully for student_id:', student_id);
                 } catch (dbError) {
                     console.warn('Database save failed:', dbError);
                 }
