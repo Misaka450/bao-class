@@ -33,9 +33,11 @@ export default function StudentProfile() {
                 setAiComment(res.comment);
                 message.success('评语生成成功');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Generate comment error:', error);
-            message.error('评语生成失败，请稍后重试');
+            // 显示更具体的错误信息
+            const errorMessage = error.message || '评语生成失败，请稍后重试';
+            message.error(errorMessage);
         } finally {
             setGeneratingComment(false);
         }

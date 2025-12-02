@@ -183,11 +183,17 @@ ai.post('/generate-comment', async (c) => {
         // 5. Call AI
         try {
             console.log('Calling AI model with prompt:', prompt);
-            const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
-                input: prompt,
-                max_tokens: 200,
-                temperature: 0.7
-            }) as any
+            // Add a timeout to prevent hanging
+            const response = await Promise.race([
+                c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
+                    input: prompt,
+                    max_tokens: 200,
+                    temperature: 0.7
+                }),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('AI调用超时')), 30000)
+                )
+            ]) as any;
 
             console.log('AI response:', JSON.stringify(response, null, 2));
 
@@ -268,6 +274,10 @@ ai.post('/generate-comment', async (c) => {
 
             // Return a more detailed error message
             const errorMessage = `AI调用失败: ${aiError.message || aiError.toString()}`;
+            // 如果是超时错误，返回更具体的错误信息
+            if (aiError.message === 'AI调用超时') {
+                throw new AppError('AI服务响应超时，请稍后重试', 500);
+            }
             throw new AppError(errorMessage, 500);
         }
     } catch (error) {
