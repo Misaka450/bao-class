@@ -183,7 +183,7 @@ ai.post('/generate-comment', async (c) => {
 
 详细考试记录：${examHistoryText}
 
-期末评语：`
+请生成期末评语：`
 
         console.log('Generated prompt:', prompt);
         console.log('Prompt length:', prompt.length);
@@ -194,7 +194,20 @@ ai.post('/generate-comment', async (c) => {
             // Add a timeout to prevent hanging
             const response = await Promise.race([
                 c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
-                    input: prompt,
+                    messages: [
+                        { role: "system", content: "你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。" },
+                        { role: "user", content: `学生信息：
+- 姓名：${student.name}
+- 班级：${student.class_name}
+- 最近考试平均分：${avgScore.toFixed(1)}分
+- 成绩趋势：${trend} (${trendDescription})
+- 优势科目：${strongSubjects}
+- 薄弱科目：${weakSubjects}
+
+详细考试记录：${examHistoryText}
+
+请生成期末评语：` }
+                    ],
                     max_tokens: 200,
                     temperature: 0.7
                 }),
