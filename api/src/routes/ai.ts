@@ -313,4 +313,81 @@ ai.post('/generate-comment', async (c) => {
     }
 })
 
+// Get comment history for a student
+ai.get('/comments/:studentId', async (c) => {
+    const studentId = parseInt(c.req.param('studentId'));
+    
+    if (isNaN(studentId)) {
+        throw new AppError('Invalid student ID', 400);
+    }
+    
+    try {
+        const result = await c.env.DB.prepare(`
+            SELECT id, exam_id, comment, metadata, edited, created_at, updated_at
+            FROM ai_comments 
+            WHERE student_id = ? 
+            ORDER BY created_at DESC
+        `).bind(studentId).all() as any;
+        
+        return c.json({
+            success: true,
+            comments: result.results || []
+        });
+    } catch (error) {
+        console.error('Get comment history error:', error);
+        throw new AppError('Failed to get comment history', 500);
+    }
+});
+
+// Update a comment
+ai.put('/comments/:id', async (c) => {
+    const id = parseInt(c.req.param('id'));
+    const { comment } = await c.req.json();
+    
+    if (isNaN(id)) {
+        throw new AppError('Invalid comment ID', 400);
+    }
+    
+    if (!comment) {
+        throw new AppError('Comment content is required', 400);
+    }
+    
+    try {
+        await c.env.DB.prepare(`
+            UPDATE ai_comments 
+            SET comment = ?, edited = 1, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        `).bind(comment, id).run();
+        
+        return c.json({
+            success: true
+        });
+    } catch (error) {
+        console.error('Update comment error:', error);
+        throw new AppError('Failed to update comment', 500);
+    }
+});
+
+// Delete a comment
+ai.delete('/comments/:id', async (c) => {
+    const id = parseInt(c.req.param('id'));
+    
+    if (isNaN(id)) {
+        throw new AppError('Invalid comment ID', 400);
+    }
+    
+    try {
+        await c.env.DB.prepare(`
+            DELETE FROM ai_comments WHERE id = ?
+        `).bind(id).run();
+        
+        return c.json({
+            success: true
+        });
+    } catch (error) {
+        console.error('Delete comment error:', error);
+        throw new AppError('Failed to delete comment', 500);
+    }
+});
+
 export default ai
