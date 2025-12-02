@@ -195,7 +195,7 @@ export const logsApi = {
 // ==================== AI API ====================
 
 export const aiApi = {
-    generateComment: (data: { student_id: number; exam_ids?: number[] }) =>
+    generateComment: (data: { student_id: number; exam_ids?: number[]; force_regenerate?: boolean }) =>
         post<{
             success: boolean;
             comment: string;

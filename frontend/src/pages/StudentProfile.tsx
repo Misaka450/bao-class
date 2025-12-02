@@ -54,9 +54,14 @@ export default function StudentProfile() {
         setGeneratingComment(true);
         setCommentSource('');
         setAiComment(''); // Clear previous comment
+        
+        // Check if we're regenerating (there's already a comment)
+        const isRegenerating = !!aiComment;
+        
         try {
             const res = await api.ai.generateComment({
-                student_id: data.student.id
+                student_id: data.student.id,
+                force_regenerate: isRegenerating // Pass force_regenerate flag when regenerating
             });
             if (res.success) {
                 setAiComment(res.comment);

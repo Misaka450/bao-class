@@ -15,26 +15,28 @@ ai.use('*', authMiddleware)
 
 // Generate student comment
 ai.post('/generate-comment', async (c) => {
-    const { student_id, exam_ids } = await c.req.json()
+    const { student_id, exam_ids, force_regenerate } = await c.req.json()
 
     try {
         console.log('Starting AI comment generation for student_id:', student_id);
         
-        // 1. Check KV cache first
+        // 1. Check KV cache first (unless force_regenerate is true)
         const cacheKey = `ai_comment_${student_id}`;
-        try {
-            const cachedComment = await c.env.KV.get(cacheKey);
-            if (cachedComment) {
-                console.log('Returning cached comment for student_id:', student_id);
-                return c.json({
-                    success: true,
-                    comment: cachedComment,
-                    cached: true,
-                    source: 'kv'
-                });
+        if (!force_regenerate) {
+            try {
+                const cachedComment = await c.env.KV.get(cacheKey);
+                if (cachedComment) {
+                    console.log('Returning cached comment for student_id:', student_id);
+                    return c.json({
+                        success: true,
+                        comment: cachedComment,
+                        cached: true,
+                        source: 'kv'
+                    });
+                }
+            } catch (kvError) {
+                console.warn('KV cache read failed:', kvError);
             }
-        } catch (kvError) {
-            console.warn('KV cache read failed:', kvError);
         }
 
         // 2. Get student info
