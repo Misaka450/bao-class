@@ -16,13 +16,13 @@ ai.use('*', authMiddleware)
 // Generate student comment
 ai.post('/generate-comment', async (c) => {
     const { student_id, exam_ids, force_regenerate } = await c.req.json()
-    
+
     // Add debug log
     console.log('Received request with parameters:', { student_id, exam_ids, force_regenerate });
 
     try {
         console.log('Starting AI comment generation for student_id:', student_id);
-        
+
         // 1. Check KV cache first (unless force_regenerate is true)
         const cacheKey = `ai_comment_${student_id}`;
         if (!force_regenerate) {
@@ -42,6 +42,13 @@ ai.post('/generate-comment', async (c) => {
             }
         } else {
             console.log('Force regenerate requested for student_id:', student_id);
+            // Explicitly delete the cache key to ensure fresh start
+            try {
+                await c.env.KV.delete(cacheKey);
+                console.log('Deleted KV cache for student_id:', student_id);
+            } catch (e) {
+                console.warn('Failed to delete KV cache:', e);
+            }
         }
 
         // 2. Get student info
@@ -86,7 +93,7 @@ ai.post('/generate-comment', async (c) => {
 
         let strongSubjects = '暂无';
         let weakSubjects = '暂无';
-        
+
         if (subjectScores.results && subjectScores.results.length > 0) {
             const courseAvgs = subjectScores.results.map((row: any) => ({
                 name: row.course_name,
@@ -199,7 +206,10 @@ ai.post('/generate-comment', async (c) => {
             examHistoryText = '\n暂无考试记录';
         }
 
-        const prompt = `你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。
+        // Add random seed if regenerating to ensure uniqueness
+        const randomSeed = force_regenerate ? `\n(Random Seed: ${Math.random().toString(36).substring(7)})` : '';
+
+        const prompt = `你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。${randomSeed}
 
 学生信息：
 - 姓名：${student.name}
@@ -271,15 +281,15 @@ ai.post('/generate-comment', async (c) => {
                 } catch (kvError) {
                     console.warn('KV cache save failed:', kvError);
                 }
-                
+
                 // Save to database for history
                 try {
                     await c.env.DB.prepare(`
                         INSERT INTO ai_comments (student_id, comment, metadata)
                         VALUES (?, ?, ?)
                     `).bind(
-                        student_id, 
-                        comment, 
+                        student_id,
+                        comment,
                         JSON.stringify({
                             avg_score: avgScore.toFixed(1),
                             trend,
@@ -327,11 +337,11 @@ ai.post('/generate-comment', async (c) => {
 // Get comment history for a student
 ai.get('/comments/:studentId', async (c) => {
     const studentId = parseInt(c.req.param('studentId'));
-    
+
     if (isNaN(studentId)) {
         throw new AppError('Invalid student ID', 400);
     }
-    
+
     try {
         const result = await c.env.DB.prepare(`
             SELECT id, exam_id, comment, metadata, edited, created_at, updated_at
@@ -339,7 +349,7 @@ ai.get('/comments/:studentId', async (c) => {
             WHERE student_id = ? 
             ORDER BY created_at DESC
         `).bind(studentId).all() as any;
-        
+
         return c.json({
             success: true,
             comments: result.results || []
@@ -354,22 +364,22 @@ ai.get('/comments/:studentId', async (c) => {
 ai.put('/comments/:id', async (c) => {
     const id = parseInt(c.req.param('id'));
     const { comment } = await c.req.json();
-    
+
     if (isNaN(id)) {
         throw new AppError('Invalid comment ID', 400);
     }
-    
+
     if (!comment) {
         throw new AppError('Comment content is required', 400);
     }
-    
+
     try {
         await c.env.DB.prepare(`
             UPDATE ai_comments 
             SET comment = ?, edited = 1, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
         `).bind(comment, id).run();
-        
+
         return c.json({
             success: true
         });
@@ -382,16 +392,16 @@ ai.put('/comments/:id', async (c) => {
 // Delete a comment
 ai.delete('/comments/:id', async (c) => {
     const id = parseInt(c.req.param('id'));
-    
+
     if (isNaN(id)) {
         throw new AppError('Invalid comment ID', 400);
     }
-    
+
     try {
         await c.env.DB.prepare(`
             DELETE FROM ai_comments WHERE id = ?
         `).bind(id).run();
-        
+
         return c.json({
             success: true
         });
