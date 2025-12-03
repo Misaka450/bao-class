@@ -48,30 +48,27 @@ export default function StudentProfile() {
         }
     };
 
-    const handleGenerateComment = async () => {
+    const handleGenerateComment = async (forceRegenerate: boolean = false) => {
         if (!data?.student?.id) return;
 
         setGeneratingComment(true);
         setCommentSource('');
-        
-        // Check if we're regenerating (there's already a comment)
-        const isRegenerating = !!aiComment;
-        
+
         // Add debug log
-        console.log('Handle generate comment, isRegenerating:', isRegenerating);
-        
-        setAiComment(''); // Clear previous comment after checking
-        
+        console.log('Handle generate comment, forceRegenerate:', forceRegenerate);
+
+        setAiComment(''); // Clear previous comment
+
         try {
             const res = await api.ai.generateComment({
                 student_id: data.student.id,
-                // When there's already a comment, always force regenerate
-                force_regenerate: isRegenerating
+                // Use the explicit parameter
+                force_regenerate: forceRegenerate
             });
-            
+
             // Add debug log
             console.log('API response:', res);
-            
+
             if (res.success) {
                 setAiComment(res.comment);
                 setCommentSource(res.cached ? `缓存 (${res.source === 'kv' ? 'KV' : '数据库'})` : 'AI 生成');
@@ -343,7 +340,7 @@ export default function StudentProfile() {
                                 type="primary"
                                 size="small"
                                 icon={aiComment ? <ReloadOutlined /> : <RobotOutlined />}
-                                onClick={handleGenerateComment}
+                                onClick={() => handleGenerateComment(!!aiComment)}
                                 loading={generatingComment}
                             >
                                 {aiComment ? '重新生成' : '一键生成'}
