@@ -209,19 +209,31 @@ ai.post('/generate-comment', async (c) => {
         // Add random seed if regenerating to ensure uniqueness
         const randomSeed = force_regenerate ? `\n(Random Seed: ${Math.random().toString(36).substring(7)})` : '';
 
-        const prompt = `你是一位资深教师，请根据以下学生数据生成一段150字左右的期末评语。要求：客观、具体、有建设性，语言温和鼓励。只需返回评语内容，不要包含任何解释、思考过程或其他内容。评语应以学生姓名开头，直接描述学生的表现和建议。${randomSeed}
+        const prompt = `你是一位经验丰富、富有爱心的班主任。请根据提供的学生数据，撰写一段150字左右的期末评语。
+要求：
+1. 语气温和、诚恳，多用鼓励性语言。
+2. 客观评价学生的学习情况，既要肯定成绩和进步，也要委婉指出不足。
+3. 结合具体的优势科目和薄弱科目提出建设性的建议。
+4. 评语结构清晰，逻辑通顺。
+5. 只返回评语内容，不要包含任何解释、标题或额外信息。
+6. 以"${student.name}同学："开头。
+7. 不要输出你的思考过程，直接输出最终的评语内容。
+8. 严禁以"好的"、"我需要"、"首先"、"用户"等词语开头。
+9. 直接输出以"${student.name}同学："开头的评语内容。
+${randomSeed}
 
 学生信息：
 - 姓名：${student.name}
 - 班级：${student.class_name}
-- 最近考试平均分：${avgScore.toFixed(1)}分
+- 平均分：${avgScore.toFixed(1)}
 - 成绩趋势：${trend} (${trendDescription})
 - 优势科目：${strongSubjects}
 - 薄弱科目：${weakSubjects}
 
-详细考试记录：${examHistoryText}
+考试记录：${examHistoryText}
 
-请生成期末评语：`;
+请严格按照以下格式生成评语：
+${student.name}同学：[150字左右的评语内容，语气温和诚恳，多用鼓励性语言，客观评价学习情况，肯定成绩和进步，委婉指出不足，结合具体科目给出建议]`;
 
         console.log('Generated prompt:', prompt);
         console.log('Prompt length:', prompt.length);
@@ -231,7 +243,7 @@ ai.post('/generate-comment', async (c) => {
             console.log('Calling AI model @cf/qwen/qwen3-30b-a3b-fp8 with prompt:', prompt);
             const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
                 input: prompt,
-                max_tokens: 200,
+                max_tokens: 500, // Increase max_tokens to ensure complete comment generation
                 temperature: 0.7
             }) as any
 
@@ -254,6 +266,25 @@ ai.post('/generate-comment', async (c) => {
                     if (textContent && textContent.text) {
                         comment = textContent.text;
                     }
+                }
+            }
+
+            // Also check for choices array (OpenAI-like format) - Qwen model specific
+            else if (response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
+                const choice = response.choices[0];
+                
+                // Check content first (preferred output)
+                if (choice.message && choice.message.content !== undefined && choice.message.content !== null) {
+                    // Ensure content is a string
+                    if (typeof choice.message.content === 'string') {
+                        comment = choice.message.content;
+                    }
+                }
+                // For Qwen model, if content is null, we should not use reasoning_content as it contains thinking process
+                // Instead, we should treat this as a failed generation
+                else if (choice.message && choice.message.reasoning_content) {
+                    // We don't use reasoning_content anymore as it contains the AI's thinking process, not the final output
+                    comment = '评语生成失败，请重试。';
                 }
             }
 
