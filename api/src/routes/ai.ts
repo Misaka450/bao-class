@@ -340,7 +340,8 @@ ${student.name}同学：[150字左右的评语内容，语气温和诚恳，多�
                                 '首先', '接下来', '然后', '最后', '注意', '检查', '确保',
                                 '可能需要', '可能', '应该', '必须', '需要', '要求',
                                 '结构方面', '开头称呼', '评语需要', '用户的要求',
-                                '老师的建议', '老师的提示'
+                                '老师的建议', '老师的提示', '用户需求', '用户信息',
+                                '平均分', '成绩趋势', '优势科目', '薄弱科目', '考试记录'
                             ];
                             
                             let containsForbiddenPhrase = false;
@@ -365,6 +366,12 @@ ${student.name}同学：[150字左右的评语内容，语气温和诚恳，多�
                             // Additional validation: Check if comment is too long (likely contains thinking process)
                             else if (comment.length > 300) {
                                 console.log('Comment is too long, likely contains thinking process, treating as failed generation');
+                                comment = '评语生成失败';
+                            }
+                            
+                            // Additional validation: Check if comment contains too many colons (likely contains thinking process)
+                            else if ((comment.match(/:/g) || []).length > 5) {
+                                console.log('Comment contains too many colons, likely contains thinking process, treating as failed generation');
                                 comment = '评语生成失败';
                             }
                         } else {
