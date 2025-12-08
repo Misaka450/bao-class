@@ -230,83 +230,141 @@ ${student.name}同学：[150字左右的评语内容，语气温和诚恳，多�
         console.log('System Prompt:', systemPrompt);
         console.log('User Prompt:', userPrompt);
 
-        // 4. Call AI Model
+        // 4. Call AI Model with retry mechanism
         try {
             console.log('Calling AI model @cf/qwen/qwen3-30b-a3b-fp8');
-            const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                max_tokens: 500, // Increase max_tokens to ensure complete comment generation
-                temperature: 0.7
-            }) as any;
-
-            console.log('AI response:', JSON.stringify(response, null, 2));
-            console.log('AI response type:', typeof response);
-            console.log('AI response keys:', response ? Object.keys(response) : 'null');
-
-            // 5. Parse Response - Handle multiple possible formats
+            
+            // Add retry mechanism for Qwen model
             let comment = '评语生成失败';
-
-            // Try to extract the response text from various possible structures
-            if (response) {
-                console.log('Raw AI response:', JSON.stringify(response, null, 2));
+            let retries = 0;
+            const maxRetries = 3;
+            
+            while (comment === '评语生成失败' && retries < maxRetries) {
+                if (retries > 0) {
+                    console.log(`Retry attempt ${retries} for AI comment generation`);
+                    // Add a small delay between retries
+                    await new Promise(resolve => setTimeout(resolve, 1000 * retries));
+                }
                 
-                // Format 1: response.response (direct response field)
-                if (response.response) {
-                    console.log('Found response.response:', response.response);
-                    comment = response.response;
-                }
-                // Format 2: response.result.response
-                else if (response.result && response.result.response) {
-                    console.log('Found response.result.response:', response.result.response);
-                    comment = response.result.response;
-                }
-                // Format 3: response.result as string
-                else if (response.result && typeof response.result === 'string') {
-                    console.log('Found response.result as string:', response.result);
-                    comment = response.result;
-                }
-                // Format 4: response as string
-                else if (typeof response === 'string') {
-                    console.log('Response is string:', response);
-                    comment = response;
-                }
-                // Format 5: Check for choices array (OpenAI-like format)
-                else if (response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
-                    const choice = response.choices[0];
-                    console.log('Processing choices array, first choice:', JSON.stringify(choice, null, 2));
+                try {
+                    console.log('Calling AI model @cf/qwen/qwen3-30b-a3b-fp8 with prompt length:', userPrompt.length);
+                    const startTime = Date.now();
                     
-                    // Check content first (preferred output)
-                    if (choice.message && choice.message.content !== undefined && choice.message.content !== null) {
-                        console.log('Found response.choices[0].message.content:', choice.message.content);
-                        // Ensure content is a string
-                        if (typeof choice.message.content === 'string') {
-                            comment = choice.message.content;
-                        }
-                    }
-                    // Then check reasoning_content (Qwen model specific)
-                    else if (choice.message && choice.message.reasoning_content) {
-                        console.log('Found response.choices[0].message.reasoning_content');
-                        // Ensure reasoning_content is not null or empty
-                        if (choice.message.reasoning_content && typeof choice.message.reasoning_content === 'string') {
-                            comment = choice.message.reasoning_content;
-                        }
-                    } else if (choice.text) {
-                        console.log('Found response.choices[0].text:', choice.text);
-                        comment = choice.text;
-                    }
-                }
-                else {
-                    console.warn('Unknown response format, full response:', response);
-                }
-            }
+                    const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: userPrompt }
+                        ],
+                        max_tokens: 500, // Increase max_tokens to ensure complete comment generation
+                        temperature: 0.7 + (retries * 0.1) // Slightly increase temperature on retries
+                    }) as any
 
-            // Clean up the comment
-            comment = comment.trim();
-            // Remove any potential markdown code blocks if the model outputs them
-            comment = comment.replace(/^```[\s\S]*?\n/, '').replace(/\n```$/, '');
+                    const endTime = Date.now();
+                    console.log(`AI response received in ${endTime - startTime}ms`);
+                    console.log('AI response keys:', response ? Object.keys(response) : 'null');
+
+                    // Handle the response format from @cf/qwen/qwen3-30b-a3b-fp8
+                    try {
+                        // Log the raw response for debugging
+                        console.log('Raw AI response:', JSON.stringify(response, null, 2));
+
+                        // Check for different possible response formats
+                        
+                        // Format 1: Direct response field
+                        if (response && response.response && typeof response.response === 'string') {
+                            console.log('Found response.response');
+                            comment = response.response;
+                        }
+                        // Format 2: Result field
+                        else if (response && response.result && typeof response.result === 'string') {
+                            console.log('Found response.result');
+                            comment = response.result;
+                        }
+                        // Format 3: Result.response field
+                        else if (response && response.result && response.result.response && typeof response.result.response === 'string') {
+                            console.log('Found response.result.response');
+                            comment = response.result.response;
+                        }
+                        // Format 4: Choices array (OpenAI-like format) - Qwen model specific
+                        else if (response && response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
+                            console.log('Found response.choices');
+                            const choice = response.choices[0];
+                            
+                            // Check content first (preferred output)
+                            if (choice.message && choice.message.content !== undefined && choice.message.content !== null) {
+                                // Ensure content is a string
+                                if (typeof choice.message.content === 'string') {
+                                    console.log('Found choice.message.content');
+                                    comment = choice.message.content;
+                                }
+                            }
+                            // For Qwen model, if content is null, we should not use reasoning_content as it contains thinking process
+                            // Instead, we should treat this as a failed generation
+                            else if (choice.message && choice.message.reasoning_content) {
+                                console.log('Found choice.message.reasoning_content, ignoring it');
+                                // We don't use reasoning_content anymore as it contains the AI's thinking process, not the final output
+                                comment = '评语生成失败';
+                            }
+                        }
+                        // Format 5: Output array with messages
+                        else if (response && response.output && Array.isArray(response.output)) {
+                            console.log('Found response.output');
+                            // Look for the message with type 'message' and role 'assistant'
+                            const messageOutput = response.output.find((item: any) =>
+                                item.type === 'message' && item.role === 'assistant' && item.content);
+
+                            if (messageOutput && Array.isArray(messageOutput.content)) {
+                                // Look for the output_text content
+                                const textContent = messageOutput.content.find((content: any) =>
+                                    content.type === 'output_text' && content.text);
+
+                                if (textContent && textContent.text) {
+                                    console.log('Found output_text content');
+                                    comment = textContent.text;
+                                }
+                            }
+                        } else {
+                            console.log('No recognizable response format found');
+                        }
+
+                        // Clean up the comment
+                        if (typeof comment === 'string') {
+                            comment = comment.trim();
+                            // Remove any potential markdown code blocks if the model outputs them
+                            comment = comment.replace(/^```[\s\S]*?\n/, '').replace(/\n```$/, '');
+                            console.log('Final comment length:', comment.length);
+                            
+                            // Check if the comment contains AI thinking process
+                            if (comment.includes('好的，') || comment.includes('我需要') || comment.includes('首先，') || comment.includes('用户')) {
+                                console.log('Comment contains AI thinking process, treating as failed generation');
+                                comment = '评语生成失败';
+                            }
+                            
+                            // Check if comment starts correctly
+                            if (!comment.startsWith(`${student.name}同学：`)) {
+                                console.log('Comment does not start correctly, treating as failed generation');
+                                comment = '评语生成失败';
+                            }
+                        } else {
+                            console.log('Comment is not a string, type:', typeof comment);
+                            comment = '评语生成失败';
+                        }
+                    } catch (parseError) {
+                        console.error('Error parsing AI response:', parseError);
+                        comment = '评语生成失败';
+                    }
+                } catch (aiCallError) {
+                    console.error('AI call error:', aiCallError);
+                    comment = '评语生成失败';
+                }
+                
+                retries++;
+            }
+            
+            // If we still failed after retries, log the error
+            if (comment === '评语生成失败') {
+                console.log(`Failed to generate comment after ${maxRetries} attempts`);
+            }
 
             console.log('Parsed comment:', comment);
             console.log('Comment length:', comment.length);
@@ -367,83 +425,6 @@ ${student.name}同学：[150字左右的评语内容，语气温和诚恳，多�
         throw new AppError('Failed to generate comment', 500);
     }
 })
-
-// Get comment history for a student
-ai.get('/comments/:studentId', async (c) => {
-    const studentId = parseInt(c.req.param('studentId'));
-
-    if (isNaN(studentId)) {
-        throw new AppError('Invalid student ID', 400);
-    }
-
-    try {
-        const result = await c.env.DB.prepare(`
-            SELECT id, exam_id, comment, metadata, edited, created_at, updated_at
-            FROM ai_comments 
-            WHERE student_id = ? 
-            ORDER BY created_at DESC
-        `).bind(studentId).all() as any;
-
-        return c.json({
-            success: true,
-            comments: result.results || []
-        });
-    } catch (error) {
-        console.error('Get comment history error:', error);
-        throw new AppError('Failed to get comment history', 500);
-    }
-});
-
-// Update a comment
-ai.put('/comments/:id', async (c) => {
-    const id = parseInt(c.req.param('id'));
-    const { comment } = await c.req.json();
-
-    if (isNaN(id)) {
-        throw new AppError('Invalid comment ID', 400);
-    }
-
-    if (!comment) {
-        throw new AppError('Comment content is required', 400);
-    }
-
-    try {
-        await c.env.DB.prepare(`
-            UPDATE ai_comments 
-            SET comment = ?, edited = 1, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        `).bind(comment, id).run();
-
-        return c.json({
-            success: true
-        });
-    } catch (error) {
-        console.error('Update comment error:', error);
-        throw new AppError('Failed to update comment', 500);
-    }
-});
-
-// Delete a comment
-ai.delete('/comments/:id', async (c) => {
-    const id = parseInt(c.req.param('id'));
-
-    if (isNaN(id)) {
-        throw new AppError('Invalid comment ID', 400);
-    }
-
-    try {
-        await c.env.DB.prepare(`
-            DELETE FROM ai_comments WHERE id = ?
-        `).bind(id).run();
-
-        return c.json({
-            success: true
-        });
-    } catch (error) {
-        console.error('Delete comment error:', error);
-        throw new AppError('Failed to delete comment', 500);
-    }
-});
 
 // Get comment history for a student
 ai.get('/comments/:studentId', async (c) => {
