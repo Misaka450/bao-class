@@ -335,14 +335,36 @@ ${student.name}同学：[150字左右的评语内容，语气温和诚恳，多�
                             console.log('Final comment length:', comment.length);
                             
                             // Check if the comment contains AI thinking process
-                            if (comment.includes('好的，') || comment.includes('我需要') || comment.includes('首先，') || comment.includes('用户')) {
+                            const forbiddenPhrases = [
+                                '好的，', '我需要', '首先，', '用户', '现在开始组织语言', 
+                                '首先', '接下来', '然后', '最后', '注意', '检查', '确保',
+                                '可能需要', '可能', '应该', '必须', '需要', '要求',
+                                '结构方面', '开头称呼', '评语需要', '用户的要求',
+                                '老师的建议', '老师的提示'
+                            ];
+                            
+                            let containsForbiddenPhrase = false;
+                            for (const phrase of forbiddenPhrases) {
+                                if (comment.includes(phrase)) {
+                                    containsForbiddenPhrase = true;
+                                    break;
+                                }
+                            }
+                            
+                            if (containsForbiddenPhrase) {
                                 console.log('Comment contains AI thinking process, treating as failed generation');
                                 comment = '评语生成失败';
                             }
                             
                             // Check if comment starts correctly
-                            if (!comment.startsWith(`${student.name}同学：`)) {
+                            else if (!comment.startsWith(`${student.name}同学：`)) {
                                 console.log('Comment does not start correctly, treating as failed generation');
+                                comment = '评语生成失败';
+                            }
+                            
+                            // Additional validation: Check if comment is too long (likely contains thinking process)
+                            else if (comment.length > 300) {
+                                console.log('Comment is too long, likely contains thinking process, treating as failed generation');
                                 comment = '评语生成失败';
                             }
                         } else {
