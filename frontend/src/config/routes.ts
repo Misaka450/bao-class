@@ -1,0 +1,352 @@
+import React from 'react';
+import {
+  DashboardOutlined,
+  TeamOutlined,
+  UserOutlined,
+  BookOutlined,
+  BulbOutlined,
+  TableOutlined,
+  SafetyCertificateOutlined,
+  ImportOutlined,
+  FileTextOutlined,
+  BarChartOutlined,
+  AlertOutlined,
+} from '@ant-design/icons';
+
+/**
+ * Route configuration following Ant Design Pro conventions
+ * Supports authentication protection, breadcrumbs, and page titles
+ */
+
+export interface RouteConfig {
+  path: string;
+  name: string;
+  icon?: React.ReactNode;
+  component?: React.ComponentType;
+  access?: string[];
+  hideInMenu?: boolean;
+  hideInBreadcrumb?: boolean;
+  children?: RouteConfig[];
+  // Page metadata
+  title?: string;
+  description?: string;
+  // Layout configuration
+  layout?: boolean;
+  headerRender?: boolean;
+  footerRender?: boolean;
+  menuRender?: boolean;
+  menuHeaderRender?: boolean;
+}
+
+// Direct imports to eliminate code splitting for maximum stability
+import ProDashboard from '../pages/ProDashboard';
+import Classes from '../pages/Classes';
+import Students from '../pages/Students';
+import Courses from '../pages/Courses';
+import Exams from '../pages/Exams';
+import ScoresList from '../pages/ScoresList';
+import ProScoresList from '../pages/ProScoresList';
+import Import from '../pages/Import';
+import StudentProfile from '../pages/StudentProfile';
+import ClassAnalysis from '../pages/ClassAnalysis';
+import ManagementAlerts from '../pages/ManagementAlerts';
+import AuditLogs from '../pages/AuditLogs';
+
+/**
+ * Main route configuration
+ * Each route includes access control, breadcrumb configuration, and page metadata
+ */
+const routes: RouteConfig[] = [
+  {
+    path: '/',
+    name: '首页',
+    hideInMenu: true,
+    hideInBreadcrumb: true,
+    component: ProDashboard,
+    title: '班级管理系统',
+  },
+  {
+    path: '/dashboard',
+    name: '仪表盘',
+    icon: React.createElement(DashboardOutlined),
+    component: ProDashboard,
+    access: ['admin', 'teacher'],
+    title: '仪表盘 - 班级管理系统',
+    description: '系统概览和关键指标',
+  },
+  {
+    path: '/pro-dashboard',
+    name: 'Pro仪表盘',
+    hideInMenu: true,
+    component: ProDashboard,
+    access: ['admin', 'teacher'],
+    title: 'Pro仪表盘 - 班级管理系统',
+  },
+  {
+    path: '/classes',
+    name: '班级管理',
+    icon: React.createElement(TeamOutlined),
+    component: Classes,
+    access: ['admin', 'teacher'],
+    title: '班级管理 - 班级管理系统',
+    description: '管理班级信息和学生分配',
+  },
+  {
+    path: '/students',
+    name: '学生管理',
+    icon: React.createElement(UserOutlined),
+    component: Students,
+    access: ['admin', 'teacher'],
+    title: '学生管理 - 班级管理系统',
+    description: '管理学生基本信息和档案',
+  },
+  {
+    path: '/student-profile/:id',
+    name: '学生档案',
+    hideInMenu: true,
+    component: StudentProfile,
+    access: ['admin', 'teacher'],
+    title: '学生档案 - 班级管理系统',
+    description: '查看学生详细信息和成绩记录',
+  },
+  {
+    path: '/teaching',
+    name: '教学管理',
+    icon: React.createElement(BookOutlined),
+    access: ['admin', 'teacher'],
+    children: [
+      {
+        path: '/courses',
+        name: '课程管理',
+        icon: React.createElement(BookOutlined),
+        component: Courses,
+        access: ['admin', 'teacher'],
+        title: '课程管理 - 班级管理系统',
+        description: '管理课程信息和教学计划',
+      },
+      {
+        path: '/exams',
+        name: '考试管理',
+        icon: React.createElement(FileTextOutlined),
+        component: Exams,
+        access: ['admin', 'teacher'],
+        title: '考试管理 - 班级管理系统',
+        description: '管理考试安排和成绩录入',
+      },
+      {
+        path: '/import',
+        name: '数据导入',
+        icon: React.createElement(ImportOutlined),
+        component: Import,
+        access: ['admin'],
+        title: '数据导入 - 班级管理系统',
+        description: '批量导入学生和成绩数据',
+      },
+    ],
+  },
+  {
+    path: '/scores-list',
+    name: '成绩清单',
+    icon: React.createElement(TableOutlined),
+    component: ScoresList,
+    access: ['admin', 'teacher'],
+    title: '成绩清单 - 班级管理系统',
+    description: '查看和管理学生成绩记录',
+  },
+  {
+    path: '/pro-scores-list',
+    name: 'Pro成绩清单',
+    hideInMenu: true,
+    component: ProScoresList,
+    access: ['admin', 'teacher'],
+    title: 'Pro成绩清单 - 班级管理系统',
+  },
+  {
+    path: '/analysis',
+    name: '数据分析',
+    icon: React.createElement(BulbOutlined),
+    access: ['admin', 'teacher'],
+    children: [
+      {
+        path: '/analysis/class',
+        name: '班级成绩走势',
+        icon: React.createElement(BarChartOutlined),
+        component: ClassAnalysis,
+        access: ['admin', 'teacher'],
+        title: '班级成绩走势 - 班级管理系统',
+        description: '分析班级成绩变化趋势',
+      },
+      {
+        path: '/analysis/alerts',
+        name: '管理预警',
+        icon: React.createElement(AlertOutlined),
+        component: ManagementAlerts,
+        access: ['admin', 'teacher'],
+        title: '管理预警 - 班级管理系统',
+        description: '查看系统预警和异常情况',
+      },
+    ],
+  },
+  {
+    path: '/management-alerts',
+    name: '管理预警',
+    hideInMenu: true,
+    component: ManagementAlerts,
+    access: ['admin', 'teacher'],
+    title: '管理预警 - 班级管理系统',
+  },
+  {
+    path: '/audit-logs',
+    name: '操作日志',
+    icon: React.createElement(SafetyCertificateOutlined),
+    component: AuditLogs,
+    access: ['admin'],
+    title: '操作日志 - 班级管理系统',
+    description: '查看系统操作记录和审计信息',
+  },
+];
+
+/**
+ * Flatten routes for easier access and navigation
+ */
+export const flattenRoutes = (routes: RouteConfig[]): RouteConfig[] => {
+  const result: RouteConfig[] = [];
+  
+  const flatten = (routeList: RouteConfig[]) => {
+    routeList.forEach(route => {
+      result.push(route);
+      if (route.children) {
+        flatten(route.children);
+      }
+    });
+  };
+  
+  flatten(routes);
+  return result;
+};
+
+/**
+ * Get route by path
+ */
+export const getRouteByPath = (path: string): RouteConfig | undefined => {
+  const allRoutes = flattenRoutes(routes);
+  return allRoutes.find(route => route.path === path);
+};
+
+/**
+ * Check if user has access to route
+ */
+export const hasRouteAccess = (route: RouteConfig, userRole?: string): boolean => {
+  if (!route.access || route.access.length === 0) {
+    return true;
+  }
+  
+  if (!userRole) {
+    return false;
+  }
+  
+  return route.access.includes(userRole);
+};
+
+/**
+ * Filter routes based on user access
+ */
+export const filterRoutesByAccess = (routes: RouteConfig[], userRole?: string): RouteConfig[] => {
+  return routes.map(route => {
+    // Create a copy of the route to avoid mutating the original
+    const routeCopy = { ...route };
+    
+    // Filter children first
+    if (routeCopy.children) {
+      routeCopy.children = filterRoutesByAccess(routeCopy.children, userRole);
+    }
+    
+    return routeCopy;
+  }).filter(route => {
+    // Check if the route itself has access
+    if (!hasRouteAccess(route, userRole)) {
+      return false;
+    }
+    
+    // If it's a parent route with no accessible children, still include it
+    // if the parent itself is accessible
+    return true;
+  });
+};
+
+/**
+ * Generate breadcrumb items from current path
+ */
+export const generateBreadcrumbs = (pathname: string): Array<{ path: string; name: string }> => {
+  const allRoutes = flattenRoutes(routes);
+  const breadcrumbs: Array<{ path: string; name: string }> = [];
+  
+  // Handle dynamic routes like /student-profile/:id
+  const matchRoute = (routePath: string, currentPath: string): boolean => {
+    const routeSegments = routePath.split('/');
+    const pathSegments = currentPath.split('/');
+    
+    if (routeSegments.length !== pathSegments.length) {
+      return false;
+    }
+    
+    return routeSegments.every((segment, index) => {
+      return segment.startsWith(':') || segment === pathSegments[index];
+    });
+  };
+  
+  const currentRoute = allRoutes.find(route => 
+    route.path === pathname || matchRoute(route.path, pathname)
+  );
+  
+  if (currentRoute && !currentRoute.hideInBreadcrumb) {
+    // Build breadcrumb path by traversing up the route hierarchy
+    const pathSegments = pathname.split('/').filter(Boolean);
+    let currentPath = '';
+    
+    pathSegments.forEach(segment => {
+      currentPath += `/${segment}`;
+      const route = allRoutes.find(r => 
+        r.path === currentPath || matchRoute(r.path, currentPath)
+      );
+      
+      if (route && !route.hideInBreadcrumb) {
+        breadcrumbs.push({
+          path: currentPath,
+          name: route.name,
+        });
+      }
+    });
+  }
+  
+  return breadcrumbs;
+};
+
+/**
+ * Get page title for current route
+ */
+export const getPageTitle = (pathname: string): string => {
+  const route = getRouteByPath(pathname);
+  if (route?.title) {
+    return route.title;
+  }
+  
+  // Handle dynamic routes
+  const allRoutes = flattenRoutes(routes);
+  const matchedRoute = allRoutes.find(route => {
+    const routeSegments = route.path.split('/');
+    const pathSegments = pathname.split('/');
+    
+    if (routeSegments.length !== pathSegments.length) {
+      return false;
+    }
+    
+    return routeSegments.every((segment, index) => {
+      return segment.startsWith(':') || segment === pathSegments[index];
+    });
+  });
+  
+  return matchedRoute?.title || '班级管理系统';
+};
+
+export default routes;

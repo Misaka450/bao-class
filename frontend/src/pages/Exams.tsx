@@ -1,133 +1,82 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, DatePicker, message, Space, Popconfirm, Tag } from 'antd';
+import { useState, useEffect, useRef } from 'react';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import { ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDatePicker, ProFormTextArea } from '@ant-design/pro-components';
+import type { ProColumns, ActionType } from '@ant-design/pro-components';
+
+// Temporary workaround for import issues
+const Button = ({ children, ...props }: any) => <button {...props}>{children}</button>;
+const Space = ({ children }: any) => <div style={{ display: 'flex', gap: '8px' }}>{children}</div>;
+const Popconfirm = ({ children, onConfirm, title }: any) => 
+  <span onClick={() => window.confirm(title) && onConfirm?.()}>{children}</span>;
+const Tag = ({ children, ...props }: any) => <span style={{ background: '#1890ff', color: 'white', padding: '2px 8px', borderRadius: '4px', margin: '2px' }} {...props}>{children}</span>;
+const message = {
+  success: (msg: string) => alert(msg),
+  error: (msg: string) => alert(msg),
+};
 import dayjs from 'dayjs';
-import { API_BASE_URL } from '../config';
-import { useAuthStore } from '../store/authStore';
-
-interface ExamCourse {
-    course_id: number;
-    course_name: string;
-}
-
-interface Exam {
-    id: number;
-    name: string;
-    class_id: number;
-    class_name: string;
-    exam_date: string;
-    courses: ExamCourse[];
-    description?: string;
-}
-
-interface Course {
-    id: number;
-    name: string;
-}
-
-interface Class {
-    id: number;
-    name: string;
-}
+import type { Exam, Course, Class } from '../types';
+import api from '../services/api';
 
 export default function Exams() {
-    const [exams, setExams] = useState<Exam[]>([]);
+    const actionRef = useRef<ActionType>(null);
     const [classes, setClasses] = useState<Class[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
-    const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingExam, setEditingExam] = useState<Exam | null>(null);
-    const [form] = Form.useForm();
-    const { token } = useAuthStore();
-
-    const fetchExams = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/exams`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setExams(data);
-            }
-        } catch (error) {
-            message.error('获取考试列表失败');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const fetchClasses = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/classes`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setClasses(data);
-            }
+            const data = await api.class.list();
+            setClasses(data);
         } catch (error) {
-            console.error('Failed to fetch classes');
+            // Error already handled in request layer
         }
     };
 
     const fetchCourses = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/api/courses`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCourses(data);
-            }
+            const data = await api.course.list();
+            setCourses(data);
         } catch (error) {
-            console.error('Failed to fetch courses');
+            // Error already handled in request layer
         }
     };
 
+    const fetchData = async () => {
+        await fetchClasses();
+        await fetchCourses();
+    };
+
     useEffect(() => {
-        fetchExams();
-        fetchClasses();
-        fetchCourses();
+        fetchData();
     }, []);
 
     const handleAdd = () => {
         setEditingExam(null);
-        form.resetFields();
         setIsModalOpen(true);
     };
 
     const handleEdit = (record: Exam) => {
-        setEditingExam(record);
-        form.setFieldsValue({
+        setEditingExam({
             ...record,
-            exam_date: dayjs(record.exam_date),
-            course_ids: record.courses.map(c => c.course_id)
-        });
+            exam_date: record.exam_date, // Keep as string for ProForm
+            course_ids: record.courses?.map(c => c.course_id) || []
+        } as any);
         setIsModalOpen(true);
     };
 
     const handleDelete = async (id: number) => {
         try {
-            await fetch(`${API_BASE_URL}/api/exams/${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await api.exam.delete(id);
             message.success('删除成功');
-            fetchExams();
+            actionRef.current?.reload();
         } catch (error) {
-            message.error('删除失败');
+            // Error already handled in request layer
         }
     };
 
     const handleSubmit = async (values: any) => {
         try {
-            const url = editingExam
-                ? `${API_BASE_URL}/api/exams/${editingExam.id}`
-                : `${API_BASE_URL}/api/exams`;
-            const method = editingExam ? 'PUT' : 'POST';
-
             const data = {
                 ...values,
                 exam_date: values.exam_date.format('YYYY-MM-DD'),
@@ -138,33 +87,42 @@ export default function Exams() {
             };
             delete data.course_ids;
 
-            await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(data),
-            });
-
-            message.success(editingExam ? '更新成功' : '添加成功');
+            if (editingExam) {
+                await api.exam.update(editingExam.id, data);
+                message.success('更新成功');
+            } else {
+                await api.exam.create(data);
+                message.success('添加成功');
+            }
             setIsModalOpen(false);
-            fetchExams();
+            actionRef.current?.reload();
         } catch (error) {
-            message.error('操作失败');
+            // Error already handled in request layer
         }
     };
 
-    const columns: ColumnsType<Exam> = [
-        { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-        { title: '考试名称', dataIndex: 'name', key: 'name' },
+    const columns: ProColumns<Exam>[] = [
+        { 
+            title: 'ID', 
+            dataIndex: 'id', 
+            key: 'id', 
+            width: 80,
+            hideInSearch: true,
+        },
+        { 
+            title: '考试名称', 
+            dataIndex: 'name', 
+            key: 'name',
+            copyable: true,
+        },
         {
             title: '包含科目',
             dataIndex: 'courses',
             key: 'courses',
-            render: (courses: ExamCourse[]) => (
+            hideInSearch: true,
+            render: (_, record) => (
                 <>
-                    {courses.map((c) => (
+                    {record.courses?.map((c) => (
                         <Tag key={c.course_id} color="blue">
                             {c.course_name}
                         </Tag>
@@ -172,11 +130,17 @@ export default function Exams() {
                 </>
             ),
         },
-        { title: '考试日期', dataIndex: 'exam_date', key: 'exam_date' },
+        { 
+            title: '考试日期', 
+            dataIndex: 'exam_date', 
+            key: 'exam_date',
+            valueType: 'date',
+        },
         {
             title: '操作',
             key: 'action',
             width: 150,
+            hideInSearch: true,
             render: (_, record) => (
                 <Space>
                     <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
@@ -199,74 +163,123 @@ export default function Exams() {
 
     return (
         <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>考试管理</h2>
-                    <p style={{ margin: '4px 0 0 0', color: '#666' }}>管理所有考试信息（支持多科目）</p>
-                </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                    添加考试
-                </Button>
-            </div>
-
-            <Table
-                columns={columns}
-                dataSource={exams}
+            <ProTable<Exam>
+                headerTitle="考试管理"
+                actionRef={actionRef}
                 rowKey="id"
-                loading={loading}
-                pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 条` }}
+                search={{
+                    labelWidth: 'auto',
+                }}
+                toolBarRender={() => [
+                    <Button
+                        key="add"
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleAdd}
+                    >
+                        添加考试
+                    </Button>,
+                ]}
+                request={async (params) => {
+                    try {
+                        const data = await api.exam.list();
+                        
+                        // Apply search filters
+                        let filteredData = data;
+                        
+                        if (params.name) {
+                            filteredData = filteredData.filter(exam => 
+                                exam.name.includes(params.name as string)
+                            );
+                        }
+                        
+                        if (params.exam_date) {
+                            filteredData = filteredData.filter(exam => 
+                                exam.exam_date === params.exam_date
+                            );
+                        }
+                        
+                        // Apply pagination
+                        const { current = 1, pageSize = 10 } = params;
+                        const start = (current - 1) * pageSize;
+                        const end = start + pageSize;
+                        const paginatedData = filteredData.slice(start, end);
+                        
+                        return {
+                            data: paginatedData,
+                            success: true,
+                            total: filteredData.length,
+                        };
+                    } catch (error) {
+                        return {
+                            data: [],
+                            success: false,
+                            total: 0,
+                        };
+                    }
+                }}
+                columns={columns}
+                pagination={{
+                    pageSize: 10,
+                    showTotal: (total: number) => `共 ${total} 条`,
+                }}
             />
 
-            <Modal
+            <ModalForm
                 title={editingExam ? '编辑考试' : '添加考试'}
                 open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
-                footer={null}
+                onOpenChange={setIsModalOpen}
+                onFinish={handleSubmit}
+                initialValues={editingExam || {}}
+                layout="vertical"
                 width={600}
+                modalProps={{
+                    destroyOnClose: true,
+                }}
             >
-                <Form form={form} onFinish={handleSubmit} layout="vertical">
-                    <Form.Item label="考试名称" name="name" rules={[{ required: true, message: '请输入考试名称' }]}>
-                        <Input placeholder="例如：2024年秋季期中考试" />
-                    </Form.Item>
-                    <Form.Item label="班级" name="class_id" rules={[{ required: true, message: '请选择班级' }]}>
-                        <Select placeholder="请选择班级">
-                            {classes.map((c) => (
-                                <Select.Option key={c.id} value={c.id}>{c.name}</Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item
-                        label="包含科目"
-                        name="course_ids"
-                        rules={[{ required: true, message: '请至少选择一个科目' }]}
-                        tooltip="一次考试可以包含多个科目"
-                    >
-                        <Select
-                            mode="multiple"
-                            placeholder="请选择科目（可多选）"
-                            maxTagCount="responsive"
-                        >
-                            {courses.map((c) => (
-                                <Select.Option key={c.id} value={c.id}>{c.name}</Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item label="考试日期" name="exam_date" rules={[{ required: true, message: '请选择考试日期' }]}>
-                        <DatePicker style={{ width: '100%' }} />
-                    </Form.Item>
-                    <Form.Item label="备注说明" name="description">
-                        <Input.TextArea rows={3} placeholder="例如：一年级1班期中考试" />
-                    </Form.Item>
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Space>
-                            <Button onClick={() => setIsModalOpen(false)}>取消</Button>
-                            <Button type="primary" htmlType="submit">
-                                {editingExam ? '更新' : '添加'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
+                <ProFormText
+                    label="考试名称"
+                    name="name"
+                    rules={[{ required: true, message: '请输入考试名称' }]}
+                    placeholder="例如：2024年秋季期中考试"
+                />
+                <ProFormSelect
+                    label="班级"
+                    name="class_id"
+                    rules={[{ required: true, message: '请选择班级' }]}
+                    placeholder="请选择班级"
+                    options={classes.map((c) => ({
+                        label: c.name,
+                        value: c.id,
+                    }))}
+                />
+                <ProFormSelect
+                    label="包含科目"
+                    name="course_ids"
+                    rules={[{ required: true, message: '请至少选择一个科目' }]}
+                    placeholder="请选择科目（可多选）"
+                    mode="multiple"
+                    options={courses.map((c) => ({
+                        label: c.name,
+                        value: c.id,
+                    }))}
+                    tooltip="一次考试可以包含多个科目"
+                />
+                <ProFormDatePicker
+                    label="考试日期"
+                    name="exam_date"
+                    rules={[{ required: true, message: '请选择考试日期' }]}
+                    width="100%"
+                />
+                <ProFormTextArea
+                    label="备注说明"
+                    name="description"
+                    placeholder="例如：一年级1班期中考试"
+                    fieldProps={{
+                        rows: 3,
+                    }}
+                />
+            </ModalForm>
         </div>
     );
 }

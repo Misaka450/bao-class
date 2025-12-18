@@ -31,7 +31,7 @@ export default function StudentProfile() {
         if (data?.student?.id) {
             loadCommentHistory();
         }
-    }, [data?.student?.id]);
+    }, [data?.student?.id, loadCommentHistory]);
 
     const loadCommentHistory = async () => {
         if (!data?.student?.id) return;

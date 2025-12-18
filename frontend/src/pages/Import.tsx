@@ -19,7 +19,7 @@ export default function Import() {
     useEffect(() => {
         fetchClasses();
         fetchExams();
-    }, []);
+    }, [fetchClasses, fetchExams]);
 
     const fetchClasses = async () => {
         try {

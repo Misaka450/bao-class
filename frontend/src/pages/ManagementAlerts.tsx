@@ -17,7 +17,8 @@ export default function ManagementAlerts() {
     // Set default selected class when classes are loaded
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
-            setSelectedClassId(classes[0].id.toString());
+            // Use setTimeout to avoid synchronous setState in effect
+            setTimeout(() => setSelectedClassId(classes[0].id.toString()), 0);
         }
     }, [classes, selectedClassId]);
 

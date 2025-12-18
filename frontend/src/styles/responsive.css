@@ -1,0 +1,349 @@
+/* Responsive utilities following Ant Design Pro conventions */
+
+/* Breakpoints */
+:root {
+  --breakpoint-xs: 480px;
+  --breakpoint-sm: 576px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 992px;
+  --breakpoint-xl: 1200px;
+  --breakpoint-xxl: 1600px;
+}
+
+/* Responsive visibility utilities */
+.visible-xs {
+  display: none !important;
+}
+
+.visible-sm {
+  display: none !important;
+}
+
+.visible-md {
+  display: none !important;
+}
+
+.visible-lg {
+  display: none !important;
+}
+
+.visible-xl {
+  display: none !important;
+}
+
+.visible-xxl {
+  display: none !important;
+}
+
+.hidden-xs {
+  display: block !important;
+}
+
+.hidden-sm {
+  display: block !important;
+}
+
+.hidden-md {
+  display: block !important;
+}
+
+.hidden-lg {
+  display: block !important;
+}
+
+.hidden-xl {
+  display: block !important;
+}
+
+.hidden-xxl {
+  display: block !important;
+}
+
+/* Mobile first approach */
+@media (max-width: 479px) {
+  .visible-xs {
+    display: block !important;
+  }
+  
+  .hidden-xs {
+    display: none !important;
+  }
+  
+  /* Mobile-specific styles */
+  .mobile-full-width {
+    width: 100% !important;
+  }
+  
+  .mobile-text-center {
+    text-align: center !important;
+  }
+  
+  .mobile-padding-sm {
+    padding: 12px !important;
+  }
+  
+  .mobile-margin-sm {
+    margin: 12px !important;
+  }
+}
+
+@media (min-width: 480px) and (max-width: 575px) {
+  .visible-xs {
+    display: block !important;
+  }
+  
+  .hidden-xs {
+    display: none !important;
+  }
+}
+
+@media (min-width: 576px) and (max-width: 767px) {
+  .visible-sm {
+    display: block !important;
+  }
+  
+  .hidden-sm {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+  .visible-md {
+    display: block !important;
+  }
+  
+  .hidden-md {
+    display: none !important;
+  }
+  
+  /* Tablet-specific styles */
+  .tablet-two-columns {
+    column-count: 2;
+    column-gap: 24px;
+  }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+  .visible-lg {
+    display: block !important;
+  }
+  
+  .hidden-lg {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1599px) {
+  .visible-xl {
+    display: block !important;
+  }
+  
+  .hidden-xl {
+    display: none !important;
+  }
+}
+
+@media (min-width: 1600px) {
+  .visible-xxl {
+    display: block !important;
+  }
+  
+  .hidden-xxl {
+    display: none !important;
+  }
+  
+  /* Large screen specific styles */
+  .desktop-max-width {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* Responsive text utilities */
+@media (max-width: 767px) {
+  .responsive-text-lg {
+    font-size: 18px !important;
+  }
+  
+  .responsive-text-xl {
+    font-size: 20px !important;
+  }
+  
+  .responsive-text-2xl {
+    font-size: 24px !important;
+  }
+  
+  .responsive-text-3xl {
+    font-size: 28px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-text-lg {
+    font-size: 20px !important;
+  }
+  
+  .responsive-text-xl {
+    font-size: 24px !important;
+  }
+  
+  .responsive-text-2xl {
+    font-size: 30px !important;
+  }
+  
+  .responsive-text-3xl {
+    font-size: 36px !important;
+  }
+}
+
+/* Responsive spacing utilities */
+@media (max-width: 767px) {
+  .responsive-padding {
+    padding: 16px !important;
+  }
+  
+  .responsive-margin {
+    margin: 16px !important;
+  }
+  
+  .responsive-gap {
+    gap: 8px !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-padding {
+    padding: 24px !important;
+  }
+  
+  .responsive-margin {
+    margin: 24px !important;
+  }
+  
+  .responsive-gap {
+    gap: 16px !important;
+  }
+}
+
+/* Responsive layout utilities */
+.responsive-container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 768px) {
+  .responsive-container {
+    padding: 0 24px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .responsive-container {
+    padding: 0 32px;
+  }
+}
+
+/* Responsive flex utilities */
+.responsive-flex {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .responsive-flex {
+    flex-direction: row;
+    gap: 24px;
+  }
+}
+
+/* Responsive grid utilities */
+.responsive-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 576px) {
+  .responsive-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  .responsive-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+}
+
+@media (min-width: 992px) {
+  .responsive-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (min-width: 1200px) {
+  .responsive-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+}
+
+/* Responsive card utilities */
+.responsive-card {
+  margin-bottom: 16px;
+}
+
+@media (min-width: 768px) {
+  .responsive-card {
+    margin-bottom: 24px;
+  }
+}
+
+/* Responsive table utilities */
+@media (max-width: 767px) {
+  .responsive-table {
+    font-size: 12px;
+  }
+  
+  .responsive-table .ant-table-thead > tr > th {
+    padding: 8px 4px;
+  }
+  
+  .responsive-table .ant-table-tbody > tr > td {
+    padding: 8px 4px;
+  }
+}
+
+/* Responsive form utilities */
+@media (max-width: 767px) {
+  .responsive-form .ant-form-item {
+    margin-bottom: 16px;
+  }
+  
+  .responsive-form .ant-form-item-label {
+    text-align: left;
+    padding-bottom: 4px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .print-full-width {
+    width: 100% !important;
+  }
+  
+  .print-break-before {
+    page-break-before: always;
+  }
+  
+  .print-break-after {
+    page-break-after: always;
+  }
+}

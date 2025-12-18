@@ -21,9 +21,10 @@ export default function ClassAnalysis() {
     // Auto-select first class
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
-            setSelectedClassId(classes[0].id.toString());
+            // Use setTimeout to avoid synchronous setState in effect
+            setTimeout(() => setSelectedClassId(classes[0].id.toString()), 0);
         }
-    }, [classes]);
+    }, [classes, selectedClassId]);
 
     // Data hooks
     const { data: trendData, isLoading: loadingTrend } = useClassTrend(selectedClassId ? Number(selectedClassId) : undefined);

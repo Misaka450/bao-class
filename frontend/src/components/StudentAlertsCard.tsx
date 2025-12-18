@@ -12,12 +12,6 @@ const StudentAlertsCard: React.FC<StudentAlertsCardProps> = ({ classId }) => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<FocusGroupResult | null>(null);
 
-    useEffect(() => {
-        if (classId) {
-            fetchAlerts();
-        }
-    }, [classId]);
-
     const fetchAlerts = async () => {
         setLoading(true);
         try {
@@ -29,6 +23,12 @@ const StudentAlertsCard: React.FC<StudentAlertsCardProps> = ({ classId }) => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (classId) {
+            fetchAlerts();
+        }
+    }, [classId, fetchAlerts]);
 
     const renderList = (list: StudentAlert[]) => {
         if (!list || list.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无预警信息" />;

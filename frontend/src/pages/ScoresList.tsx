@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Table, Card, Select, Row, Col, message, Spin, Button } from 'antd';
+import { Card, Select, Row, Col, message, Button } from 'antd';
 import { TableOutlined, DownloadOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import { ProTable } from '@ant-design/pro-components';
+import type { ProColumns } from '@ant-design/pro-components';
 import * as XLSX from 'xlsx';
 import { useScoresList } from '../hooks/useScoresList';
 import { useClassList } from '../hooks/useClassList';
@@ -96,11 +97,12 @@ export default function ScoresList() {
     };
 
     // Build dynamic columns
-    const columns: ColumnsType<StudentScoreItem> = [
+    const columns: ProColumns<StudentScoreItem>[] = [
         {
             title: '排名',
             key: 'rank',
             width: 50,
+            hideInSearch: true,
             render: (_: any, __: any, index: number) => index + 1,
         },
         {
@@ -108,18 +110,21 @@ export default function ScoresList() {
             dataIndex: 'student_number',
             key: 'student_number',
             width: 90,
+            hideInSearch: true,
         },
         {
             title: '姓名',
             dataIndex: 'student_name',
             key: 'student_name',
             width: 80,
+            hideInSearch: true,
         },
         {
             title: '班级',
             dataIndex: 'class_name',
             key: 'class_name',
             width: 90,
+            hideInSearch: true,
         },
         // Dynamic subject columns
         ...subjects.map(subject => ({
@@ -127,6 +132,7 @@ export default function ScoresList() {
             dataIndex: ['scores', subject],
             key: subject,
             width: 80,
+            hideInSearch: true,
             render: (score: number) => {
                 if (score === undefined || score === null) return '-';
                 let color = '#333';
@@ -159,6 +165,7 @@ export default function ScoresList() {
             dataIndex: 'total',
             key: 'total',
             width: 70,
+            hideInSearch: true,
             render: (total: number) => <strong>{total}</strong>,
             sorter: (a: StudentScoreItem, b: StudentScoreItem) => a.total - b.total,
             defaultSortOrder: 'descend' as const,
@@ -229,38 +236,34 @@ export default function ScoresList() {
                 </Row>
             </Card>
 
-            <div style={{ marginBottom: 16, textAlign: 'right' }}>
-                <Button
-                    type="primary"
-                    icon={<DownloadOutlined />}
-                    onClick={handleExport}
-                    disabled={scoresData.length === 0}
-                >
-                    导出成绩
-                </Button>
-            </div>
 
-            {loading ? (
-                <div style={{ textAlign: 'center', padding: 60 }}>
-                    <Spin size="large" />
-                </div>
-            ) : (
-                <Card>
-                    <Table
-                        columns={columns}
-                        dataSource={scoresData}
-                        rowKey="student_id"
-                        loading={loading}
-                        scroll={{ y: 600 }}
-                        pagination={{
-                            pageSize: 20,
-                            showTotal: (total) => `共 ${total} 名学生`,
-                            showSizeChanger: true,
-                            pageSizeOptions: ['20', '50', '100'],
-                        }}
-                    />
-                </Card>
-            )}
+
+            <ProTable<StudentScoreItem>
+                headerTitle="成绩清单"
+                columns={columns}
+                dataSource={scoresData}
+                rowKey="student_id"
+                loading={loading}
+                search={false}
+                scroll={{ y: 600 }}
+                pagination={{
+                    pageSize: 20,
+                    showTotal: (total: number) => `共 ${total} 名学生`,
+                    showSizeChanger: true,
+                    pageSizeOptions: ['20', '50', '100'],
+                }}
+                toolBarRender={() => [
+                    <Button
+                        key="export"
+                        type="primary"
+                        icon={<DownloadOutlined />}
+                        onClick={handleExport}
+                        disabled={scoresData.length === 0}
+                    >
+                        导出成绩
+                    </Button>,
+                ]}
+            />
         </div>
     );
 }

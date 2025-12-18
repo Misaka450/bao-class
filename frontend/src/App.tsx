@@ -1,75 +1,60 @@
-import { useEffect, lazy, Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ConfigProvider, Spin } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
-import { lightTheme } from './theme';
-import Layout from './components/Layout';
+import { useEffect } from 'react';
+import ThemeProvider from './components/ThemeProvider';
+import ProLayoutWrapper from './components/ProLayout';
+import RouteRenderer from './components/RouteRenderer';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import GlobalErrorBoundary from './components/GlobalErrorBoundary';
 import { useAuthStore } from './store/authStore';
-
-import { QueryClientProvider } from '@tanstack/react-query';
-import { queryClient } from './lib/queryClient';
-
-// Optimize: lazy load all page components to reduce initial bundle size
-const Login = lazy(() => import('./pages/Login'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const Classes = lazy(() => import('./pages/Classes'));
-const Students = lazy(() => import('./pages/Students'));
-const Courses = lazy(() => import('./pages/Courses'));
-const Exams = lazy(() => import('./pages/Exams'));
-const ScoresList = lazy(() => import('./pages/ScoresList'));
-const Import = lazy(() => import('./pages/Import'));
-const StudentProfile = lazy(() => import('./pages/StudentProfile'));
-const ClassAnalysis = lazy(() => import('./pages/ClassAnalysis'));
-const ManagementAlerts = lazy(() => import('./pages/ManagementAlerts'));
-const AuditLogs = lazy(() => import('./pages/AuditLogs'));
+import { initializePerformanceOptimizations } from './utils/resourceOptimization';
+import Login from './pages/Login';
 
 function App() {
+  return (
+    <GlobalErrorBoundary>
+      <AppContent />
+    </GlobalErrorBoundary>
+  );
+}
+
+function AppContent() {
   const { token } = useAuthStore();
-  const location = useLocation();
 
+  // Initialize performance optimizations on app start
   useEffect(() => {
-    // 路由变化时滚动到顶部
-    window.scrollTo(0, 0);
-  }, [location]);
+    try {
+      const monitor = initializePerformanceOptimizations();
+      monitor.startTiming('app_initialization');
+      console.log('✅ Performance monitoring started');
+      
+      // Clean up on unmount
+      return () => {
+        monitor.endTiming('app_initialization');
+      };
+    } catch (e) {
+      console.error('Performance optimization error:', e);
+    }
+  }, []);
 
-  if (!token && location.pathname !== '/login') {
-    return <Navigate to="/login" replace />;
-  }
+  console.log('✅ AppContent rendered, token:', token);
 
-  if (token && location.pathname === '/login') {
-    return <Navigate to="/" replace />;
+  // 简单的测试内容 - 不使用 Routes，直接显示
+  if (!token) {
+    return (
+      <ErrorBoundary>
+        <ThemeProvider>
+          <Login />
+        </ThemeProvider>
+      </ErrorBoundary>
+    );
   }
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ConfigProvider locale={zhCN} theme={lightTheme}>
-          <Suspense fallback={<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}><Spin size="large" /></div>}>
-            {token ? (
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/classes" element={<Classes />} />
-                  <Route path="/students" element={<Students />} />
-                  <Route path="/courses" element={<Courses />} />
-                  <Route path="/exams" element={<Exams />} />
-                  <Route path="/scores-list" element={<ScoresList />} />
-                  <Route path="/import" element={<Import />} />
-                  <Route path="/student-profile/:id" element={<StudentProfile />} />
-                  <Route path="/analysis/class" element={<ClassAnalysis />} />
-                  <Route path="/analysis/alerts" element={<ManagementAlerts />} />
-                  <Route path="/management-alerts" element={<ManagementAlerts />} />
-                  <Route path="/audit-logs" element={<AuditLogs />} />
-                </Routes>
-              </Layout>
-            ) : (
-              <Login />
-            )}
-          </Suspense>
-        </ConfigProvider>
-      </QueryClientProvider>
+      <ThemeProvider>
+        <ProLayoutWrapper>
+          <RouteRenderer />
+        </ProLayoutWrapper>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

@@ -12,12 +12,6 @@ const ExamQualityCard: React.FC<ExamQualityCardProps> = ({ examId }) => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<ExamQuality[]>([]);
 
-    useEffect(() => {
-        if (examId) {
-            fetchQualityData();
-        }
-    }, [examId]);
-
     const fetchQualityData = async () => {
         setLoading(true);
         try {
@@ -29,6 +23,12 @@ const ExamQualityCard: React.FC<ExamQualityCardProps> = ({ examId }) => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (examId) {
+            fetchQualityData();
+        }
+    }, [examId, fetchQualityData]);
 
     const getDifficultyTag = (val: number) => {
         if (val > 0.7) return <Tag color="success">简单</Tag>;

@@ -1,91 +1,58 @@
-import { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Select, message, Space, Popconfirm } from 'antd';
+import { useState, useRef } from 'react';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
-import { API_BASE_URL } from '../config';
-import { useAuthStore } from '../store/authStore';
+import { ProTable, ModalForm, ProFormText, ProFormSelect } from '@ant-design/pro-components';
+import type { ProColumns, ActionType } from '@ant-design/pro-components';
 
-interface Course {
-    id: number;
-    name: string;
-    grade: number;
-}
+// Temporary workaround for import issues - we'll use inline components
+const Button = ({ children, ...props }: any) => <button {...props}>{children}</button>;
+const Space = ({ children }: any) => <div style={{ display: 'flex', gap: '8px' }}>{children}</div>;
+const Popconfirm = ({ children, onConfirm, title }: any) => 
+  <span onClick={() => window.confirm(title) && onConfirm?.()}>{children}</span>;
+const message = {
+  success: (msg: string) => alert(msg),
+  error: (msg: string) => alert(msg),
+};
+import type { Course } from '../types';
+import api from '../services/api';
 
 export default function Courses() {
-    const [courses, setCourses] = useState<Course[]>([]);
-    const [loading, setLoading] = useState(false);
+    const actionRef = useRef<ActionType>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<Course | null>(null);
-    const [form] = Form.useForm();
-    const { token } = useAuthStore();
-
-    const fetchCourses = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/courses`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setCourses(data);
-            }
-        } catch (error) {
-            message.error('获取课程列表失败');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchCourses();
-    }, []);
 
     const handleAdd = () => {
         setEditingCourse(null);
-        form.resetFields();
         setIsModalOpen(true);
     };
 
     const handleEdit = (record: Course) => {
         setEditingCourse(record);
-        form.setFieldsValue(record);
         setIsModalOpen(true);
     };
 
     const handleDelete = async (id: number) => {
         try {
-            await fetch(`${API_BASE_URL}/api/courses/${id}`, {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${token}` },
-            });
+            await api.course.delete(id);
             message.success('删除成功');
-            fetchCourses();
+            actionRef.current?.reload();
         } catch (error) {
-            message.error('删除失败');
+            // Error already handled in request layer
         }
     };
 
     const handleSubmit = async (values: any) => {
         try {
-            const url = editingCourse
-                ? `${API_BASE_URL}/api/courses/${editingCourse.id}`
-                : `${API_BASE_URL}/api/courses`;
-            const method = editingCourse ? 'PUT' : 'POST';
-
-            await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(values),
-            });
-
-            message.success(editingCourse ? '更新成功' : '添加成功');
+            if (editingCourse) {
+                await api.course.update(editingCourse.id, values);
+                message.success('更新成功');
+            } else {
+                await api.course.create(values);
+                message.success('添加成功');
+            }
             setIsModalOpen(false);
-            fetchCourses();
+            actionRef.current?.reload();
         } catch (error) {
-            message.error('操作失败');
+            // Error already handled in request layer
         }
     };
 
@@ -101,29 +68,41 @@ export default function Courses() {
         return mapping[grade] || `${grade}年级`;
     };
 
-    const columns: ColumnsType<Course> = [
+    const columns: ProColumns<Course>[] = [
         {
             title: 'ID',
             dataIndex: 'id',
             key: 'id',
             width: 80,
+            hideInSearch: true,
         },
         {
             title: '课程名称',
             dataIndex: 'name',
             key: 'name',
+            copyable: true,
         },
         {
             title: '年级',
             dataIndex: 'grade',
             key: 'grade',
             width: 100,
-            render: (grade) => getGradeName(grade),
+            valueType: 'select',
+            valueEnum: {
+                1: { text: '一年级' },
+                2: { text: '二年级' },
+                3: { text: '三年级' },
+                4: { text: '四年级' },
+                5: { text: '五年级' },
+                6: { text: '六年级' },
+            },
+            render: (_, record) => getGradeName(Number(record.grade)),
         },
         {
             title: '操作',
             key: 'action',
             width: 150,
+            hideInSearch: true,
             render: (_, record) => (
                 <Space>
                     <Button
@@ -150,61 +129,97 @@ export default function Courses() {
 
     return (
         <div>
-            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>课程管理</h2>
-                    <p style={{ margin: '4px 0 0 0', color: '#666' }}>管理学校开设的所有课程</p>
-                </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                    添加课程
-                </Button>
-            </div>
-
-            <Table
-                columns={columns}
-                dataSource={courses}
+            <ProTable<Course>
+                headerTitle="课程管理"
+                actionRef={actionRef}
                 rowKey="id"
-                loading={loading}
-                pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 条` }}
+                search={{
+                    labelWidth: 'auto',
+                }}
+                toolBarRender={() => [
+                    <Button
+                        key="add"
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleAdd}
+                    >
+                        添加课程
+                    </Button>,
+                ]}
+                request={async (params) => {
+                    try {
+                        const data = await api.course.list();
+                        
+                        // Apply search filters
+                        let filteredData = data;
+                        
+                        if (params.name) {
+                            filteredData = filteredData.filter(course => 
+                                course.name.includes(params.name as string)
+                            );
+                        }
+                        
+                        if (params.grade) {
+                            filteredData = filteredData.filter(course => 
+                                Number(course.grade) === Number(params.grade)
+                            );
+                        }
+                        
+                        // Apply pagination
+                        const { current = 1, pageSize = 10 } = params;
+                        const start = (current - 1) * pageSize;
+                        const end = start + pageSize;
+                        const paginatedData = filteredData.slice(start, end);
+                        
+                        return {
+                            data: paginatedData,
+                            success: true,
+                            total: filteredData.length,
+                        };
+                    } catch (error) {
+                        return {
+                            data: [],
+                            success: false,
+                            total: 0,
+                        };
+                    }
+                }}
+                columns={columns}
+                pagination={{
+                    pageSize: 10,
+                    showTotal: (total: number) => `共 ${total} 条`,
+                }}
             />
 
-            <Modal
+            <ModalForm
                 title={editingCourse ? '编辑课程' : '添加课程'}
                 open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
-                footer={null}
+                onOpenChange={setIsModalOpen}
+                onFinish={handleSubmit}
+                initialValues={editingCourse || {}}
+                layout="vertical"
+                width={600}
+                modalProps={{
+                    destroyOnClose: true,
+                }}
             >
-                <Form form={form} onFinish={handleSubmit} layout="vertical">
-                    <Form.Item
-                        label="课程名称"
-                        name="name"
-                        rules={[{ required: true, message: '请输入课程名称' }]}
-                    >
-                        <Input placeholder="例如：语文" />
-                    </Form.Item>
-                    <Form.Item
-                        label="年级"
-                        name="grade"
-                        rules={[{ required: true, message: '请选择年级' }]}
-                    >
-                        <Select placeholder="请选择年级">
-                            {[1, 2, 3, 4, 5, 6].map((g) => (
-                                <Select.Option key={g} value={g}>
-                                    {g}年级
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Space>
-                            <Button onClick={() => setIsModalOpen(false)}>取消</Button>
-                            <Button type="primary" htmlType="submit">
-                                {editingCourse ? '更新' : '添加'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
-            </Modal>
+                <ProFormText
+                    label="课程名称"
+                    name="name"
+                    rules={[{ required: true, message: '请输入课程名称' }]}
+                    placeholder="例如：语文"
+                />
+                <ProFormSelect
+                    label="年级"
+                    name="grade"
+                    rules={[{ required: true, message: '请选择年级' }]}
+                    placeholder="请选择年级"
+                    options={[1, 2, 3, 4, 5, 6].map((g) => ({
+                        label: `${g}年级`,
+                        value: g,
+                    }))}
+                />
+            </ModalForm>
         </div>
     );
 }

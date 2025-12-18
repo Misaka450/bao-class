@@ -1,47 +1,19 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Modal, Form, Input, Select, Space, Popconfirm, message, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
+import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import { ProTable, ProForm, ProFormText, ProFormSelect } from '@ant-design/pro-components';
+import { Button, Modal, Space, Popconfirm, message } from 'antd';
+import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import type { Student, Class } from '../types';
 import api from '../services/api';
 
 export default function Students() {
     const navigate = useNavigate();
-    const [students, setStudents] = useState<Student[]>([]);
+    const actionRef = useRef<ActionType>(null);
     const [classes, setClasses] = useState<Class[]>([]);
-    const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-    const [form] = Form.useForm();
-    const [searchText, setSearchText] = useState('');
-    const [debouncedSearchText, setDebouncedSearchText] = useState('');
-    const [filterClassId, setFilterClassId] = useState<string>('');
-
-    // Optimize: debounce search text (native implementation)
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            setDebouncedSearchText(searchText);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [searchText]);
-
-    useEffect(() => {
-        fetchStudents();
-        fetchClasses();
-    }, []);
-
-    const fetchStudents = async () => {
-        setLoading(true);
-        try {
-            const data = await api.student.list();
-            setStudents(data);
-        } catch (error) {
-            // Error already handled in request layer
-        } finally {
-            setLoading(false);
-        }
-    };
+    const [formRef] = ProForm.useForm();
 
     const fetchClasses = async () => {
         try {
@@ -52,15 +24,19 @@ export default function Students() {
         }
     };
 
+    useEffect(() => {
+        fetchClasses();
+    }, [fetchClasses]);
+
     const handleAdd = () => {
         setEditingStudent(null);
-        form.resetFields();
+        formRef.resetFields();
         setIsModalOpen(true);
     };
 
     const handleEdit = (record: Student) => {
         setEditingStudent(record);
-        form.setFieldsValue(record);
+        formRef.setFieldsValue(record);
         setIsModalOpen(true);
     };
 
@@ -68,7 +44,7 @@ export default function Students() {
         try {
             await api.student.delete(id);
             message.success('删除成功');
-            fetchStudents();
+            actionRef.current?.reload();
         } catch (error) {
             // Error already handled in request layer
         }
@@ -84,46 +60,51 @@ export default function Students() {
                 message.success('添加成功');
             }
             setIsModalOpen(false);
-            fetchStudents();
+            actionRef.current?.reload();
         } catch (error) {
             // Error already handled in request layer
         }
     };
 
-    // Optimize: memoize class name rendering
-    const renderClassName = useCallback((classId: number) => {
-        const cls = classes.find((c) => c.id === classId);
-        return cls?.name || classId;
-    }, [classes]);
-
-    // Optimize: memoize columns definition
-    const columns: ColumnsType<Student> = useMemo(() => [
+    const columns: ProColumns<Student>[] = [
         {
             title: 'ID',
             dataIndex: 'id',
             key: 'id',
             width: 80,
+            hideInSearch: true,
         },
         {
             title: '姓名',
             dataIndex: 'name',
             key: 'name',
+            copyable: true,
         },
         {
             title: '学号',
             dataIndex: 'student_id',
             key: 'student_id',
+            copyable: true,
         },
         {
             title: '班级',
             dataIndex: 'class_id',
             key: 'class_id',
-            render: renderClassName,
+            valueType: 'select',
+            valueEnum: classes.reduce((acc, cls) => {
+                acc[cls.id] = { text: cls.name };
+                return acc;
+            }, {} as Record<number, { text: string }>),
+            render: (_, record) => {
+                const cls = classes.find((c) => c.id === record.class_id);
+                return cls?.name || record.class_id;
+            },
         },
         {
             title: '操作',
             key: 'action',
             width: 150,
+            hideInSearch: true,
             render: (_, record) => (
                 <Space>
                     <Button
@@ -153,59 +134,76 @@ export default function Students() {
                 </Space>
             ),
         },
-    ], [classes, navigate, handleDelete]);
-
-    const filteredStudents = students.filter(student => {
-        const matchName = student.name.includes(debouncedSearchText) || student.student_id.includes(debouncedSearchText);
-        const matchClass = filterClassId ? student.class_id.toString() === filterClassId : true;
-        return matchName && matchClass;
-    });
+    ];
 
     return (
         <div>
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>学生管理</h2>
-                    <p style={{ margin: '4px 0 0 0', color: '#666' }}>管理所有在校学生信息</p>
-                </div>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
-                    添加学生
-                </Button>
-            </div>
-
-            {/* Search and Filter Section */}
-            < Row gutter={16} style={{ marginBottom: 16 }
-            }>
-                <Col span={8}>
-                    <Input
-                        placeholder="搜索姓名或学号"
-                        prefix={<SearchOutlined />}
-                        value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
-                        allowClear
-                    />
-                </Col>
-                <Col span={8}>
-                    <Select
-                        placeholder="筛选班级"
-                        value={filterClassId}
-                        onChange={setFilterClassId}
-                        style={{ width: '100%' }}
-                        allowClear
-                    >
-                        {classes.map((cls) => (
-                            <Select.Option key={cls.id} value={cls.id.toString()}>{cls.name}</Select.Option>
-                        ))}
-                    </Select>
-                </Col>
-            </Row >
-
-            <Table
-                columns={columns}
-                dataSource={filteredStudents}
+            <ProTable<Student>
+                headerTitle="学生管理"
+                actionRef={actionRef}
                 rowKey="id"
-                loading={loading}
-                pagination={{ pageSize: 10, showTotal: (total) => `共 ${total} 条` }}
+                search={{
+                    labelWidth: 'auto',
+                }}
+                toolBarRender={() => [
+                    <Button
+                        key="add"
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleAdd}
+                    >
+                        添加学生
+                    </Button>,
+                ]}
+                request={async (params, sorter, filter) => {
+                    try {
+                        const data = await api.student.list();
+                        
+                        // Apply search filters
+                        let filteredData = data;
+                        
+                        if (params.name) {
+                            filteredData = filteredData.filter(student => 
+                                student.name.includes(params.name as string)
+                            );
+                        }
+                        
+                        if (params.student_id) {
+                            filteredData = filteredData.filter(student => 
+                                student.student_id.includes(params.student_id as string)
+                            );
+                        }
+                        
+                        if (params.class_id) {
+                            filteredData = filteredData.filter(student => 
+                                student.class_id === Number(params.class_id)
+                            );
+                        }
+                        
+                        // Apply pagination
+                        const { current = 1, pageSize = 10 } = params;
+                        const start = (current - 1) * pageSize;
+                        const end = start + pageSize;
+                        const paginatedData = filteredData.slice(start, end);
+                        
+                        return {
+                            data: paginatedData,
+                            success: true,
+                            total: filteredData.length,
+                        };
+                    } catch (error) {
+                        return {
+                            data: [],
+                            success: false,
+                            total: 0,
+                        };
+                    }
+                }}
+                columns={columns}
+                pagination={{
+                    pageSize: 10,
+                    showTotal: (total) => `共 ${total} 条`,
+                }}
             />
 
             <Modal
@@ -213,44 +211,56 @@ export default function Students() {
                 open={isModalOpen}
                 onCancel={() => setIsModalOpen(false)}
                 footer={null}
+                width={600}
             >
-                <Form form={form} onFinish={handleSubmit} layout="vertical">
-                    <Form.Item
+                <ProForm
+                    form={formRef}
+                    onFinish={handleSubmit}
+                    layout="vertical"
+                    initialValues={editingStudent || {}}
+                    submitter={{
+                        render: (props, doms) => {
+                            return (
+                                <div style={{ textAlign: 'right' }}>
+                                    <Space>
+                                        <Button onClick={() => setIsModalOpen(false)}>
+                                            取消
+                                        </Button>
+                                        <Button 
+                                            type="primary" 
+                                            onClick={() => props.form?.submit?.()}
+                                        >
+                                            {editingStudent ? '更新' : '添加'}
+                                        </Button>
+                                    </Space>
+                                </div>
+                            );
+                        },
+                    }}
+                >
+                    <ProFormText
                         label="姓名"
                         name="name"
                         rules={[{ required: true, message: '请输入学生姓名' }]}
-                    >
-                        <Input placeholder="例如：张三" />
-                    </Form.Item>
-                    <Form.Item
+                        placeholder="例如：张三"
+                    />
+                    <ProFormText
                         label="学号"
                         name="student_id"
                         rules={[{ required: true, message: '请输入学号' }]}
-                    >
-                        <Input placeholder="例如：S1001" />
-                    </Form.Item>
-                    <Form.Item
+                        placeholder="例如：S1001"
+                    />
+                    <ProFormSelect
                         label="班级"
                         name="class_id"
                         rules={[{ required: true, message: '请选择班级' }]}
-                    >
-                        <Select placeholder="请选择班级">
-                            {classes.map((cls) => (
-                                <Select.Option key={cls.id} value={cls.id}>
-                                    {cls.name}
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
-                        <Space>
-                            <Button onClick={() => setIsModalOpen(false)}>取消</Button>
-                            <Button type="primary" htmlType="submit">
-                                {editingStudent ? '更新' : '添加'}
-                            </Button>
-                        </Space>
-                    </Form.Item>
-                </Form>
+                        placeholder="请选择班级"
+                        options={classes.map((cls) => ({
+                            label: cls.name,
+                            value: cls.id,
+                        }))}
+                    />
+                </ProForm>
             </Modal>
         </div >
     );
