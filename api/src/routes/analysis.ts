@@ -17,12 +17,19 @@ analysis.get('/class/focus/:classId', async (c) => {
     const classId = c.req.param('classId')
 
     try {
-        // Get latest exam for specific analysis
-        const latestExam = await c.env.DB.prepare('SELECT id FROM exams ORDER BY exam_date DESC LIMIT 1').first()
+        // Get latest exam for this specific class
+        const latestExam = await c.env.DB.prepare(`
+            SELECT e.id FROM exams e
+            JOIN scores s ON e.id = s.exam_id
+            JOIN students st ON s.student_id = st.id
+            WHERE st.class_id = ?
+            ORDER BY e.exam_date DESC LIMIT 1
+        `).bind(classId).first()
         const examId = latestExam?.id
 
         // 1. Critical Students (Borderline Pass/Fail or Excellent)
-        // 58-60 (Danger of failing), 88-90 (Close to excellent)
+        // 55-62 (Danger of failing), 85-92 (Close to excellent) - 扩大范围以匹配更多学生
+        // 移除30天日期限制，直接使用最新考试
         const criticalStudents = await c.env.DB.prepare(`
             SELECT DISTINCT st.id, st.name, 'critical' as type, s.score, c.name as subject
             FROM students st
@@ -30,9 +37,9 @@ analysis.get('/class/focus/:classId', async (c) => {
             JOIN exams e ON s.exam_id = e.id
             JOIN courses c ON s.course_id = c.id
             WHERE st.class_id = ?
-            AND e.exam_date >= date('now', '-30 days')
-            AND ((s.score BETWEEN 58 AND 59.9) OR (s.score BETWEEN 88 AND 89.9))
-        `).bind(classId).all()
+            AND s.exam_id = ?
+            AND ((s.score BETWEEN 55 AND 62) OR (s.score BETWEEN 85 AND 92))
+        `).bind(classId, examId || 0).all()
 
         // Check if we have enough exams for trend analysis (at least 2)
         const exams = await c.env.DB.prepare(`
@@ -76,7 +83,7 @@ analysis.get('/class/focus/:classId', async (c) => {
                 SELECT student_id as id, name, 'regressing' as type, 
                 (overall_avg - latest_score) as drop_amount
                 FROM StudentStats
-                WHERE drop_amount > 10
+                WHERE drop_amount > 5
             `).bind(classId).all()
 
             // 3. Fluctuating Students (High Variance in specific subjects)
@@ -90,7 +97,7 @@ analysis.get('/class/focus/:classId', async (c) => {
                 JOIN exams e ON s.exam_id = e.id
                 WHERE st.class_id = ?
                 GROUP BY s.student_id, s.course_id
-                HAVING score_diff > 20
+                HAVING score_diff > 10
             `).bind(classId).all()
         }
 
