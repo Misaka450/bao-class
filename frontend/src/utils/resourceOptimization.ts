@@ -58,13 +58,9 @@ export class ImageLazyLoader {
  * Preload critical resources
  */
 export function preloadCriticalResources() {
-  const criticalResources = [
-    // Preload critical CSS
-    // CSS will be handled by Vite's build process, only preload truly static critical assets here if known
-    // { href: '/assets/css/critical.css', as: 'style' },
-    // Preload important fonts
-    { href: '/assets/fonts/main.woff2', as: 'font', type: 'font/woff2', crossorigin: 'anonymous' },
-  ];
+  // 只预加载真正存在的静态资源
+  // 字体通过 CSS 加载，不需要手动预加载
+  const criticalResources: Array<{ href: string; as: string; type?: string; crossorigin?: string }> = [];
 
   criticalResources.forEach(({ href, as, type, crossorigin }) => {
     const link = document.createElement('link');

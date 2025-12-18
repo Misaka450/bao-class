@@ -542,4 +542,85 @@ stats.get('/exam/:examId/progress', async (c) => {
     }
 })
 
+// 年级对比 (Grade Comparison)
+stats.get('/grade-comparison/:classId/:examId', async (c) => {
+    const classId = c.req.param('classId')
+    const examId = c.req.param('examId')
+
+    try {
+        // 获取考试信息
+        const examInfo = await c.env.DB.prepare(`
+            SELECT id, name as exam_name, exam_date FROM exams WHERE id = ?
+        `).bind(examId).first()
+
+        if (!examInfo) {
+            return c.json({ error: 'Exam not found' }, 404)
+        }
+
+        // 获取当前班级信息
+        const currentClass = await c.env.DB.prepare(`
+            SELECT id as class_id, name as class_name, grade FROM classes WHERE id = ?
+        `).bind(classId).first()
+
+        if (!currentClass) {
+            return c.json({ error: 'Class not found' }, 404)
+        }
+
+        // 获取同年级所有班级的成绩对比
+        const classesData = await c.env.DB.prepare(`
+            SELECT 
+                cl.id as class_id,
+                cl.name as class_name,
+                AVG(total_score) as average_score,
+                COUNT(*) as student_count,
+                CAST(SUM(CASE WHEN total_score >= 180 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
+                CAST(SUM(CASE WHEN total_score >= 270 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as excellent_rate
+            FROM classes cl
+            JOIN students st ON cl.id = st.class_id
+            JOIN (
+                SELECT student_id, SUM(score) as total_score
+                FROM scores
+                WHERE exam_id = ?
+                GROUP BY student_id
+            ) s ON st.id = s.student_id
+            WHERE cl.grade = ?
+            GROUP BY cl.id, cl.name
+            ORDER BY average_score DESC
+        `).bind(examId, currentClass.grade).all()
+
+        // 计算当前班级排名
+        let rank = 1
+        for (const cls of classesData.results as any[]) {
+            if (cls.class_id === Number(classId)) {
+                break
+            }
+            rank++
+        }
+
+        return c.json({
+            exam_info: {
+                exam_id: examInfo.id,
+                exam_name: examInfo.exam_name,
+                exam_date: examInfo.exam_date
+            },
+            current_class: {
+                class_id: Number(classId),
+                class_name: currentClass.class_name,
+                rank: rank
+            },
+            classes: (classesData.results as any[]).map(cls => ({
+                class_id: cls.class_id,
+                class_name: cls.class_name,
+                average_score: parseFloat(Number(cls.average_score || 0).toFixed(2)),
+                student_count: cls.student_count,
+                pass_rate: parseFloat(Number(cls.pass_rate || 0).toFixed(2)),
+                excellent_rate: parseFloat(Number(cls.excellent_rate || 0).toFixed(2))
+            }))
+        })
+    } catch (error) {
+        console.error('Grade comparison error:', error)
+        return c.json({ error: 'Failed to get grade comparison' }, 500)
+    }
+})
+
 export default stats

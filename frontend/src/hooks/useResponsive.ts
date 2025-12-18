@@ -89,30 +89,30 @@ export const useResponsiveLayout = () => {
   return {
     // Layout type based on screen size
     layout: responsive.isMobile ? 'top' : 'mix',
-    
+
     // Sidebar settings
     siderWidth: responsive.isMobile ? 0 : responsive.isTablet ? 200 : 256,
-    collapsedWidth: responsive.isMobile ? 0 : 48,
-    
+    collapsedWidth: responsive.isMobile ? 0 : 80,
+
     // Header settings
     headerHeight: responsive.isMobile ? 56 : 64,
-    
+
     // Content settings
     contentWidth: 'Fluid' as const,
-    
+
     // Mobile-specific settings
     isMobile: responsive.isMobile,
-    
+
     // Breakpoint for automatic collapse
     breakpoint: responsive.isMobile ? 'xs' : 'lg',
-    
+
     // Fixed elements
     fixedHeader: true,
     fixSiderbar: !responsive.isMobile,
-    
+
     // Menu settings
     splitMenus: false,
-    
+
     // Responsive info
     responsive,
   };
@@ -127,22 +127,22 @@ export const useResponsiveTable = () => {
   return {
     // Table size
     size: responsive.isMobile ? 'small' : 'middle',
-    
+
     // Scroll settings
     scroll: responsive.isMobile ? { x: 800 } : undefined,
-    
+
     // Pagination settings
     pagination: {
       size: responsive.isMobile ? 'small' : 'default',
       showSizeChanger: !responsive.isMobile,
       showQuickJumper: !responsive.isMobile,
-      showTotal: (total: number, range: [number, number]) => 
-        responsive.isMobile 
+      showTotal: (total: number, range: [number, number]) =>
+        responsive.isMobile
           ? `${range[0]}-${range[1]} / ${total}`
           : `显示 ${range[0]}-${range[1]} 条，共 ${total} 条`,
       pageSize: responsive.isMobile ? 10 : 20,
     },
-    
+
     // Column settings
     columnSettings: {
       hideOnMobile: (key: string) => responsive.isMobile && ['actions', 'description', 'extra'].includes(key),
@@ -159,17 +159,17 @@ export const useResponsiveForm = () => {
   return {
     // Form layout
     layout: responsive.isMobile ? 'vertical' : 'horizontal',
-    
+
     // Label settings
     labelCol: responsive.isMobile ? undefined : { span: 6 },
     wrapperCol: responsive.isMobile ? undefined : { span: 18 },
-    
+
     // Form size
     size: responsive.isMobile ? 'large' : 'middle',
-    
+
     // Grid settings for form items
     grid: responsive.isMobile ? { gutter: 16, column: 1 } : { gutter: 24, column: 2 },
-    
+
     // Modal settings
     modalWidth: responsive.isMobile ? '90%' : responsive.isTablet ? 600 : 800,
   };
@@ -184,17 +184,17 @@ export const useResponsiveCard = () => {
   return {
     // Card size
     size: responsive.isMobile ? 'small' : 'default',
-    
+
     // Body style
     bodyStyle: {
       padding: responsive.isMobile ? 16 : 24,
     },
-    
+
     // Head style
     headStyle: {
       padding: responsive.isMobile ? '12px 16px' : '16px 24px',
     },
-    
+
     // Grid settings for card grids
     grid: {
       gutter: responsive.isMobile ? 8 : 16,
