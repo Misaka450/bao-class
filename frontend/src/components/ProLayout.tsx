@@ -39,7 +39,7 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
 
   // Filter routes based on user access
   const accessibleRoutes = user ? filterRoutesByAccess(routes, user.role) : [];
-  
+
   // Generate breadcrumbs for current path
   const breadcrumbs = generateBreadcrumbs(pathname);
 
@@ -115,18 +115,22 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
         render: (_, avatarChildren) => {
           return (
             <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <span style={{ cursor: 'pointer' }}>
+              <div style={{
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: responsiveLayout.isMobile ? 4 : 8
+              }}>
                 <Avatar
-                  style={{ 
-                    backgroundColor: designTokens.colorPrimary, 
-                    marginRight: responsiveLayout.isMobile ? 4 : 8 
+                  style={{
+                    backgroundColor: designTokens.colorPrimary
                   }}
                   icon={<UserOutlined />}
                   src={layoutConfig.userInfo.avatar}
                   size={responsiveLayout.isMobile ? 'small' : 'default'}
                 />
-                {!responsiveLayout.isMobile && avatarChildren}
-              </span>
+                {!responsiveLayout.isMobile && <span>{layoutConfig.userInfo.name}</span>}
+              </div>
             </Dropdown>
           );
         },
