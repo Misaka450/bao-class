@@ -38,19 +38,19 @@ export interface RouteConfig {
   menuHeaderRender?: boolean;
 }
 
-// Direct imports to eliminate code splitting for maximum stability
-import ProDashboard from '../pages/ProDashboard';
-import Classes from '../pages/Classes';
-import Students from '../pages/Students';
-import Courses from '../pages/Courses';
-import Exams from '../pages/Exams';
-import ScoresList from '../pages/ScoresList';
-import ProScoresList from '../pages/ProScoresList';
-import Import from '../pages/Import';
-import StudentProfile from '../pages/StudentProfile';
-import ClassAnalysis from '../pages/ClassAnalysis';
-import ManagementAlerts from '../pages/ManagementAlerts';
-import AuditLogs from '../pages/AuditLogs';
+// Lazy loaded components for improved performance and stability
+const ProDashboard = React.lazy(() => import('../pages/ProDashboard'));
+const Classes = React.lazy(() => import('../pages/Classes'));
+const Students = React.lazy(() => import('../pages/Students'));
+const Courses = React.lazy(() => import('../pages/Courses'));
+const Exams = React.lazy(() => import('../pages/Exams'));
+const ScoresList = React.lazy(() => import('../pages/ScoresList'));
+const ProScoresList = React.lazy(() => import('../pages/ProScoresList'));
+const Import = React.lazy(() => import('../pages/Import'));
+const StudentProfile = React.lazy(() => import('../pages/StudentProfile'));
+const ClassAnalysis = React.lazy(() => import('../pages/ClassAnalysis'));
+const ManagementAlerts = React.lazy(() => import('../pages/ManagementAlerts'));
+const AuditLogs = React.lazy(() => import('../pages/AuditLogs'));
 
 /**
  * Main route configuration
@@ -211,7 +211,7 @@ const routes: RouteConfig[] = [
  */
 export const flattenRoutes = (routes: RouteConfig[]): RouteConfig[] => {
   const result: RouteConfig[] = [];
-  
+
   const flatten = (routeList: RouteConfig[]) => {
     routeList.forEach(route => {
       result.push(route);
@@ -220,7 +220,7 @@ export const flattenRoutes = (routes: RouteConfig[]): RouteConfig[] => {
       }
     });
   };
-  
+
   flatten(routes);
   return result;
 };
@@ -240,11 +240,11 @@ export const hasRouteAccess = (route: RouteConfig, userRole?: string): boolean =
   if (!route.access || route.access.length === 0) {
     return true;
   }
-  
+
   if (!userRole) {
     return false;
   }
-  
+
   return route.access.includes(userRole);
 };
 
@@ -255,19 +255,19 @@ export const filterRoutesByAccess = (routes: RouteConfig[], userRole?: string): 
   return routes.map(route => {
     // Create a copy of the route to avoid mutating the original
     const routeCopy = { ...route };
-    
+
     // Filter children first
     if (routeCopy.children) {
       routeCopy.children = filterRoutesByAccess(routeCopy.children, userRole);
     }
-    
+
     return routeCopy;
   }).filter(route => {
     // Check if the route itself has access
     if (!hasRouteAccess(route, userRole)) {
       return false;
     }
-    
+
     // If it's a parent route with no accessible children, still include it
     // if the parent itself is accessible
     return true;
@@ -280,36 +280,36 @@ export const filterRoutesByAccess = (routes: RouteConfig[], userRole?: string): 
 export const generateBreadcrumbs = (pathname: string): Array<{ path: string; name: string }> => {
   const allRoutes = flattenRoutes(routes);
   const breadcrumbs: Array<{ path: string; name: string }> = [];
-  
+
   // Handle dynamic routes like /student-profile/:id
   const matchRoute = (routePath: string, currentPath: string): boolean => {
     const routeSegments = routePath.split('/');
     const pathSegments = currentPath.split('/');
-    
+
     if (routeSegments.length !== pathSegments.length) {
       return false;
     }
-    
+
     return routeSegments.every((segment, index) => {
       return segment.startsWith(':') || segment === pathSegments[index];
     });
   };
-  
-  const currentRoute = allRoutes.find(route => 
+
+  const currentRoute = allRoutes.find(route =>
     route.path === pathname || matchRoute(route.path, pathname)
   );
-  
+
   if (currentRoute && !currentRoute.hideInBreadcrumb) {
     // Build breadcrumb path by traversing up the route hierarchy
     const pathSegments = pathname.split('/').filter(Boolean);
     let currentPath = '';
-    
+
     pathSegments.forEach(segment => {
       currentPath += `/${segment}`;
-      const route = allRoutes.find(r => 
+      const route = allRoutes.find(r =>
         r.path === currentPath || matchRoute(r.path, currentPath)
       );
-      
+
       if (route && !route.hideInBreadcrumb) {
         breadcrumbs.push({
           path: currentPath,
@@ -318,7 +318,7 @@ export const generateBreadcrumbs = (pathname: string): Array<{ path: string; nam
       }
     });
   }
-  
+
   return breadcrumbs;
 };
 
@@ -330,22 +330,22 @@ export const getPageTitle = (pathname: string): string => {
   if (route?.title) {
     return route.title;
   }
-  
+
   // Handle dynamic routes
   const allRoutes = flattenRoutes(routes);
   const matchedRoute = allRoutes.find(route => {
     const routeSegments = route.path.split('/');
     const pathSegments = pathname.split('/');
-    
+
     if (routeSegments.length !== pathSegments.length) {
       return false;
     }
-    
+
     return routeSegments.every((segment, index) => {
       return segment.startsWith(':') || segment === pathSegments[index];
     });
   });
-  
+
   return matchedRoute?.title || '班级管理系统';
 };
 

@@ -17,10 +17,9 @@ interface Course {
 
 export default function ScoresList() {
     const [selectedClassId, setSelectedClassId] = useState<string>('');
-    const [selectedExamName, setSelectedExamName] = useState<string>(''); // 改为按考试名称筛选
+    const [selectedExamName, setSelectedExamName] = useState<string>('');
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
 
-    // Optimize: use React Query for all data fetching
     const { data: classes = [] } = useClassList();
     const { data: exams = [] } = useExamList();
     const { data: allCourses = [] } = useCourseList();
@@ -30,7 +29,6 @@ export default function ScoresList() {
         courseId: selectedCourseId
     });
 
-    // 去重课程（根据课程名称）
     const courses = useMemo(() => {
         return allCourses.reduce((acc: Course[], course: Course) => {
             if (!acc.find(c => c.name === course.name)) {
@@ -40,7 +38,6 @@ export default function ScoresList() {
         }, []);
     }, [allCourses]);
 
-    // Optimize: memoize subjects extraction from scores data
     const subjects = useMemo(() => {
         const subjectsSet = new Set<string>();
         scoresData.forEach((student: StudentScoreItem) => {
@@ -51,7 +48,6 @@ export default function ScoresList() {
         return Array.from(subjectsSet).sort();
     }, [scoresData]);
 
-    // Optimize: memoize unique exam names
     const uniqueExamNames = useMemo(() =>
         Array.from(new Set(exams.map(e => e.name))).sort(),
         [exams]
@@ -126,7 +122,6 @@ export default function ScoresList() {
             width: 90,
             hideInSearch: true,
         },
-        // Dynamic subject columns
         ...subjects.map(subject => ({
             title: subject,
             dataIndex: ['scores', subject],
@@ -159,7 +154,6 @@ export default function ScoresList() {
                 return scoreA - scoreB;
             },
         })),
-        // Only show total column when not filtering by a single course
         ...(!selectedCourseId ? [{
             title: '总分',
             dataIndex: 'total',
@@ -235,8 +229,6 @@ export default function ScoresList() {
                     </Col>
                 </Row>
             </Card>
-
-
 
             <ProTable<StudentScoreItem>
                 headerTitle="成绩清单"

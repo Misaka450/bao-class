@@ -57,9 +57,9 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Handle static assets with cache-first strategy
-  if (request.destination === 'script' || 
-      request.destination === 'style' || 
-      request.destination === 'image') {
+  if (request.destination === 'script' ||
+    request.destination === 'style' ||
+    request.destination === 'image') {
     event.respondWith(cacheFirstStrategy(request));
     return;
   }
@@ -76,15 +76,16 @@ self.addEventListener('fetch', (event) => {
 
 // Network-first strategy for dynamic content
 async function networkFirstStrategy(request) {
+  const url = new URL(request.url);
   try {
     const networkResponse = await fetch(request);
-    
-    // Cache successful responses
-    if (networkResponse.ok) {
+
+    // Cache successful GET responses from http/https sources
+    if (networkResponse.ok && request.method === 'GET' && url.protocol.startsWith('http')) {
       const cache = await caches.open(DYNAMIC_CACHE);
       cache.put(request, networkResponse.clone());
     }
-    
+
     return networkResponse;
   } catch (error) {
     // Fallback to cache if network fails
@@ -92,32 +93,33 @@ async function networkFirstStrategy(request) {
     if (cachedResponse) {
       return cachedResponse;
     }
-    
+
     // Return offline page for navigation requests
     if (request.mode === 'navigate') {
       return caches.match('/offline.html') || new Response('Offline', { status: 503 });
     }
-    
+
     throw error;
   }
 }
 
 // Cache-first strategy for static assets
 async function cacheFirstStrategy(request) {
+  const url = new URL(request.url);
   const cachedResponse = await caches.match(request);
-  
+
   if (cachedResponse) {
     return cachedResponse;
   }
-  
+
   try {
     const networkResponse = await fetch(request);
-    
-    if (networkResponse.ok) {
+
+    if (networkResponse.ok && request.method === 'GET' && url.protocol.startsWith('http')) {
       const cache = await caches.open(STATIC_CACHE);
       cache.put(request, networkResponse.clone());
     }
-    
+
     return networkResponse;
   } catch (error) {
     throw error;
@@ -146,7 +148,7 @@ self.addEventListener('push', (event) => {
       badge: '/badge-72x72.png',
       data: data.data,
     };
-    
+
     event.waitUntil(
       self.registration.showNotification(data.title, options)
     );
@@ -156,7 +158,7 @@ self.addEventListener('push', (event) => {
 // Notification click handling
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  
+
   event.waitUntil(
     clients.openWindow(event.notification.data.url || '/')
   );

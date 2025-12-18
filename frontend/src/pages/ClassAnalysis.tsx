@@ -18,19 +18,15 @@ export default function ClassAnalysis() {
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [activeTab, setActiveTab] = useState('overview');
 
-    // Auto-select first class
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
-            // Use setTimeout to avoid synchronous setState in effect
             setTimeout(() => setSelectedClassId(classes[0].id.toString()), 0);
         }
     }, [classes, selectedClassId]);
 
-    // Data hooks
     const { data: trendData, isLoading: loadingTrend } = useClassTrend(selectedClassId ? Number(selectedClassId) : undefined);
     const { data: subjectData, isLoading: loadingSubject } = useClassSubjectTrend(selectedClassId ? Number(selectedClassId) : undefined);
 
-    // Latest exam for grade comparison
     const { data: exams = [] } = useExamList({ classId: selectedClassId, enabled: !!selectedClassId });
     const latestExamId = exams.length > 0 ? exams[0].id : undefined;
 
@@ -83,7 +79,6 @@ export default function ClassAnalysis() {
     const renderSubjectTab = () => {
         if (!subjectData?.subjects?.length) return <Empty description="暂无数据" />;
 
-        // Prepare data for radar chart (latest exam pass rates)
         const latestExamIndex = (subjectData.subjects[0]?.trends?.length || 0) - 1;
         const radarData = subjectData.subjects.map(sub => ({
             subject: sub.course_name,

@@ -79,7 +79,7 @@ export async function request<T = any>(
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
             const errorMessage = errorData.message || getStatusMessage(response.status);
-            
+
             throw createRequestError(
                 errorMessage,
                 response.status,
@@ -91,8 +91,25 @@ export async function request<T = any>(
         // 解析响应
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
-            const data = await response.json();
-            return data as T;
+            const result = await response.json();
+
+            // 处理后端统一响应格式 { success: boolean, data: any, message: string }
+            // 或者 AI API 格式 { success: boolean, comment: string, ... }
+            if (result && typeof result === 'object' && 'success' in result) {
+                if (result.success) {
+                    // 如果有 data 字段，返回 data；否则返回整个 result
+                    return ('data' in result ? result.data : result) as T;
+                } else {
+                    throw createRequestError(
+                        result.message || getStatusMessage(response.status),
+                        response.status,
+                        result.code,
+                        result
+                    );
+                }
+            }
+
+            return result as T;
         } else {
             // 处理非 JSON 响应（如文件下载）
             return response as unknown as T;
@@ -104,7 +121,7 @@ export async function request<T = any>(
             if ('status' in error) {
                 throw error;
             }
-            
+
             // 网络连接错误
             if (error.name === 'TypeError' || error.message.includes('fetch')) {
                 throw createRequestError(
@@ -114,7 +131,7 @@ export async function request<T = any>(
                     { originalError: error }
                 );
             }
-            
+
             // 其他错误
             throw createRequestError(
                 error.message,
@@ -123,7 +140,7 @@ export async function request<T = any>(
                 { originalError: error }
             );
         }
-        
+
         throw createRequestError('未知错误', undefined, 'UNKNOWN_ERROR');
     }
 }

@@ -11,6 +11,7 @@ export default defineConfig({
     }),
   ],
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@/components': path.resolve(__dirname, './src/components'),
@@ -23,6 +24,8 @@ export default defineConfig({
       '@/config': path.resolve(__dirname, './src/config'),
       '@/layouts': path.resolve(__dirname, './src/layouts'),
       '@/assets': path.resolve(__dirname, './src/assets'),
+      'react': path.resolve(__dirname, '../node_modules/react'),
+      'react-dom': path.resolve(__dirname, '../node_modules/react-dom'),
     },
   },
   server: {
@@ -43,18 +46,13 @@ export default defineConfig({
     minify: 'esbuild', // Use esbuild for faster minification
     chunkSizeWarningLimit: 1000, // Warn for chunks larger than 1MB
     cssCodeSplit: true, // Enable CSS code splitting
-    
-    // Fix module initialization issues
+
     commonjsOptions: {
       transformMixedEsModules: true,
     },
-    
-    // Disable all code splitting for maximum stability
+
     rollupOptions: {
       output: {
-        // Single file output
-        // Default code splitting
-        // manualChunks: () => 'index',
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
@@ -70,13 +68,10 @@ export default defineConfig({
           return 'assets/[ext]/[name]-[hash].[ext]';
         },
       },
-      external: [],
     },
-    
-    // No terser options needed with esbuild
+
   },
-  
-  // Optimize dependencies - simplified for maximum stability
+
   optimizeDeps: {
     include: [
       'react',
@@ -87,14 +82,10 @@ export default defineConfig({
       'antd',
       '@ant-design/icons',
     ],
-    exclude: [],
     force: true,
   },
-  
-  // Performance optimizations
+
   esbuild: {
-    // Remove console and debugger in production
-    // Temporarily keep console for production debugging
     drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [],
   },
 })

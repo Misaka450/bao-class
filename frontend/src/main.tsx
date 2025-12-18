@@ -8,7 +8,6 @@ import './modern-style.css'
 import { queryClient } from './lib/queryClient'
 import { initializeReactBootstrap, printBootstrapDiagnostics, getBootstrapDiagnostics } from './utils/reactBootstrap'
 
-// 初始化 React 启动系统
 if (!initializeReactBootstrap()) {
   console.error('❌ React bootstrap initialization failed');
   document.body.innerHTML = `
@@ -45,19 +44,16 @@ if (!initializeReactBootstrap()) {
   throw new Error('React bootstrap initialization failed');
 }
 
-// 获取根元素
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   console.error('❌ Root element not found');
   throw new Error('Root element not found');
 }
 
-// 创建 React 根
 let root: ReturnType<typeof ReactDOM.createRoot>;
 try {
   root = ReactDOM.createRoot(rootElement);
   (window as any).__REACT_ROOT_CREATED__ = true;
-  console.log('✅ React root created');
 } catch (error) {
   console.error('❌ Failed to create React root:', error);
   printBootstrapDiagnostics();
@@ -77,9 +73,7 @@ try {
   );
 
   (window as any).__REACT_RENDER_COMPLETE__ = Date.now();
-  console.log('✅ React application render command sent');
 
-  // 检查渲染结果的延迟诊断
   setTimeout(() => {
     const rootHasContent = rootElement.innerHTML.length > 0;
     const diagnostics = {
@@ -95,18 +89,13 @@ try {
       console.warn('⚠️ React rendering check: Root is still empty after 2s');
       console.dir(diagnostics);
 
-      // 如果过了 5 秒还是空白，可能是发生了静默失败，提供一个基础的交互入口
       setTimeout(() => {
         if (rootElement.innerHTML.length === 0) {
           console.error('❌ Critical: Root is still empty after 5s. Potential silent failure.');
-          // 只有在彻底空白时才显示这个
           if (document.body.innerText.trim().length === 0) {
-            // 不直接修改 innerHTML 以免覆盖 React 潜在的延迟渲染，但可以考虑显示一个微小的调试按钮
           }
         }
       }, 3000);
-    } else {
-      console.log('✅ React rendering check: Root has content');
     }
   }, 2000);
 
@@ -115,7 +104,6 @@ try {
   console.error('❌ Failed to render React application:', error);
   printBootstrapDiagnostics();
 
-  // 显示错误界面
   document.body.innerHTML = `
     <div style="
       display: flex;

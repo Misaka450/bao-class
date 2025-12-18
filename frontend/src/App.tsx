@@ -19,14 +19,11 @@ function App() {
 function AppContent() {
   const { token } = useAuthStore();
 
-  // Initialize performance optimizations on app start
   useEffect(() => {
     try {
       const monitor = initializePerformanceOptimizations();
       monitor.startTiming('app_initialization');
-      console.log('✅ Performance monitoring started');
-      
-      // Clean up on unmount
+
       return () => {
         monitor.endTiming('app_initialization');
       };
@@ -35,9 +32,6 @@ function AppContent() {
     }
   }, []);
 
-  console.log('✅ AppContent rendered, token:', token);
-
-  // 简单的测试内容 - 不使用 Routes，直接显示
   if (!token) {
     return (
       <ErrorBoundary>

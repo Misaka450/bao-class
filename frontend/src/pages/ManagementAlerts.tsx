@@ -14,10 +14,8 @@ export default function ManagementAlerts() {
 
     const { data: classes = [], isLoading: loadingClasses } = useClassList();
 
-    // Set default selected class when classes are loaded
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
-            // Use setTimeout to avoid synchronous setState in effect
             setTimeout(() => setSelectedClassId(classes[0].id.toString()), 0);
         }
     }, [classes, selectedClassId]);
@@ -147,5 +145,3 @@ export default function ManagementAlerts() {
         </div>
     );
 }
-
-

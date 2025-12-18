@@ -1,0 +1,7 @@
+# Cloudflare Pages SPA Configuration
+
+# Forward API requests to the API server
+/api/*  https://api.980823.xyz/api/:splat  200
+
+# Redirect all other paths to index.html for React Router to handle
+/*  /index.html  200

@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Row, Col, Typography, Table, Tag, Spin, message, Statistic, Button, Progress, Empty, Modal, Input, List, Popconfirm } from 'antd';
 import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined, ClockCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 import api from '../services/api';
 import { useStudentProfile } from '../hooks/useStudentProfile';
-
-const { Title, Text, Paragraph } = Typography;
+import { StudentHistoryChart, StudentRadarChart } from '../components/LazyCharts';
 
 export default function StudentProfile() {
+    const { Title, Text, Paragraph } = Typography;
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { data, isLoading: loading, error } = useStudentProfile(id ? Number(id) : undefined);
@@ -20,71 +19,60 @@ export default function StudentProfile() {
     const [editingCommentText, setEditingCommentText] = useState('');
     const [commentSource, setCommentSource] = useState<string>('');
 
+    const loadCommentHistory = async (studentId: number) => {
+        setLoadingHistory(true);
+        try {
+            const res = await api.ai.getCommentHistory(studentId);
+            if (res.success) {
+                setCommentHistory(res.comments);
+            }
+        } catch (err) {
+            console.error('Load comment history error:', err);
+        } finally {
+            setLoadingHistory(false);
+        }
+    };
+
     useEffect(() => {
         if (error) {
             message.error('获取学生档案失败');
         }
     }, [error]);
 
-    // Load comment history when component mounts
     useEffect(() => {
         if (data?.student?.id) {
-            loadCommentHistory();
+            loadCommentHistory(data.student.id);
         }
-    }, [data?.student?.id, loadCommentHistory]);
-
-    const loadCommentHistory = async () => {
-        if (!data?.student?.id) return;
-        setLoadingHistory(true);
-        try {
-            const res = await api.ai.getCommentHistory(data.student.id);
-            if (res.success) {
-                setCommentHistory(res.comments);
-            }
-        } catch (error) {
-            console.error('Load comment history error:', error);
-        } finally {
-            setLoadingHistory(false);
-        }
-    };
+    }, [data?.student?.id]);
 
     const handleGenerateComment = async (forceRegenerate: boolean = false) => {
         if (!data?.student?.id) return;
 
         setGeneratingComment(true);
         setCommentSource('');
-
-        // Add debug log
-        console.log('Handle generate comment, forceRegenerate:', forceRegenerate);
-
-        setAiComment(''); // Clear previous comment
+        setAiComment('');
 
         try {
             const res = await api.ai.generateComment({
                 student_id: data.student.id,
-                // Use the explicit parameter
                 force_regenerate: forceRegenerate
             });
-
-            // Add debug log
-            console.log('API response:', res);
 
             if (res.success) {
                 setAiComment(res.comment);
                 setCommentSource(res.cached ? `缓存 (${res.source === 'kv' ? 'KV' : '数据库'})` : 'AI 生成');
                 if (res.cached) {
-                    message.success('评语加载成功（来自缓存）');
+                    message.success('评语加载成功(来自缓存)');
                 } else {
                     message.success('评语生成成功');
-                    // Reload history after new generation
-                    await loadCommentHistory();
+                    await loadCommentHistory(data.student.id);
                 }
             } else {
-                message.error('评语生成失败，请稍后重试');
+                message.error('评语生成失败,请稍后重试');
             }
         } catch (error) {
             console.error('Generate comment error:', error);
-            message.error('评语生成失败，请稍后重试');
+            message.error('评语生成失败,请稍后重试');
         } finally {
             setGeneratingComment(false);
         }
@@ -101,7 +89,7 @@ export default function StudentProfile() {
             await api.ai.updateComment(editingCommentId, editingCommentText);
             message.success('评语已更新');
             setEditingCommentId(null);
-            await loadCommentHistory();
+            await loadCommentHistory(data!.student.id);
         } catch (error) {
             message.error('更新失败');
         }
@@ -111,7 +99,7 @@ export default function StudentProfile() {
         try {
             await api.ai.deleteComment(id);
             message.success('评语已删除');
-            await loadCommentHistory();
+            await loadCommentHistory(data!.student.id);
         } catch (error) {
             message.error('删除失败');
         }
@@ -123,7 +111,7 @@ export default function StudentProfile() {
     // Calculate trends
     const latestRank = data.history.length > 0 ? data.history[data.history.length - 1].class_rank : '-';
     const prevRank = data.history.length > 1 ? data.history[data.history.length - 2].class_rank : null;
-    const rankDiff = prevRank !== null ? (prevRank as number) - (latestRank as number) : 0; // Positive means improved (rank number got smaller)
+    const rankDiff = prevRank !== null ? (prevRank as number) - (latestRank as number) : 0;
 
     const columns = [
         { title: '考试名称', dataIndex: 'exam_name', key: 'exam_name' },
@@ -246,38 +234,14 @@ export default function StudentProfile() {
                 <Col xs={24} md={16}>
                     <Row gutter={[24, 24]}>
                         <Col span={24}>
-                            <Card title="成绩与排名双轴趋势" bordered={false}>
-                                <div style={{ width: '100%', height: 300, minHeight: 300 }}>
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <ComposedChart data={data.history}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="exam_name" angle={-15} textAnchor="end" height={60} />
-                                            <YAxis yAxisId="left" label={{ value: '总分', angle: -90, position: 'insideLeft' }} />
-                                            <YAxis yAxisId="right" orientation="right" reversed label={{ value: '排名', angle: 90, position: 'insideRight' }} allowDecimals={false} />
-                                            <Tooltip />
-                                            <Legend />
-                                            <Line yAxisId="left" type="monotone" dataKey="total_score" stroke="#8884d8" name="总分" strokeWidth={2} dot={{ r: 4 }} />
-                                            <Line yAxisId="right" type="monotone" dataKey="class_rank" stroke="#82ca9d" name="班级排名" strokeWidth={2} dot={{ r: 4 }} />
-                                        </ComposedChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card>
+                            <React.Suspense fallback={<Card loading bordered={false} title="加载图表..." />}>
+                                <StudentHistoryChart data={data.history} />
+                            </React.Suspense>
                         </Col>
                         <Col span={24}>
-                            <Card title="学科能力雷达 (Z-Score)" bordered={false}>
-                                <div style={{ width: '100%', height: 300, minHeight: 300 }}>
-                                    <ResponsiveContainer width="100%" height={300}>
-                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.radar}>
-                                            <PolarGrid />
-                                            <PolarAngleAxis dataKey="subject" />
-                                            <PolarRadiusAxis angle={30} domain={[-3, 3]} />
-                                            <Radar name="个人表现" dataKey="zScore" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                                            <Tooltip />
-                                            <Legend />
-                                        </RadarChart>
-                                    </ResponsiveContainer>
-                                </div>
-                            </Card>
+                            <React.Suspense fallback={<Card loading bordered={false} title="加载图表..." />}>
+                                <StudentRadarChart data={data.radar} />
+                            </React.Suspense>
                         </Col>
                     </Row>
                 </Col>

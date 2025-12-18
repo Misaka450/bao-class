@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { parseToken, isTokenExpired } from '../utils/jwt';
 
 interface User {
     id: number;
@@ -15,9 +16,37 @@ interface AuthState {
     logout: () => void;
 }
 
+// Initialize state from localStorage
+const getInitialState = () => {
+    const token = localStorage.getItem('token');
+    let user: User | null = null;
+
+    if (token) {
+        if (isTokenExpired(token)) {
+            localStorage.removeItem('token');
+            return { token: null, user: null };
+        }
+
+        const decoded = parseToken(token);
+        if (decoded) {
+            user = {
+                id: decoded.userId,
+                username: decoded.username,
+                role: decoded.role,
+                name: decoded.username, // Fallback as name is not in token usually, or map if available
+                avatar: undefined
+            };
+        }
+    }
+
+    return { token: token || null, user };
+};
+
+const initialState = getInitialState();
+
 export const useAuthStore = create<AuthState>((set) => ({
-    user: null,
-    token: localStorage.getItem('token'),
+    user: initialState.user,
+    token: initialState.token,
     login: (user, token) => {
         localStorage.setItem('token', token);
         set({ user, token });
