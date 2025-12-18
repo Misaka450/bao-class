@@ -1,7 +1,7 @@
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { API_BASE_URL } from '../config';
+import api from '../services/api';
 import { useState } from 'react';
 
 interface LoginForm {
@@ -20,7 +20,7 @@ export default function Login() {
     const onFinish = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        
+
         if (!username || !password) {
             setError('请输入用户名和密码');
             return;
@@ -28,20 +28,9 @@ export default function Login() {
 
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password }),
-            });
+            const data = await api.auth.login(username, password);
 
-            const data = await res.json();
-
-            if (!res.ok || !data.success) {
-                setError(data.message || '登录失败');
-                return;
-            }
-
-            login(data.data.user, data.data.token);
+            login(data.user, data.token);
             alert('登录成功！');
             navigate('/dashboard');
         } catch (error) {

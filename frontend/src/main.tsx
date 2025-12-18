@@ -6,7 +6,7 @@ import App from './App.tsx'
 import './index.css'
 import './modern-style.css'
 import { queryClient } from './lib/queryClient'
-import { initializeReactBootstrap, printBootstrapDiagnostics } from './utils/reactBootstrap'
+import { initializeReactBootstrap, printBootstrapDiagnostics, getBootstrapDiagnostics } from './utils/reactBootstrap'
 
 // 初始化 React 启动系统
 if (!initializeReactBootstrap()) {
@@ -75,14 +75,46 @@ try {
       </QueryClientProvider>
     </React.StrictMode>,
   );
-  
+
   (window as any).__REACT_RENDER_COMPLETE__ = Date.now();
-  console.log('✅ React application rendered successfully');
+  console.log('✅ React application render command sent');
+
+  // 检查渲染结果的延迟诊断
+  setTimeout(() => {
+    const rootHasContent = rootElement.innerHTML.length > 0;
+    const diagnostics = {
+      ...getBootstrapDiagnostics(),
+      rootHasContent,
+      renderCompleteTime: (window as any).__REACT_RENDER_COMPLETE__,
+      navigatedUrl: window.location.href,
+    };
+
+    (window as any).__BOOTSTRAP_DIAGNOSTICS__ = diagnostics;
+
+    if (!rootHasContent) {
+      console.warn('⚠️ React rendering check: Root is still empty after 2s');
+      console.dir(diagnostics);
+
+      // 如果过了 5 秒还是空白，可能是发生了静默失败，提供一个基础的交互入口
+      setTimeout(() => {
+        if (rootElement.innerHTML.length === 0) {
+          console.error('❌ Critical: Root is still empty after 5s. Potential silent failure.');
+          // 只有在彻底空白时才显示这个
+          if (document.body.innerText.trim().length === 0) {
+            // 不直接修改 innerHTML 以免覆盖 React 潜在的延迟渲染，但可以考虑显示一个微小的调试按钮
+          }
+        }
+      }, 3000);
+    } else {
+      console.log('✅ React rendering check: Root has content');
+    }
+  }, 2000);
+
   printBootstrapDiagnostics();
 } catch (error) {
   console.error('❌ Failed to render React application:', error);
   printBootstrapDiagnostics();
-  
+
   // 显示错误界面
   document.body.innerHTML = `
     <div style="
@@ -116,6 +148,6 @@ try {
       </div>
     </div>
   `;
-  
+
   throw error;
 }

@@ -60,7 +60,8 @@ export class ImageLazyLoader {
 export function preloadCriticalResources() {
   const criticalResources = [
     // Preload critical CSS
-    { href: '/assets/css/critical.css', as: 'style' },
+    // CSS will be handled by Vite's build process, only preload truly static critical assets here if known
+    // { href: '/assets/css/critical.css', as: 'style' },
     // Preload important fonts
     { href: '/assets/fonts/main.woff2', as: 'font', type: 'font/woff2', crossorigin: 'anonymous' },
   ];
@@ -195,10 +196,11 @@ export function addResourceHints() {
  */
 export function optimizeChunkLoading() {
   // Preload vendor chunks that are likely to be needed
-  const vendorChunks = [
-    '/assets/js/vendor-react.js',
-    '/assets/js/vendor-antd.js',
-    '/assets/js/vendor-pro-core.js',
+  const vendorChunks: string[] = [
+    // These should not be hardcoded as Vite appends hashes
+    // '/assets/js/vendor-react.js',
+    // '/assets/js/vendor-antd.js',
+    // '/assets/js/vendor-pro-core.js',
   ];
 
   // Use requestIdleCallback for non-critical preloading
@@ -220,20 +222,20 @@ export function optimizeChunkLoading() {
 export function initializePerformanceOptimizations() {
   // Add resource hints
   addResourceHints();
-  
+
   // Preload critical resources
   preloadCriticalResources();
-  
+
   // Optimize chunk loading
   optimizeChunkLoading();
-  
+
   // Register service worker
   registerServiceWorker();
-  
+
   // Initialize performance monitoring
   const monitor = new PerformanceMonitor();
   monitor.reportWebVitals();
-  
+
   return monitor;
 }
 

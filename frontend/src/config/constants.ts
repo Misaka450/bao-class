@@ -3,7 +3,11 @@
  */
 
 // API Configuration
-export const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// 如果环境变量中已经包含了 /api 后缀，则移除它，因为具体的 API 调用已经包含了 /api 前缀
+const rawApiUrl = import.meta.env.VITE_API_URL || '';
+export const API_BASE_URL = rawApiUrl.endsWith('/api')
+    ? rawApiUrl.slice(0, -4)
+    : rawApiUrl;
 
 // Application Configuration
 export const APP_NAME = '班级管理系统';

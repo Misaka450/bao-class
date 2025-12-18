@@ -53,7 +53,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         // Single file output
-        manualChunks: () => 'index',
+        // Default code splitting
+        // manualChunks: () => 'index',
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
@@ -93,6 +94,7 @@ export default defineConfig({
   // Performance optimizations
   esbuild: {
     // Remove console and debugger in production
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+    // Temporarily keep console for production debugging
+    drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [],
   },
 })
