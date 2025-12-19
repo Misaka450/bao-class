@@ -5,6 +5,7 @@ import { validateStudentsData, validateScoresData } from '../services/data-valid
 
 type Bindings = {
     DB: D1Database
+    AI: any
 }
 
 const importRoute = new Hono<{ Bindings: Bindings }>()
@@ -427,27 +428,85 @@ importRoute.post('/validate/students', async (c) => {
     }
 })
 
-// Validate scores data before import (Preview)
-importRoute.post('/validate/scores', async (c) => {
+// AI score recognition from image
+importRoute.post('/ai-scores', async (c) => {
     try {
-        const body = await c.req.json()
-        const data = body.data as Array<Record<string, any>>
-        const examId = body.examId as number
+        const formData = await c.req.formData()
+        const file = formData.get('file') as File
 
-        if (!data || data.length === 0) {
-            return c.json({ error: '没有提供数据' }, 400)
+        if (!file) {
+            return c.json({ error: '请上传成绩单图片' }, 400)
         }
 
-        if (!examId) {
-            return c.json({ error: '没有提供 examId' }, 400)
+        if (!file.type.startsWith('image/')) {
+            return c.json({ error: '仅支持图片格式' }, 400)
         }
 
-        const result = await validateScoresData(data, examId, c.env.DB)
+        // Convert file to ArrayBuffer for AI model
+        const arrayBuffer = await file.arrayBuffer()
+        const imageArray = Array.from(new Uint8Array(arrayBuffer))
 
-        return c.json(result)
-    } catch (error) {
-        console.error('Validation error:', error)
-        return c.json({ error: '数据验证失败' }, 500)
+        // System prompt for structured table extraction
+        const systemPrompt = `你是一个专业的成绩单识别助手。请识别上传图片中的成绩表格，并严格按照以下 JSON 格式返回结果。
+不要包含任何解释、多余的文本或 Markdown 标记，只返回纯 JSON。
+
+返回格式：
+{
+  "className": "识别出的班级名称（如果没识别到则返回 null）",
+  "examName": "识别出的考试名称（如果没识别到则返回 null）",
+  "subject": "识别出的科目名称（如果没识别到则返回 null）",
+  "data": [
+    {
+      "name": "学生姓名",
+      "score": "分数（数字或字符串，包含缺考等信息）"
+    }
+  ]
+}
+
+注意：
+1. 姓名必须识别准确。
+2. 分数必须对应准确。
+3. 如果表格有多个科目，只提取最显眼的或当前上下文相关的。`
+
+        const response = await c.env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
+            messages: [
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'text', text: systemPrompt },
+                        { type: 'image', image: imageArray }
+                    ]
+                }
+            ]
+        }) as any
+
+        // Post-processing of AI response
+        let resultString = ''
+        if (response && response.response) {
+            resultString = response.response
+        } else if (response && response.description) {
+            resultString = response.description
+        } else {
+            console.error('AI Recognition Result Error:', response)
+            return c.json({ error: 'AI 识别失败，请重试' }, 500)
+        }
+
+        // Extract JSON from response (handling potential markdown blocks)
+        try {
+            const jsonMatch = resultString.match(/\{[\s\S]*\}/)
+            const resultData = jsonMatch ? JSON.parse(jsonMatch[0]) : JSON.parse(resultString)
+            return c.json({
+                success: true,
+                ...resultData
+            })
+        } catch (e) {
+            console.error('JSON Parse Error:', resultString)
+            return c.json({ error: '识别结果解析失败', raw: resultString }, 500)
+        }
+
+    } catch (error: any) {
+        console.error('AI Recognition Error:', error)
+        return c.json({ error: `识别过程出错: ${error.message}` }, 500)
     }
 })
 

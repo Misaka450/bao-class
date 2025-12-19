@@ -23,6 +23,13 @@ export default function Import() {
     const [previewData, setPreviewData] = useState<any[]>([]);
     const [validationResult, setValidationResult] = useState<any>(null);
     const [uploadedFile, setUploadedFile] = useState<RcFile | null>(null);
+    const [result, setResult] = useState<any>(null);
+
+    // AI 相关状态
+    const [aiRecognizing, setAiRecognizing] = useState(false);
+    const [aiResult, setAiResult] = useState<any>(null);
+    const [aiPreviewData, setAiPreviewData] = useState<any[]>([]); // { name: string, score: number, studentId?: number, matched: boolean }
+    const [selectedSubject, setSelectedSubject] = useState<string>();
 
     const token = useAuthStore((state) => state.token);
 
@@ -209,6 +216,167 @@ export default function Import() {
         }
     };
 
+    // AI 识别处理
+    const handleAiUpload = async (file: RcFile) => {
+        setAiRecognizing(true);
+        setAiResult(null);
+        setAiPreviewData([]);
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch(`${API_BASE_URL}/api/import/ai-scores`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                message.error(data.error || 'AI 识别失败');
+                return false;
+            }
+
+            setAiResult(data);
+            if (data.subject) {
+                setSelectedSubject(data.subject);
+            }
+
+            // 预处理识别数据，尝试匹配学生
+            const processedData = await Promise.all(
+                (data.data || []).map(async (item: any) => {
+                    // 这里尝试在已加载的 classes/students 中匹配，但由于目前没有加载全市学生，
+                    // 我们依赖选中的班级。如果 AI 识别出了班级，可以尝试自动选择。
+                    return {
+                        ...item,
+                        matched: false,
+                        studentId: undefined,
+                    };
+                })
+            );
+
+            // 如果 AI 识别到了班级，尝试自动匹配
+            if (data.className) {
+                const matchedClass = classes.find(c => c.name.includes(data.className) || data.className.includes(c.name));
+                if (matchedClass) {
+                    setSelectedClass(matchedClass.id.toString());
+                    message.info(`AI 自动识别班级: ${matchedClass.name}`);
+                }
+            }
+
+            setAiPreviewData(processedData);
+            setCurrentStep(1); // 直接进入预览步骤（复用 Step 1UI，但内容不同）
+        } catch (error) {
+            message.error('AI 识别请求失败');
+            console.error(error);
+        } finally {
+            setAiRecognizing(false);
+        }
+        return false;
+    };
+
+    // 在选中班级后，自动匹配 AI 识别出的学生姓名
+    useEffect(() => {
+        if (activeTab === 'ai-scores' && selectedClass && aiPreviewData.length > 0) {
+            // 这部分逻辑需要加载班级学生，由于前面没加载，这里补充 fetch
+            loadClassStudents(selectedClass);
+        }
+    }, [selectedClass, activeTab, aiResult]);
+
+    const [classStudents, setClassStudents] = useState<any[]>([]);
+    const loadClassStudents = async (classId: string) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/students?class_id=${classId}`, {
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const data = await res.json();
+            setClassStudents(data);
+
+            // 执行精准匹配
+            const newPreviewData = aiPreviewData.map(item => {
+                const student = data.find((s: any) => s.name === item.name);
+                if (student) {
+                    return { ...item, studentId: student.id, matched: true };
+                }
+                return { ...item, matched: false };
+            });
+            setAiPreviewData(newPreviewData);
+        } catch (error) {
+            console.error('Failed to load class students', error);
+        }
+    };
+
+    // 手动修改匹配
+    const handleUpdateMatch = (index: number, studentId: number) => {
+        const student = classStudents.find(s => s.id === studentId);
+        const newData = [...aiPreviewData];
+        newData[index] = {
+            ...newData[index],
+            studentId,
+            name: student ? student.name : newData[index].name,
+            matched: !!student
+        };
+        setAiPreviewData(newData);
+    };
+
+    // 确认 AI 导入并提交
+    const handleConfirmAiImport = async () => {
+        if (!selectedExam) {
+            message.warning('请选择归属考试');
+            return;
+        }
+
+        const unmatchedCount = aiPreviewData.filter(item => !item.matched).length;
+        if (unmatchedCount > 0) {
+            message.warning(`还有 ${unmatchedCount} 条数据未匹配到学生，请先手动关联`);
+            return;
+        }
+
+        setUploading(true);
+        try {
+            // 构造为 Excel 导入同样的格式进行提交，或者直接调用后端 score 接口
+            // 为了简单起见，我们生成一个临时的 Excel 对象或者直接 POST JSON（如果后端支持）
+            // 目前后端 /scores 接口只支持 FormData file，所以我们在这里模拟转换。
+
+            // 方案B：既然我们已经有了结构化数据，可以直接批量提交到 scores 接口（如果后端有的话）
+            // 检查发现后端 scores.ts 没有批量录入，只有 import.ts 的 Excel 导入。
+            // 我们动态创建一个 Excel 文件并上传。
+
+            const header = ['姓名', '学号', selectedSubject || '成绩'];
+            const rows = aiPreviewData.map(item => {
+                const s = classStudents.find(st => st.id === item.studentId);
+                return [s.name, s.student_id, item.score];
+            });
+
+            const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+            const excelBuffer = XLSX.write(wb, { type: 'array', bookType: 'xlsx' });
+            const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const file = new File([blob], 'ai_recognize.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('examId', selectedExam);
+
+            const res = await fetch(`${API_BASE_URL}/api/import/scores`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${token}` },
+                body: formData,
+            });
+
+            const data = await res.json();
+            setResult(data);
+            setCurrentStep(2);
+            message.success('导入完成');
+        } catch (error) {
+            message.error('提交失败');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     // 重置状态
     const handleReset = () => {
         setCurrentStep(0);
@@ -216,6 +384,8 @@ export default function Import() {
         setValidationResult(null);
         setUploadedFile(null);
         setResult(null);
+        setAiResult(null);
+        setAiPreviewData([]);
     };
 
     // 渲染验证警告
@@ -539,6 +709,154 @@ export default function Import() {
                 </span>
             ),
             children: renderScoresTab(),
+        },
+        {
+            key: 'ai-scores',
+            label: (
+                <span>
+                    <UploadOutlined /> AI 拍照导入
+                </span>
+            ),
+            children: (
+                <div>
+                    <Alert
+                        message="AI 智能识别说明"
+                        description="上传成绩单照片（手写或打印均可），系统将自动识别学生姓名和成绩。识别后请务必核对并关联学生账号。"
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 24 }}
+                    />
+
+                    <Steps current={currentStep} style={{ marginBottom: 24 }}>
+                        <Steps.Step title="上传照片" />
+                        <Steps.Step title="核对关联" />
+                        <Steps.Step title="完成导入" />
+                    </Steps>
+
+                    {currentStep === 0 && (
+                        <Card title="上传成绩单照片">
+                            <Upload.Dragger
+                                name="file"
+                                accept="image/*"
+                                beforeUpload={handleAiUpload}
+                                maxCount={1}
+                                disabled={aiRecognizing}
+                                showUploadList={false}
+                            >
+                                <p className="ant-upload-drag-icon">
+                                    <UploadOutlined style={{ fontSize: 48, color: '#667eea' }} />
+                                </p>
+                                <p className="ant-upload-text">点击或拖拽照片到此区域</p>
+                                <p className="ant-upload-hint">支持各种光照下的成绩单照片，AI 将自动解析表格</p>
+                                {aiRecognizing && <div style={{ marginTop: 16 }}><Tag color="processing">正在通过 AI 深度解析中，请稍候...</Tag></div>}
+                            </Upload.Dragger>
+                        </Card>
+                    )}
+
+                    {currentStep === 1 && (
+                        <Card title="AI 识别结果核对">
+                            <div style={{ marginBottom: 16 }}>
+                                <Form layout="vertical">
+                                    <div style={{ display: 'flex', gap: 16 }}>
+                                        <Form.Item label="确认班级" required style={{ flex: 1 }}>
+                                            <Select
+                                                placeholder="请选择班级"
+                                                value={selectedClass}
+                                                onChange={setSelectedClass}
+                                                options={classes.map(c => ({ label: c.name, value: c.id }))}
+                                            />
+                                        </Form.Item>
+                                        <Form.Item label="确认考试" required style={{ flex: 1 }}>
+                                            <Select
+                                                placeholder="请选择考试"
+                                                value={selectedExam}
+                                                onChange={setSelectedExam}
+                                                options={exams
+                                                    .filter(e => !selectedClass || e.class_id === Number(selectedClass))
+                                                    .map(e => ({ label: e.name, value: e.id }))}
+                                            />
+                                        </Form.Item>
+                                        <Form.Item label="确认科目" required style={{ flex: 1 }}>
+                                            <Select
+                                                placeholder="请选择科目"
+                                                value={selectedSubject}
+                                                onChange={setSelectedSubject}
+                                                options={(exams.find(e => e.id === Number(selectedExam))?.courses || []).map((c: any) => ({
+                                                    label: c.course_name,
+                                                    value: c.course_name
+                                                }))}
+                                            />
+                                        </Form.Item>
+                                    </div>
+                                </Form>
+                            </div>
+
+                            <Table
+                                dataSource={aiPreviewData}
+                                rowKey={(_, index) => index!}
+                                pagination={false}
+                                columns={[
+                                    {
+                                        title: '识别出的姓名',
+                                        dataIndex: 'name',
+                                        key: 'name',
+                                        render: (text, record) => (
+                                            <span style={{ color: record.matched ? 'inherit' : '#ff4d4f' }}>
+                                                {text} {!record.matched && <Tag color="error">未匹配</Tag>}
+                                            </span>
+                                        )
+                                    },
+                                    {
+                                        title: '成绩',
+                                        dataIndex: 'score',
+                                        key: 'score',
+                                        render: (text) => <Tag color="blue">{text}</Tag>
+                                    },
+                                    {
+                                        title: '关联系统学生',
+                                        key: 'match',
+                                        render: (_, record, index) => (
+                                            <Select
+                                                showSearch
+                                                style={{ width: '100%' }}
+                                                placeholder="选择或搜索学生"
+                                                value={record.studentId}
+                                                onChange={(val) => handleUpdateMatch(index, val)}
+                                                filterOption={(input, option) =>
+                                                    (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                                                }
+                                                options={classStudents.map(s => ({ label: s.name, value: s.id }))}
+                                                status={record.matched ? '' : 'error'}
+                                            />
+                                        )
+                                    }
+                                ]}
+                            />
+
+                            <div style={{ marginTop: 24, display: 'flex', gap: 8 }}>
+                                <Button onClick={handleReset}>重新上传</Button>
+                                <Button
+                                    type="primary"
+                                    onClick={handleConfirmAiImport}
+                                    loading={uploading}
+                                    disabled={aiPreviewData.length === 0}
+                                >
+                                    确认并提交成绩
+                                </Button>
+                            </div>
+                        </Card>
+                    )}
+
+                    {currentStep === 2 && (
+                        <>
+                            {renderResultSummary()}
+                            <Button type="primary" onClick={handleReset}>
+                                继续导入其他照片
+                            </Button>
+                        </>
+                    )}
+                </div>
+            ),
         },
     ];
 
