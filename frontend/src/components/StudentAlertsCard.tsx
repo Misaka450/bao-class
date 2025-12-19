@@ -12,23 +12,23 @@ const StudentAlertsCard: React.FC<StudentAlertsCardProps> = ({ classId }) => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<FocusGroupResult | null>(null);
 
-    const fetchAlerts = async () => {
-        setLoading(true);
-        try {
-            const result = await api.analysis.getFocusGroup(classId!.toString());
-            setData(result);
-        } catch (error) {
-            console.error('Failed to fetch alerts:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
+        const fetchAlerts = async () => {
+            setLoading(true);
+            try {
+                const result = await api.analysis.getFocusGroup(classId!.toString());
+                setData(result);
+            } catch (error) {
+                console.error('Failed to fetch alerts:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (classId) {
             fetchAlerts();
         }
-    }, [classId, fetchAlerts]);
+    }, [classId]);
 
     const renderList = (list: StudentAlert[]) => {
         if (!list || list.length === 0) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无预警信息" />;

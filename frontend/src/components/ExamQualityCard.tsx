@@ -12,23 +12,23 @@ const ExamQualityCard: React.FC<ExamQualityCardProps> = ({ examId }) => {
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<ExamQuality[]>([]);
 
-    const fetchQualityData = async () => {
-        setLoading(true);
-        try {
-            const result = await api.analysis.getExamQuality(examId!);
-            setData(result);
-        } catch (error) {
-            console.error('Failed to fetch exam quality:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
+        const fetchQualityData = async () => {
+            setLoading(true);
+            try {
+                const result = await api.analysis.getExamQuality(examId!);
+                setData(result);
+            } catch (error) {
+                console.error('Failed to fetch exam quality:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (examId) {
             fetchQualityData();
         }
-    }, [examId, fetchQualityData]);
+    }, [examId]);
 
     const getDifficultyTag = (val: number) => {
         if (val > 0.7) return <Tag color="success">简单</Tag>;
