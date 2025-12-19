@@ -446,7 +446,18 @@ importRoute.post('/ai-scores', async (c) => {
         // Detect image type and convert to base64
         const imageType = file.type
         const imageBuffer = await file.arrayBuffer()
-        const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
+
+        // Convert buffer to binary string using chunking to avoid stack overflow
+        const uint8Array = new Uint8Array(imageBuffer)
+        let binary = ''
+        const len = uint8Array.byteLength
+        const chunkSize = 8192 // Use 8KB chunks
+
+        for (let i = 0; i < len; i += chunkSize) {
+            binary += String.fromCharCode(...uint8Array.subarray(i, i + chunkSize))
+        }
+
+        const imageBase64 = btoa(binary)
 
         // ModelScope (DashScope) API Configuration
         const apiKey = c.env.DASHSCOPE_API_KEY
