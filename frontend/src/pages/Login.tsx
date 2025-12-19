@@ -31,7 +31,6 @@ export default function Login() {
             const data = await api.auth.login(username, password);
 
             login(data.user, data.token);
-            alert('登录成功！');
             navigate('/dashboard');
         } catch (error) {
             console.error('Login error:', error);
