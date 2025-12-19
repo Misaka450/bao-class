@@ -9,6 +9,7 @@ import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
 import { useCourseList } from '../hooks/useCourseList';
 import type { StudentScoreItem } from '../types';
+import PageHeader from '../components/PageHeader';
 
 interface Course {
     id: number;
@@ -167,25 +168,30 @@ export default function ScoresList() {
     ];
 
     return (
-        <div>
-            <div style={{ marginBottom: 24 }}>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
-                    <TableOutlined style={{ marginRight: 8 }} />
-                    成绩清单
-                </h2>
-                <p style={{ margin: '4px 0 0 0', color: '#666' }}>
-                    查看所有学生的各科成绩，支持三层筛选和排序
-                </p>
-            </div>
+        <div className="scores-list-page">
+            <PageHeader
+                title="成绩清单"
+                subtitle="查看所有学生的各科成绩，支持多层筛选、动态列排序及导出功能。"
+                extra={
+                    <Button
+                        key="export"
+                        type="primary"
+                        icon={<DownloadOutlined />}
+                        onClick={handleExport}
+                        disabled={scoresData.length === 0}
+                    >
+                        导出成绩 (Excel)
+                    </Button>
+                }
+            />
 
-            <Card style={{ marginBottom: 16 }}>
-                <Row gutter={16}>
-                    <Col span={6}>
+            <Card bordered={false} style={{ marginBottom: 16 }} bodyStyle={{ padding: '16px 24px' }}>
+                <Row gutter={[16, 16]} align="middle">
+                    <Col xs={24} sm={12} md={8}>
+                        <div style={{ marginBottom: 4, fontSize: 13, color: '#666' }}>选择班级</div>
                         <Select
                             value={selectedClassId}
-                            onChange={(val) => {
-                                setSelectedClassId(val);
-                            }}
+                            onChange={setSelectedClassId}
                             style={{ width: '100%' }}
                             placeholder="全部班级"
                             allowClear
@@ -197,7 +203,8 @@ export default function ScoresList() {
                             ))}
                         </Select>
                     </Col>
-                    <Col span={6}>
+                    <Col xs={24} sm={12} md={8}>
+                        <div style={{ marginBottom: 4, fontSize: 13, color: '#666' }}>选择考试名称</div>
                         <Select
                             value={selectedExamName}
                             onChange={setSelectedExamName}
@@ -212,7 +219,8 @@ export default function ScoresList() {
                             ))}
                         </Select>
                     </Col>
-                    <Col span={6}>
+                    <Col xs={24} sm={12} md={8}>
+                        <div style={{ marginBottom: 4, fontSize: 13, color: '#666' }}>快捷筛选科目</div>
                         <Select
                             value={selectedCourseId}
                             onChange={setSelectedCourseId}
@@ -231,30 +239,26 @@ export default function ScoresList() {
             </Card>
 
             <ProTable<StudentScoreItem>
-                headerTitle="成绩清单"
                 columns={columns}
                 dataSource={scoresData}
                 rowKey="student_id"
                 loading={loading}
                 search={false}
-                scroll={{ y: 600 }}
+                scroll={{ x: 'max-content', y: 'calc(100vh - 420px)' }}
+                cardProps={{
+                    bodyStyle: { padding: 0 }
+                }}
                 pagination={{
                     pageSize: 20,
                     showTotal: (total: number) => `共 ${total} 名学生`,
                     showSizeChanger: true,
                     pageSizeOptions: ['20', '50', '100'],
                 }}
-                toolBarRender={() => [
-                    <Button
-                        key="export"
-                        type="primary"
-                        icon={<DownloadOutlined />}
-                        onClick={handleExport}
-                        disabled={scoresData.length === 0}
-                    >
-                        导出成绩
-                    </Button>,
-                ]}
+                options={{
+                    reload: () => { },
+                    density: true,
+                    setting: true,
+                }}
             />
         </div>
     );

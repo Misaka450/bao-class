@@ -12,6 +12,9 @@ import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
 import { useClassTrend, useClassSubjectTrend, useGradeComparison } from '../hooks/useClassAnalysis';
 import api from '../services/api';
+import PageHeader from '../components/PageHeader';
+import ChartWrapper from '../components/ChartWrapper';
+import StatisticsRow from '../components/StatisticsRow';
 
 const { Title } = Typography;
 
@@ -58,35 +61,31 @@ export default function ClassAnalysis() {
         <Row gutter={[24, 24]}>
             <Col span={24}>
                 <Card title="平均分走势" bordered={false}>
-                    <div style={{ height: 350, minHeight: 350 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <LineChart data={trendData?.trends || []}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="exam_name" />
-                                <YAxis domain={[0, 'auto']} />
-                                <Tooltip />
-                                <Legend />
-                                <Line type="monotone" dataKey="average_score" name="平均分" stroke="#1890ff" strokeWidth={3} activeDot={{ r: 8 }} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
+                    <ChartWrapper>
+                        <LineChart data={trendData?.trends || []}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="exam_name" />
+                            <YAxis domain={[0, 'auto']} />
+                            <Tooltip />
+                            <Legend />
+                            <Line type="monotone" dataKey="average_score" name="平均分" stroke="#1890ff" strokeWidth={3} activeDot={{ r: 8 }} />
+                        </LineChart>
+                    </ChartWrapper>
                 </Card>
             </Col>
             <Col span={24}>
                 <Card title="及格率与优秀率走势 (%)" bordered={false}>
-                    <div style={{ height: 350, minHeight: 350 }}>
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                            <AreaChart data={trendData?.trends || []}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="exam_name" />
-                                <YAxis domain={[0, 100]} />
-                                <Tooltip />
-                                <Legend />
-                                <Area type="monotone" dataKey="pass_rate" name="及格率" stackId="1" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
-                                <Area type="monotone" dataKey="excellent_rate" name="优秀率" stackId="2" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
+                    <ChartWrapper>
+                        <AreaChart data={trendData?.trends || []}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="exam_name" />
+                            <YAxis domain={[0, 100]} />
+                            <Tooltip />
+                            <Legend />
+                            <Area type="monotone" dataKey="pass_rate" name="及格率" stackId="1" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
+                            <Area type="monotone" dataKey="excellent_rate" name="优秀率" stackId="2" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
+                        </AreaChart>
+                    </ChartWrapper>
                 </Card>
             </Col>
         </Row>
@@ -106,43 +105,39 @@ export default function ClassAnalysis() {
             <Row gutter={[24, 24]}>
                 <Col xs={24} lg={12}>
                     <Card title="各科目及格率对比 (最新考试)" bordered={false}>
-                        <div style={{ height: 350, minHeight: 350 }}>
-                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                                    <PolarGrid />
-                                    <PolarAngleAxis dataKey="subject" />
-                                    <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                                    <Radar name="及格率" dataKey="passRate" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                                    <Tooltip />
-                                    <Legend />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        </div>
+                        <ChartWrapper>
+                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
+                                <PolarGrid />
+                                <PolarAngleAxis dataKey="subject" />
+                                <PolarRadiusAxis angle={30} domain={[0, 100]} />
+                                <Radar name="及格率" dataKey="passRate" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                                <Tooltip />
+                                <Legend />
+                            </RadarChart>
+                        </ChartWrapper>
                     </Card>
                 </Col>
                 <Col xs={24} lg={12}>
                     <Card title="各科目平均分走势" bordered={false}>
-                        <div style={{ height: 350, minHeight: 350 }}>
-                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                                <LineChart>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="exam_name" allowDuplicatedCategory={false} />
-                                    <YAxis domain={[0, 100]} />
-                                    <Tooltip />
-                                    <Legend />
-                                    {subjectData.subjects.map((sub: any, index: number) => (
-                                        <Line
-                                            key={sub.course_name}
-                                            data={sub.trends}
-                                            type="monotone"
-                                            dataKey="average_score"
-                                            name={sub.course_name}
-                                            stroke={['#8884d8', '#82ca9d', '#ffc658', '#ff7300'][index % 4]}
-                                        />
-                                    ))}
-                                </LineChart>
-                            </ResponsiveContainer>
-                        </div>
+                        <ChartWrapper>
+                            <LineChart>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="exam_name" allowDuplicatedCategory={false} />
+                                <YAxis domain={[0, 100]} />
+                                <Tooltip />
+                                <Legend />
+                                {subjectData.subjects.map((sub: any, index: number) => (
+                                    <Line
+                                        key={sub.course_name}
+                                        data={sub.trends}
+                                        type="monotone"
+                                        dataKey="average_score"
+                                        name={sub.course_name}
+                                        stroke={['#8884d8', '#82ca9d', '#ffc658', '#ff7300'][index % 4]}
+                                    />
+                                ))}
+                            </LineChart>
+                        </ChartWrapper>
                     </Card>
                 </Col>
             </Row>
@@ -184,22 +179,20 @@ export default function ClassAnalysis() {
                 </Col>
                 <Col span={24}>
                     <Card title="年级各班平均分对比" bordered={false}>
-                        <div style={{ height: 400, minHeight: 400 }}>
-                            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                                <BarChart data={gradeData.classes} layout="vertical" margin={{ left: 20 }}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis type="number" domain={[0, 'auto']} />
-                                    <YAxis dataKey="class_name" type="category" width={100} />
-                                    <Tooltip />
-                                    <Legend />
-                                    <Bar dataKey="average_score" name="平均总分" fill="#1890ff" barSize={30}>
-                                        {gradeData.classes.map((entry: any, index: number) => (
-                                            <Cell key={`cell-${index}`} fill={entry.class_id === gradeData.current_class.class_id ? '#ff7300' : '#1890ff'} />
-                                        ))}
-                                    </Bar>
-                                </BarChart>
-                            </ResponsiveContainer>
-                        </div>
+                        <ChartWrapper height={400}>
+                            <BarChart data={gradeData.classes} layout="vertical" margin={{ left: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis type="number" domain={[0, 'auto']} />
+                                <YAxis dataKey="class_name" type="category" width={100} />
+                                <Tooltip />
+                                <Legend />
+                                <Bar dataKey="average_score" name="平均总分" fill="#1890ff" barSize={30}>
+                                    {gradeData.classes.map((entry: any, index: number) => (
+                                        <Cell key={`cell-${index}`} fill={entry.class_id === gradeData.current_class.class_id ? '#ff7300' : '#1890ff'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ChartWrapper>
                     </Card>
                 </Col>
             </Row>
@@ -254,7 +247,10 @@ export default function ClassAnalysis() {
                         <div style={{ textAlign: 'center', padding: 40 }}>加载中...</div>
                     </Card>
                 ) : (
-                    <div style={{ position: 'sticky', top: 24 }}>
+                    <div style={{
+                        position: window.innerWidth >= 1200 ? 'sticky' : 'relative',
+                        top: window.innerWidth >= 1200 ? 24 : 0
+                    }}>
                         <HeatmapChart data={heatmapData} />
                     </div>
                 )}
@@ -287,39 +283,38 @@ export default function ClassAnalysis() {
 
     return (
         <div>
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <Title level={2} style={{ margin: 0 }}>班级成绩走势</Title>
-                    <p style={{ margin: '4px 0 0 0', color: '#666' }}>多维度分析班级成绩表现与趋势</p>
-                </div>
-                <Space>
-                    <Select
-                        value={selectedClassId}
-                        onChange={setSelectedClassId}
-                        style={{ width: 160 }}
-                        placeholder="选择班级"
-                    >
-                        {classes.map((cls: any) => (
-                            <Select.Option key={cls.id} value={cls.id.toString()}>
-                                {cls.name}
-                            </Select.Option>
-                        ))}
-                    </Select>
-                    <Select
-                        value={selectedExamId}
-                        onChange={setSelectedExamId}
-                        style={{ width: 220 }}
-                        placeholder="选择考试"
-                        loading={exams.length === 0 && !!selectedClassId}
-                    >
-                        {exams.map((exam: any) => (
-                            <Select.Option key={exam.id} value={exam.id.toString()}>
-                                {exam.name}
-                            </Select.Option>
-                        ))}
-                    </Select>
-                </Space>
-            </div>
+            <PageHeader
+                title="班级成绩走势"
+                subtitle="多维度分析班级成绩表现与趋势"
+                extra={
+                    <Space>
+                        <Select
+                            value={selectedClassId}
+                            onChange={setSelectedClassId}
+                            style={{ width: 160 }}
+                            placeholder="选择班级"
+                        >
+                            {classes.map((cls: any) => (
+                                <Select.Option key={cls.id} value={cls.id.toString()}>
+                                    {cls.name}
+                                </Select.Option>
+                            ))}
+                        </Select>
+                        <Select
+                            value={selectedExamId}
+                            onChange={setSelectedExamId}
+                            style={{ width: 220 }}
+                            placeholder="选择考试"
+                        >
+                            {exams.map((exam: any) => (
+                                <Select.Option key={exam.id} value={exam.id.toString()}>
+                                    {exam.name}
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </Space>
+                }
+            />
 
             <Spin spinning={loading}>
                 <Tabs

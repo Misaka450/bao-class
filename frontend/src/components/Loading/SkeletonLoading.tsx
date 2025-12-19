@@ -1,15 +1,9 @@
-import React from 'react';
-import { Card, Spin } from 'antd';
+import { Card, Skeleton, Space, Row, Col } from 'antd';
 
 export interface SkeletonLoadingProps {
-  type?: 'table' | 'form' | 'card' | 'list' | 'chart' | 'profile' | 'custom';
+  type?: 'table' | 'form' | 'card' | 'list' | 'chart' | 'profile' | 'custom' | 'page';
   rows?: number;
-  columns?: number;
-  avatar?: boolean;
-  title?: boolean;
-  paragraph?: boolean | { rows?: number; width?: string | number | Array<string | number> };
   active?: boolean;
-  size?: 'small' | 'default' | 'large';
   loading?: boolean;
   children?: React.ReactNode;
 }
@@ -20,13 +14,8 @@ export interface SkeletonLoadingProps {
  */
 export const SkeletonLoading: React.FC<SkeletonLoadingProps> = ({
   type = 'custom',
-  rows = 3,
-  columns = 4,
-  avatar = false,
-  title = true,
-  paragraph = true,
+  rows = 4,
   active = true,
-  size = 'default',
   loading = true,
   children,
 }) => {
@@ -35,55 +24,71 @@ export const SkeletonLoading: React.FC<SkeletonLoadingProps> = ({
   }
 
   const renderTableSkeleton = () => (
-    <Card>
-      <div style={{ padding: '16px 0' }}>
-        <Spin size="large" tip="加载表格数据..." />
-      </div>
+    <Card bordered={false}>
+      <Skeleton active={active} paragraph={{ rows: rows + 2 }} title />
     </Card>
   );
 
   const renderFormSkeleton = () => (
-    <Card>
-      <div style={{ padding: '40px 0', textAlign: 'center' }}>
-        <Spin size="large" tip="加载表单..." />
-      </div>
+    <Card bordered={false}>
+      <Space direction="vertical" style={{ width: '100%' }} size="large">
+        <Skeleton.Input active={active} block />
+        <Skeleton active={active} paragraph={{ rows: 3 }} />
+        <Skeleton.Button active={active} size="large" />
+      </Space>
     </Card>
   );
 
   const renderCardSkeleton = () => (
-    <Card>
-      <div style={{ padding: '40px 0', textAlign: 'center' }}>
-        <Spin size="large" tip="加载内容..." />
-      </div>
+    <Card bordered={false}>
+      <Skeleton active={active} avatar title paragraph={{ rows: 3 }} />
     </Card>
   );
 
   const renderListSkeleton = () => (
-    <div style={{ padding: '40px 0', textAlign: 'center' }}>
-      <Spin size="large" tip="加载列表..." />
+    <div style={{ padding: '24px' }}>
+      <Skeleton active={active} avatar paragraph={{ rows: rows }} />
     </div>
   );
 
   const renderChartSkeleton = () => (
-    <Card>
-      <div style={{ height: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Spin size="large" tip="加载图表..." />
+    <Card bordered={false}>
+      <div style={{ height: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <Skeleton.Button active={active} size="small" style={{ width: 120 }} />
+        <Skeleton.Node active={active} style={{ width: '100%', height: 200 }} />
       </div>
     </Card>
   );
 
   const renderProfileSkeleton = () => (
-    <Card>
-      <div style={{ padding: '40px 0', textAlign: 'center' }}>
-        <Spin size="large" tip="加载用户信息..." />
+    <Space direction="vertical" style={{ width: '100%' }} size="large">
+      <Card bordered={false}>
+        <Skeleton active={active} avatar={{ size: 'large', shape: 'circle' }} title paragraph={{ rows: 1 }} />
+      </Card>
+      <Row gutter={24}>
+        <Col span={12}><renderChartSkeleton /></Col>
+        <Col span={12}><renderChartSkeleton /></Col>
+      </Row>
+      <renderTableSkeleton />
+    </Space>
+  );
+
+  const renderPageSkeleton = () => (
+    <div style={{ padding: '24px' }}>
+      <Skeleton active={active} title={{ width: '30%' }} paragraph={{ rows: 1 }} />
+      <div style={{ marginTop: 24 }}>
+        <Row gutter={[24, 24]}>
+          <Col span={24}><Skeleton.Input active={active} block style={{ height: 100 }} /></Col>
+          <Col span={12}><renderChartSkeleton /></Col>
+          <Col span={12}><renderChartSkeleton /></Col>
+          <Col span={24}><renderTableSkeleton /></Col>
+        </Row>
       </div>
-    </Card>
+    </div>
   );
 
   const renderCustomSkeleton = () => (
-    <div style={{ padding: '40px 0', textAlign: 'center' }}>
-      <Spin size={size} tip="加载中..." />
-    </div>
+    <Skeleton active={active} paragraph={{ rows }} />
   );
 
   const skeletonMap = {
@@ -93,6 +98,7 @@ export const SkeletonLoading: React.FC<SkeletonLoadingProps> = ({
     list: renderListSkeleton,
     chart: renderChartSkeleton,
     profile: renderProfileSkeleton,
+    page: renderPageSkeleton,
     custom: renderCustomSkeleton,
   };
 

@@ -1,10 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Select, Spin, Typography, Row, Col, Empty, Tag, List, Button, Space } from 'antd';
+import { Card, Select, Row, Col, Empty, Tag, List, Button, Space, Typography } from 'antd';
 import { FallOutlined, RiseOutlined, WarningOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import type { AlertStudent } from '../types';
 import { useClassList } from '../hooks/useClassList';
 import { useFocusGroup } from '../hooks/useFocusGroup';
+import PageHeader from '../components/PageHeader';
+import { SkeletonLoading } from '../components/Loading/SkeletonLoading';
 
 const { Title } = Typography;
 
@@ -84,27 +86,29 @@ export default function ManagementAlerts() {
     };
 
     return (
-        <div>
-            <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                    <Title level={2} style={{ margin: 0 }}>管理预警</Title>
-                    <p style={{ margin: '4px 0 0 0', color: '#666' }}>智能识别需要关注的学生群体</p>
-                </div>
-                <Select
-                    value={selectedClassId}
-                    onChange={setSelectedClassId}
-                    style={{ width: 200 }}
-                    placeholder="选择班级"
-                >
-                    {classes.map((cls) => (
-                        <Select.Option key={cls.id} value={cls.id.toString()}>
-                            {cls.name}
-                        </Select.Option>
-                    ))}
-                </Select>
-            </div>
+        <div className="management-alerts-page">
+            <PageHeader
+                title="管理预警"
+                subtitle="利用智能算法，实时识别学科平衡度差异、成绩剧烈波动及临界群体。"
+                extra={
+                    <Select
+                        value={selectedClassId}
+                        onChange={setSelectedClassId}
+                        style={{ width: 220 }}
+                        placeholder="选择班级"
+                    >
+                        {classes.map((cls) => (
+                            <Select.Option key={cls.id} value={cls.id.toString()}>
+                                {cls.name}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                }
+            />
 
-            <Spin spinning={loading}>
+            {loadingAlerts ? (
+                <SkeletonLoading type="card" />
+            ) : (
                 <Row gutter={[24, 24]}>
                     {/* 临界生预警 - 改为全宽并按学科分列 */}
                     <Col span={24}>
@@ -175,7 +179,7 @@ export default function ManagementAlerts() {
                         </Card>
                     </Col>
                 </Row>
-            </Spin>
+            )}
         </div>
     );
 }

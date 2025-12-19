@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import { Spin } from 'antd';
 import routes, { RouteConfig, flattenRoutes } from '../config/routes';
 import RouteGuard from './RouteGuard';
+import { SkeletonLoading } from './Loading/SkeletonLoading';
 
 /**
  * Render a single route with proper guards
@@ -34,11 +35,7 @@ const RouteRenderer: React.FC = () => {
   const allRoutes = flattenRoutes(routes);
 
   return (
-    <React.Suspense fallback={
-      <div style={{ textAlign: 'center', padding: '100px' }}>
-        <Spin size="large" tip="加载中..." />
-      </div>
-    }>
+    <React.Suspense fallback={<SkeletonLoading type="page" />}>
       <Routes>
         {allRoutes.map(route => renderRoute(route))}
         {/* Catch-all route for 404 */}
