@@ -288,7 +288,7 @@ export default function StudentProfile() {
                                         <Text strong>{item.created_at ? new Date(item.created_at).toLocaleDateString() : '未知日期'}</Text>
                                         {item.edited === 1 && <Tag color="orange">已编辑</Tag>}
                                     </div>
-                                    <Text type="secondary" ellipsis={{ rows: 2 }}>{item.comment}</Text>
+                                    <Text type="secondary" ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}>{item.comment}</Text>
                                 </List.Item>
                             )}
                         />
