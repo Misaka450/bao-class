@@ -127,7 +127,7 @@ export async function validateStudentsData(
                         before: originalClass,
                         after: correctName
                     })
-                    fixedRow['班级'] = correctName
+                    fixedRow['班级'] = correctName || originalClass;
                 } else {
                     // 未找到匹配
                     warnings.push({
