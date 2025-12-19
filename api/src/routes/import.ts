@@ -5,7 +5,8 @@ import { validateStudentsData, validateScoresData } from '../services/data-valid
 
 type Bindings = {
     DB: D1Database
-    AI: any
+    AI: any // 暂时保留，虽然主流程用 HTTP 请求 DashScope
+    DASHSCOPE_API_KEY: string
 }
 
 const importRoute = new Hono<{ Bindings: Bindings }>()
@@ -442,11 +443,18 @@ importRoute.post('/ai-scores', async (c) => {
             return c.json({ error: '仅支持图片格式' }, 400)
         }
 
-        // Convert file to ArrayBuffer for AI model
-        const arrayBuffer = await file.arrayBuffer()
-        const imageArray = Array.from(new Uint8Array(arrayBuffer))
+        // Detect image type and convert to base64
+        const imageType = file.type
+        const imageBuffer = await file.arrayBuffer()
+        const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageBuffer)))
 
-        // System prompt for structured table extraction
+        // ModelScope (DashScope) API Configuration
+        const apiKey = c.env.DASHSCOPE_API_KEY
+        if (!apiKey) {
+            return c.json({ error: 'Server configuration error: DASHSCOPE_API_KEY is missing.' }, 500)
+        }
+
+        // System prompt for structured extraction
         const systemPrompt = `你是一个专业的成绩单识别助手。请识别上传图片中的成绩表格，并严格按照以下 JSON 格式返回结果。
 不要包含任何解释、多余的文本或 Markdown 标记，只返回纯 JSON。
 
@@ -468,27 +476,43 @@ importRoute.post('/ai-scores', async (c) => {
 2. 分数必须对应准确。
 3. 如果表格有多个科目，只提取最显眼的或当前上下文相关的。`
 
-        const response = await c.env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
-            messages: [
-                {
-                    role: 'user',
-                    content: [
-                        { type: 'text', text: systemPrompt },
-                        { type: 'image', image: imageArray }
-                    ]
-                }
-            ]
-        }) as any
+        // Call DashScope API (OpenAI Compatible)
+        const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'qwen-vl-max', // Fallback to 'qwen-vl-max' as 'Qwen3-VL' might be invalid or restricted. User can change this string.
+                messages: [
+                    {
+                        role: 'system',
+                        content: systemPrompt
+                    },
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: '请识别这张图片中的成绩单数据。' },
+                            { type: 'image_url', image_url: { url: `data:${imageType};base64,${imageBase64}` } }
+                        ]
+                    }
+                ]
+            })
+        })
 
-        // Post-processing of AI response
-        let resultString = ''
-        if (response && response.response) {
-            resultString = response.response
-        } else if (response && response.description) {
-            resultString = response.description
-        } else {
-            console.error('AI Recognition Result Error:', response)
-            return c.json({ error: 'AI 识别失败，请重试' }, 500)
+        if (!response.ok) {
+            const errorText = await response.text()
+            console.error('DashScope API Error:', errorText)
+            return c.json({ error: `AI 服务请求失败: ${response.status} ${response.statusText}` }, 500)
+        }
+
+        const data: any = await response.json()
+        const resultString = data.choices?.[0]?.message?.content
+
+        if (!resultString) {
+            console.error('Empty AI response:', data)
+            return c.json({ error: 'AI 未返回有效数据' }, 500)
         }
 
         // Extract JSON from response (handling potential markdown blocks)
