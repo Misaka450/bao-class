@@ -151,7 +151,7 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
               breadcrumbName: item.name,
             })),
           },
-          title: getPageTitle(pathname).replace(' - 班级管理系统', ''),
+          title: false,
           style: {
             padding: responsiveLayout.isMobile ? '12px 16px' : '16px 24px',
           },
