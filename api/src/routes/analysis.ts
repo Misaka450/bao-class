@@ -243,7 +243,7 @@ analysis.get('/class/report/:classId/:examId', async (c) => {
         // Get class name
         const classInfo = await c.env.DB.prepare('SELECT name FROM classes WHERE id = ?').bind(classId).first()
         // Get exam name
-        const examInfo = await c.env.DB.prepare('SELECT exam_name FROM exams WHERE id = ?').bind(examId).first()
+        const examInfo = await c.env.DB.prepare('SELECT name FROM exams WHERE id = ?').bind(examId).first()
 
         // Get course stats for this class in this exam
         const stats = await c.env.DB.prepare(`
@@ -268,28 +268,109 @@ analysis.get('/class/report/:classId/:examId', async (c) => {
             `- ${r.course_name}: 平均分 ${Number(r.avg_score).toFixed(1)}, 最高 ${r.max_score}, 最低 ${r.min_score}, 及格率 ${Number(r.pass_rate).toFixed(1)}%`
         ).join('\n')
 
-        const prompt = `你是一位专业的资深教学分析专家。请根据以下班级考试数据，生成一份客观、深入且具有指导意义的学情诊断报告。
+        const prompt = `你是一位经验丰富的资深教育数据分析专家。请根据以下班级考试数据，生成一份专业、深入且具有指导价值的学情诊断报告。
+
 班级：${classInfo?.name}
-考试：${examInfo?.exam_name}
-各科表现：
+考试：${examInfo?.name}
+
+各科成绩详情：
 ${dataStr}
 
-要求：
-1. 语言专业、亲切，适合老师阅读。
-2. 包含：【学情概览】、【优势分析】、【薄弱环节】、【教学行动建议】四个部分。
-3. 总字数在 300 字左右。
-4. 使用 Markdown 格式。
-5. 不要包含名单，只分析整体趋势。`
+报告要求：
+1. **结构完整**：必须包含以下四个部分，每部分都要充实有料：
+   - 【整体学情分析】：综合评价班级整体表现，包括平均分水平、及格率分布、学科均衡度等
+   - 【优势亮点】：详细分析表现突出的科目，说明优势所在及可能的原因
+   - 【薄弱环节】：深入剖析存在问题的科目，指出具体短板（如分数段分布、两极分化等）
+   - 【改进建议】：针对薄弱科目提出3-5条具体可行的教学改进措施
 
-        // 4. Call AI
-        const response: any = await c.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+2. **内容深度**：
+   - 不要只罗列数据，要深入分析数据背后的教学问题
+   - 结合平均分、最高分、最低分、及格率等多维度数据进行综合判断
+   - 关注分数分布的均衡性、两极分化现象
+   - 改进建议要具体可操作，不要泛泛而谈
+
+3. **语言风格**：专业严谨但易读，适合教师阅读和参考
+
+4. **字数要求**：总字数 400-500 字，确保内容充实完整
+
+5. **格式要求**：使用 Markdown 格式，加粗标题`
+
+        // 4. Call AI (使用 Qwen-3-30B，优化参数以提升报告质量)
+        const response: any = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
             messages: [
-                { role: 'system', content: '你是一个擅长教育数据分析的 AI 专家，请用中文作答。' },
+                { role: 'system', content: '你是一个资深的教育数据分析专家，擅长从考试数据中挖掘深层次的教学问题，并提出切实可行的改进方案。请使用中文，提供专业、深入、有价值的分析报告。' },
                 { role: 'user', content: prompt }
-            ]
+            ],
+            max_tokens: 1200,
+            temperature: 0.7
         })
 
-        const report = response.response || response.text || "未能生成报告"
+        console.log('Raw AI Response:', JSON.stringify(response))
+
+        // 应用学生档案的完整响应解析逻辑（已验证可用）
+        let report = '未能生成报告';
+
+        try {
+            // Format 1: Direct response field
+            if (response && response.response && typeof response.response === 'string') {
+                console.log('Found response.response');
+                report = response.response;
+            }
+            // Format 2: Result field
+            else if (response && response.result && typeof response.result === 'string') {
+                console.log('Found response.result (string)');
+                report = response.result;
+            }
+            // Format 3: Result.response field
+            else if (response && response.result && response.result.response && typeof response.result.response === 'string') {
+                console.log('Found response.result.response');
+                report = response.result.response;
+            }
+            // Format 4: Choices array (OpenAI-like format) - Qwen model specific
+            else if (response && response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
+                console.log('Found response.choices');
+                const choice = response.choices[0];
+
+                if (choice.message && choice.message.content !== undefined && choice.message.content !== null) {
+                    if (typeof choice.message.content === 'string') {
+                        console.log('Found choice.message.content');
+                        report = choice.message.content;
+                    }
+                }
+            }
+            // Format 5: Output array with messages
+            else if (response && response.output && Array.isArray(response.output)) {
+                console.log('Found response.output');
+                const messageOutput = response.output.find((item: any) =>
+                    item.type === 'message' && item.role === 'assistant' && item.content);
+
+                if (messageOutput && Array.isArray(messageOutput.content)) {
+                    const textContent = messageOutput.content.find((content: any) =>
+                        content.type === 'output_text' && content.text);
+
+                    if (textContent && textContent.text) {
+                        console.log('Found output_text content');
+                        report = textContent.text;
+                    }
+                }
+            }
+            else if (response && response.text && typeof response.text === 'string') {
+                console.log('Found response.text');
+                report = response.text;
+            }
+            else {
+                console.log('No recognizable response format found');
+            }
+
+            // Clean up the report
+            if (typeof report === 'string' && report !== '未能生成报告') {
+                report = report.trim();
+                console.log('Final report length:', report.length);
+            }
+        } catch (parseError) {
+            console.error('Error parsing AI response:', parseError);
+            report = '未能生成报告';
+        }
 
         // 5. Store in Cache
         await c.env.DB.prepare(`
@@ -301,8 +382,8 @@ ${dataStr}
         `).bind(classId, examId, report).run()
 
         return c.json({ report, cached: false })
-    } catch (error) {
-        console.error('AI Report error:', error)
+    } catch (error: any) {
+        console.error('AI Report error details:', error.message, error.stack)
         throw new AppError('Failed to generate AI report', 500)
     }
 })
@@ -322,6 +403,110 @@ analysis.post('/class/report/refresh', async (c) => {
     } catch (error) {
         console.error('Refresh report error:', error)
         throw new AppError('Failed to refresh report', 500)
+    }
+})
+
+// Get heatmap data for class exam (student x subject matrix)
+analysis.get('/class/:classId/exam/:examId/heatmap', async (c) => {
+    const classId = parseInt(c.req.param('classId'))
+    const examId = parseInt(c.req.param('examId'))
+
+    if (!classId || !examId) {
+        return c.json({ error: 'Invalid classId or examId' }, 400)
+    }
+
+    try {
+        // Get all students in the class
+        const studentsResult = await c.env.DB.prepare(`
+            SELECT id, name, student_id
+            FROM students
+            WHERE class_id = ?
+            ORDER BY student_id
+        `).bind(classId).all()
+
+        if (!studentsResult.results || studentsResult.results.length === 0) {
+            return c.json({
+                students: [],
+                subjects: [],
+                matrix: [],
+                classAvg: []
+            })
+        }
+
+        const students = studentsResult.results as Array<{ id: number; name: string; student_id: string }>
+
+        // Get all subjects for this exam
+        const subjectsResult = await c.env.DB.prepare(`
+            SELECT DISTINCT c.id, c.name
+            FROM courses c
+            JOIN exam_courses ec ON c.id = ec.course_id
+            WHERE ec.exam_id = ?
+            ORDER BY c.name
+        `).bind(examId).all()
+
+        if (!subjectsResult.results || subjectsResult.results.length === 0) {
+            return c.json({
+                students: students.map(s => s.name),
+                subjects: [],
+                matrix: [],
+                classAvg: []
+            })
+        }
+
+        const subjects = subjectsResult.results as Array<{ id: number; name: string }>
+
+        // Get all scores for this exam and class
+        const scoresResult = await c.env.DB.prepare(`
+            SELECT s.student_id, c.name as course_name, sc.score
+            FROM scores sc
+            JOIN students s ON sc.student_id = s.id
+            JOIN courses c ON sc.course_id = c.id
+            WHERE sc.exam_id = ? AND s.class_id = ?
+        `).bind(examId, classId).all()
+
+        // Build score map: student_id -> { course_name -> score }
+        const scoreMap = new Map<number, Map<string, number>>()
+        scoresResult.results.forEach((row: any) => {
+            if (!scoreMap.has(row.student_id)) {
+                scoreMap.set(row.student_id, new Map())
+            }
+            scoreMap.get(row.student_id)!.set(row.course_name, row.score)
+        })
+
+        // Build matrix
+        const matrix: number[][] = []
+        students.forEach(student => {
+            const row: number[] = []
+            const studentScores = scoreMap.get(student.id) || new Map()
+            subjects.forEach(subject => {
+                row.push(studentScores.get(subject.name) || 0)
+            })
+            matrix.push(row)
+        })
+
+        // Calculate class averages for each subject
+        const classAvg: number[] = []
+        subjects.forEach((subject, subjectIndex) => {
+            let sum = 0
+            let count = 0
+            matrix.forEach(row => {
+                if (row[subjectIndex] > 0) {
+                    sum += row[subjectIndex]
+                    count++
+                }
+            })
+            classAvg.push(count > 0 ? parseFloat((sum / count).toFixed(1)) : 0)
+        })
+
+        return c.json({
+            students: students.map(s => s.name),
+            subjects: subjects.map(s => s.name),
+            matrix,
+            classAvg
+        })
+    } catch (error) {
+        console.error('Heatmap error:', error)
+        return c.json({ error: 'Failed to fetch heatmap data' }, 500)
     }
 })
 

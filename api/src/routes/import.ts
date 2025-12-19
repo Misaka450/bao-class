@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import * as XLSX from 'xlsx'
 import { authMiddleware } from '../middleware/auth'
+import { validateStudentsData, validateScoresData } from '../services/data-validator'
 
 type Bindings = {
     DB: D1Database
@@ -41,7 +42,7 @@ importRoute.get('/template/students', async (c) => {
     return new Response(excelBuffer, {
         headers: {
             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Content-Disposition': `attachment; filename="${encodeURIComponent('学生导入模板.xlsx')}"`
+            'Content-Disposition': `attachment; filename = "${encodeURIComponent('学生导入模板.xlsx')}"`
         }
     })
 })
@@ -96,7 +97,7 @@ importRoute.post('/students', async (c) => {
                 errors.push(`第 ${i + 2} 行: 班级 "${row['班级']}" 不存在`)
                 continue
             }
-            const studentId = `S${String(baseCount + validStudents.length + 1).padStart(3, '0')}`
+            const studentId = `S${String(baseCount + validStudents.length + 1).padStart(3, '0')} `
             const gender = row['性别'] === '男' ? 'male' : row['性别'] === '女' ? 'female' : null
             validStudents.push({ name: row['姓名'], studentId, classId, gender, rowIndex: i })
         }
@@ -404,6 +405,49 @@ importRoute.get('/template/scores', async (c) => {
     } catch (error) {
         console.error('Template generation error:', error)
         return c.text('模板生成失败', 500)
+    }
+})
+
+// Validate students data before import (Preview)
+importRoute.post('/validate/students', async (c) => {
+    try {
+        const body = await c.req.json()
+        const data = body.data as Array<{ '姓名': string; '班级': string; '性别'?: string }>
+
+        if (!data || data.length === 0) {
+            return c.json({ error: '没有提供数据' }, 400)
+        }
+
+        const result = await validateStudentsData(data, c.env.DB)
+
+        return c.json(result)
+    } catch (error) {
+        console.error('Validation error:', error)
+        return c.json({ error: '数据验证失败' }, 500)
+    }
+})
+
+// Validate scores data before import (Preview)
+importRoute.post('/validate/scores', async (c) => {
+    try {
+        const body = await c.req.json()
+        const data = body.data as Array<Record<string, any>>
+        const examId = body.examId as number
+
+        if (!data || data.length === 0) {
+            return c.json({ error: '没有提供数据' }, 400)
+        }
+
+        if (!examId) {
+            return c.json({ error: '没有提供 examId' }, 400)
+        }
+
+        const result = await validateScoresData(data, examId, c.env.DB)
+
+        return c.json(result)
+    } catch (error) {
+        console.error('Validation error:', error)
+        return c.json({ error: '数据验证失败' }, 500)
     }
 })
 

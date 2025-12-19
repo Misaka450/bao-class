@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Select, Spin, Typography, Row, Col, Empty, Tabs, Statistic } from 'antd';
+import { Card, Select, Spin, Typography, Row, Col, Empty, Tabs, Statistic, Space } from 'antd';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell
@@ -7,16 +7,21 @@ import {
 import { TrophyOutlined, RobotOutlined } from '@ant-design/icons';
 import ClassAiReportCard from '../components/ClassAiReportCard';
 import ExamQualityCard from '../components/ExamQualityCard';
+import HeatmapChart from '../components/HeatmapChart';
 import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
 import { useClassTrend, useClassSubjectTrend, useGradeComparison } from '../hooks/useClassAnalysis';
+import api from '../services/api';
 
 const { Title } = Typography;
 
 export default function ClassAnalysis() {
     const { data: classes = [] } = useClassList();
     const [selectedClassId, setSelectedClassId] = useState<string>('');
+    const [selectedExamId, setSelectedExamId] = useState<string>('');
     const [activeTab, setActiveTab] = useState('overview');
+    const [heatmapData, setHeatmapData] = useState<any>(null);
+    const [loadingHeatmap, setLoadingHeatmap] = useState(false);
 
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
@@ -28,11 +33,22 @@ export default function ClassAnalysis() {
     const { data: subjectData, isLoading: loadingSubject } = useClassSubjectTrend(selectedClassId ? Number(selectedClassId) : undefined);
 
     const { data: exams = [] } = useExamList({ classId: selectedClassId, enabled: !!selectedClassId });
-    const latestExamId = exams.length > 0 ? exams[0].id : undefined;
+
+    // 自动选择考试逻辑
+    useEffect(() => {
+        if (exams.length > 0) {
+            const currentExamExists = exams.some(e => e.id.toString() === selectedExamId);
+            if (!currentExamExists || !selectedExamId) {
+                setSelectedExamId(exams[0].id.toString());
+            }
+        } else if (exams.length === 0 && selectedExamId) {
+            setSelectedExamId('');
+        }
+    }, [exams, selectedExamId]);
 
     const { data: gradeData, isLoading: loadingGrade } = useGradeComparison(
         selectedClassId ? Number(selectedClassId) : undefined,
-        latestExamId
+        selectedExamId ? Number(selectedExamId) : undefined
     );
 
     const loading = loadingTrend || loadingSubject || loadingGrade;
@@ -190,13 +206,58 @@ export default function ClassAnalysis() {
         );
     };
 
+    // Fetch heatmap data when exam changes
+    useEffect(() => {
+        const fetchHeatmap = async () => {
+            if (!selectedClassId || !selectedExamId) {
+                setHeatmapData(null);
+                return;
+            }
+
+            setLoadingHeatmap(true);
+            try {
+                const response = await fetch(
+                    `${import.meta.env.VITE_API_URL || 'https://api.980823.xyz/api'}/analysis/class/${selectedClassId}/exam/${selectedExamId}/heatmap`,
+                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+                );
+                const data = await response.json();
+                setHeatmapData(data);
+            } catch (error) {
+                console.error('Failed to fetch heatmap:', error);
+                setHeatmapData(null);
+            } finally {
+                setLoadingHeatmap(false);
+            }
+        };
+
+        fetchHeatmap();
+    }, [selectedClassId, selectedExamId]);
+
     const renderAiTab = () => (
         <Row gutter={[24, 24]}>
-            <Col xs={24} lg={14}>
-                <ClassAiReportCard classId={selectedClassId} examId={latestExamId} />
+            {/* 左侧：考试质量 + AI报告 */}
+            <Col xs={24} xl={12}>
+                <Row gutter={[24, 24]}>
+                    <Col span={24}>
+                        <ExamQualityCard examId={selectedExamId ? Number(selectedExamId) : undefined} />
+                    </Col>
+                    <Col span={24}>
+                        <ClassAiReportCard classId={selectedClassId} examId={selectedExamId ? Number(selectedExamId) : undefined} />
+                    </Col>
+                </Row>
             </Col>
-            <Col xs={24} lg={10}>
-                <ExamQualityCard examId={latestExamId} />
+
+            {/* 右侧：热力图 */}
+            <Col xs={24} xl={12}>
+                {loadingHeatmap ? (
+                    <Card style={{ height: '100%', minHeight: 600 }}>
+                        <div style={{ textAlign: 'center', padding: 40 }}>加载中...</div>
+                    </Card>
+                ) : (
+                    <div style={{ position: 'sticky', top: 24 }}>
+                        <HeatmapChart data={heatmapData} />
+                    </div>
+                )}
             </Col>
         </Row>
     );
@@ -222,7 +283,7 @@ export default function ClassAnalysis() {
             label: <span><RobotOutlined /> AI 智能分析</span>,
             children: renderAiTab(),
         },
-    ], [selectedClassId, latestExamId, trendData, subjectData, gradeData]);
+    ], [selectedClassId, selectedExamId, trendData, subjectData, gradeData]);
 
     return (
         <div>
@@ -231,18 +292,33 @@ export default function ClassAnalysis() {
                     <Title level={2} style={{ margin: 0 }}>班级成绩走势</Title>
                     <p style={{ margin: '4px 0 0 0', color: '#666' }}>多维度分析班级成绩表现与趋势</p>
                 </div>
-                <Select
-                    value={selectedClassId}
-                    onChange={setSelectedClassId}
-                    style={{ width: 200 }}
-                    placeholder="选择班级"
-                >
-                    {classes.map((cls: any) => (
-                        <Select.Option key={cls.id} value={cls.id.toString()}>
-                            {cls.name}
-                        </Select.Option>
-                    ))}
-                </Select>
+                <Space>
+                    <Select
+                        value={selectedClassId}
+                        onChange={setSelectedClassId}
+                        style={{ width: 160 }}
+                        placeholder="选择班级"
+                    >
+                        {classes.map((cls: any) => (
+                            <Select.Option key={cls.id} value={cls.id.toString()}>
+                                {cls.name}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                    <Select
+                        value={selectedExamId}
+                        onChange={setSelectedExamId}
+                        style={{ width: 220 }}
+                        placeholder="选择考试"
+                        loading={exams.length === 0 && !!selectedClassId}
+                    >
+                        {exams.map((exam: any) => (
+                            <Select.Option key={exam.id} value={exam.id.toString()}>
+                                {exam.name}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                </Space>
             </div>
 
             <Spin spinning={loading}>
