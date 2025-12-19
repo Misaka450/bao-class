@@ -228,23 +228,19 @@ export default function ClassAnalysis() {
 
     const renderAiTab = () => (
         <Row gutter={[24, 24]}>
-            {/* 左侧：考试质量 + AI报告 */}
+            {/* 上半部分：图表概览 (考试质量 + 成绩分布) */}
             <Col xs={24} xl={12}>
-                <Row gutter={[24, 24]}>
-                    <Col span={24}>
-                        <ExamQualityCard examId={selectedExamId ? Number(selectedExamId) : undefined} />
-                    </Col>
-                    <Col span={24}>
-                        <ClassAiReportCard classId={selectedClassId} examId={selectedExamId ? Number(selectedExamId) : undefined} />
-                    </Col>
-                </Row>
+                <ExamQualityCard examId={selectedExamId ? Number(selectedExamId) : undefined} />
             </Col>
-
-            {/* 右侧：成绩分布图 */}
             <Col xs={24} xl={12}>
                 <Card title="各科成绩分布" bordered={false} style={{ height: '100%' }}>
                     <ScoreDistributionChart data={distributionData} loading={loadingDistribution} />
                 </Card>
+            </Col>
+
+            {/* 下半部分：AI 智能报告 (通栏) */}
+            <Col span={24}>
+                <ClassAiReportCard classId={selectedClassId} examId={selectedExamId ? Number(selectedExamId) : undefined} />
             </Col>
         </Row>
     );
