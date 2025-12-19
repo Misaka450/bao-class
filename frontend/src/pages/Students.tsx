@@ -15,18 +15,17 @@ export default function Students() {
     const [editingStudent, setEditingStudent] = useState<Student | null>(null);
     const [formRef] = ProForm.useForm();
 
-    const fetchClasses = async () => {
-        try {
-            const data = await api.class.list();
-            setClasses(data);
-        } catch (error) {
-            // Error already handled in request layer
-        }
-    };
-
     useEffect(() => {
-        fetchClasses();
-    }, [fetchClasses]);
+        const fetchClassesLocal = async () => {
+            try {
+                const data = await api.class.list();
+                setClasses(data);
+            } catch (error) {
+                // Error already handled
+            }
+        };
+        fetchClassesLocal();
+    }, []);
 
     const handleAdd = () => {
         setEditingStudent(null);
@@ -46,7 +45,7 @@ export default function Students() {
             message.success('删除成功');
             actionRef.current?.reload();
         } catch (error) {
-            // Error already handled in request layer
+            // Error already handled
         }
     };
 
@@ -62,7 +61,7 @@ export default function Students() {
             setIsModalOpen(false);
             actionRef.current?.reload();
         } catch (error) {
-            // Error already handled in request layer
+            // Error already handled
         }
     };
 
@@ -155,48 +154,37 @@ export default function Students() {
                         添加学生
                     </Button>,
                 ]}
-                request={async (params, sorter, filter) => {
+                request={async (params) => {
                     try {
                         const data = await api.student.list();
-                        
-                        // Apply search filters
+
                         let filteredData = data;
-                        
                         if (params.name) {
-                            filteredData = filteredData.filter(student => 
+                            filteredData = filteredData.filter(student =>
                                 student.name.includes(params.name as string)
                             );
                         }
-                        
                         if (params.student_id) {
-                            filteredData = filteredData.filter(student => 
+                            filteredData = filteredData.filter(student =>
                                 student.student_id.includes(params.student_id as string)
                             );
                         }
-                        
                         if (params.class_id) {
-                            filteredData = filteredData.filter(student => 
+                            filteredData = filteredData.filter(student =>
                                 student.class_id === Number(params.class_id)
                             );
                         }
-                        
-                        // Apply pagination
+
                         const { current = 1, pageSize = 10 } = params;
                         const start = (current - 1) * pageSize;
                         const end = start + pageSize;
-                        const paginatedData = filteredData.slice(start, end);
-                        
                         return {
-                            data: paginatedData,
+                            data: filteredData.slice(start, end),
                             success: true,
                             total: filteredData.length,
                         };
                     } catch (error) {
-                        return {
-                            data: [],
-                            success: false,
-                            total: 0,
-                        };
+                        return { data: [], success: false, total: 0 };
                     }
                 }}
                 columns={columns}
@@ -219,49 +207,36 @@ export default function Students() {
                     layout="vertical"
                     initialValues={editingStudent || {}}
                     submitter={{
-                        render: (props, doms) => {
-                            return (
-                                <div style={{ textAlign: 'right' }}>
-                                    <Space>
-                                        <Button onClick={() => setIsModalOpen(false)}>
-                                            取消
-                                        </Button>
-                                        <Button 
-                                            type="primary" 
-                                            onClick={() => props.form?.submit?.()}
-                                        >
-                                            {editingStudent ? '更新' : '添加'}
-                                        </Button>
-                                    </Space>
-                                </div>
-                            );
-                        },
+                        render: (props) => (
+                            <div style={{ textAlign: 'right' }}>
+                                <Space>
+                                    <Button onClick={() => setIsModalOpen(false)}>取消</Button>
+                                    <Button type="primary" onClick={() => props.form?.submit?.()}>
+                                        {editingStudent ? '更新' : '添加'}
+                                    </Button>
+                                </Space>
+                            </div>
+                        ),
                     }}
                 >
                     <ProFormText
                         label="姓名"
                         name="name"
                         rules={[{ required: true, message: '请输入学生姓名' }]}
-                        placeholder="例如：张三"
                     />
                     <ProFormText
                         label="学号"
                         name="student_id"
                         rules={[{ required: true, message: '请输入学号' }]}
-                        placeholder="例如：S1001"
                     />
                     <ProFormSelect
                         label="班级"
                         name="class_id"
                         rules={[{ required: true, message: '请选择班级' }]}
-                        placeholder="请选择班级"
-                        options={classes.map((cls) => ({
-                            label: cls.name,
-                            value: cls.id,
-                        }))}
+                        options={classes.map((cls) => ({ label: cls.name, value: cls.id }))}
                     />
                 </ProForm>
             </Modal>
-        </div >
+        </div>
     );
 }
