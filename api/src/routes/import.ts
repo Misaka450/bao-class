@@ -487,15 +487,15 @@ importRoute.post('/ai-scores', async (c) => {
 2. 分数必须对应准确。
 3. 如果表格有多个科目，只提取最显眼的或当前上下文相关的。`
 
-        // Call DashScope API (OpenAI Compatible)
-        const response = await fetch('https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions', {
+        // Call ModelScope Inference API (OpenAI Compatible)
+        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'qwen-vl-max', // Fallback to 'qwen-vl-max' as 'Qwen3-VL' might be invalid or restricted. User can change this string.
+                model: 'Qwen/Qwen3-VL-8B-Instruct', // Use user-specified model
                 messages: [
                     {
                         role: 'system',
