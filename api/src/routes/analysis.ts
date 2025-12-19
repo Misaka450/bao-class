@@ -223,4 +223,106 @@ analysis.get('/exam/quality/:examId', async (c) => {
     }
 })
 
+// Get or Generate Class AI Diagnostic Report
+analysis.get('/class/report/:classId/:examId', async (c) => {
+    const classId = c.req.param('classId')
+    const examId = c.req.param('examId')
+
+    try {
+        // 1. Check Cache
+        const cached = await c.env.DB.prepare(`
+            SELECT report_content FROM ai_class_reports 
+            WHERE class_id = ? AND exam_id = ?
+        `).bind(classId, examId).first()
+
+        if (cached) {
+            return c.json({ report: cached.report_content, cached: true })
+        }
+
+        // 2. Aggregate Data for AI
+        // Get class name
+        const classInfo = await c.env.DB.prepare('SELECT name FROM classes WHERE id = ?').bind(classId).first()
+        // Get exam name
+        const examInfo = await c.env.DB.prepare('SELECT exam_name FROM exams WHERE id = ?').bind(examId).first()
+
+        // Get course stats for this class in this exam
+        const stats = await c.env.DB.prepare(`
+            SELECT c.name as course_name, 
+                   AVG(s.score) as avg_score, 
+                   MAX(s.score) as max_score, 
+                   MIN(s.score) as min_score,
+                   COUNT(CASE WHEN s.score >= 60 THEN 1 END) * 100.0 / COUNT(*) as pass_rate
+            FROM scores s
+            JOIN courses c ON s.course_id = c.id
+            JOIN students st ON s.student_id = st.id
+            WHERE st.class_id = ? AND s.exam_id = ?
+            GROUP BY s.course_id
+        `).bind(classId, examId).all()
+
+        if (!stats.results || stats.results.length === 0) {
+            return c.json({ error: 'No data available for this class and exam' }, 404)
+        }
+
+        // 3. Construct Prompt
+        const dataStr = stats.results.map((r: any) =>
+            `- ${r.course_name}: 平均分 ${Number(r.avg_score).toFixed(1)}, 最高 ${r.max_score}, 最低 ${r.min_score}, 及格率 ${Number(r.pass_rate).toFixed(1)}%`
+        ).join('\n')
+
+        const prompt = `你是一位专业的资深教学分析专家。请根据以下班级考试数据，生成一份客观、深入且具有指导意义的学情诊断报告。
+班级：${classInfo?.name}
+考试：${examInfo?.exam_name}
+各科表现：
+${dataStr}
+
+要求：
+1. 语言专业、亲切，适合老师阅读。
+2. 包含：【学情概览】、【优势分析】、【薄弱环节】、【教学行动建议】四个部分。
+3. 总字数在 300 字左右。
+4. 使用 Markdown 格式。
+5. 不要包含名单，只分析整体趋势。`
+
+        // 4. Call AI
+        const response: any = await c.env.AI.run('@cf/meta/llama-3.1-8b-instruct', {
+            messages: [
+                { role: 'system', content: '你是一个擅长教育数据分析的 AI 专家，请用中文作答。' },
+                { role: 'user', content: prompt }
+            ]
+        })
+
+        const report = response.response || response.text || "未能生成报告"
+
+        // 5. Store in Cache
+        await c.env.DB.prepare(`
+            INSERT INTO ai_class_reports (class_id, exam_id, report_content)
+            VALUES (?, ?, ?)
+            ON CONFLICT(class_id, exam_id) DO UPDATE SET
+            report_content = excluded.report_content,
+            updated_at = CURRENT_TIMESTAMP
+        `).bind(classId, examId, report).run()
+
+        return c.json({ report, cached: false })
+    } catch (error) {
+        console.error('AI Report error:', error)
+        throw new AppError('Failed to generate AI report', 500)
+    }
+})
+
+// Refresh AI Diagnostic Report
+analysis.post('/class/report/refresh', async (c) => {
+    const { classId, examId } = await c.req.json()
+
+    try {
+        // Delete cache to force regenerate on next GET
+        await c.env.DB.prepare(`
+            DELETE FROM ai_class_reports 
+            WHERE class_id = ? AND exam_id = ?
+        `).bind(classId, examId).run()
+
+        return c.json({ success: true, message: 'Cache cleared, will regenerate on next view' })
+    } catch (error) {
+        console.error('Refresh report error:', error)
+        throw new AppError('Failed to refresh report', 500)
+    }
+})
+
 export default analysis

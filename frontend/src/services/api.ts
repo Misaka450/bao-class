@@ -149,6 +149,12 @@ export const analysisApi = {
     getFocusGroup: (classId: string) => get<FocusGroupResult>(`/api/analysis/class/focus/${classId}`),
     // 试卷质量分析
     getExamQuality: (examId: number) => get<ExamQuality[]>(`/api/analysis/exam/quality/${examId}`),
+
+    getClassAiReport: (classId: string, examId: number) =>
+        get<{ report: string; cached: boolean }>(`/api/analysis/class/report/${classId}/${examId}`),
+
+    refreshClassAiReport: (classId: string, examId: number) =>
+        post<{ success: boolean; message: string }>('/api/analysis/class/report/refresh', { classId, examId }),
 };
 
 // ==================== 导入/导出 API ====================

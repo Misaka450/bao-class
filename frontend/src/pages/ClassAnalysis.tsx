@@ -5,7 +5,7 @@ import {
     AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell
 } from 'recharts';
 import { TrophyOutlined, RobotOutlined } from '@ant-design/icons';
-import StudentAlertsCard from '../components/StudentAlertsCard';
+import ClassAiReportCard from '../components/ClassAiReportCard';
 import ExamQualityCard from '../components/ExamQualityCard';
 import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
@@ -193,7 +193,7 @@ export default function ClassAnalysis() {
     const renderAiTab = () => (
         <Row gutter={[24, 24]}>
             <Col xs={24} lg={14}>
-                <StudentAlertsCard classId={Number(selectedClassId)} />
+                <ClassAiReportCard classId={selectedClassId} examId={latestExamId} />
             </Col>
             <Col xs={24} lg={10}>
                 <ExamQualityCard examId={latestExamId} />
