@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, Tabs, Button, Upload, message, Alert, Table, Select, Form, Steps, Descriptions, Collapse, Tag } from 'antd';
+import type { UploadFile, RcFile } from 'antd/es/upload/interface';
 import { DownloadOutlined, UploadOutlined, FileExcelOutlined, CheckCircleOutlined, WarningOutlined, CloseCircleOutlined } from '@ant-design/icons';
-import type { RcFile } from 'antd/es/upload/interface';
 import * as XLSX from 'xlsx';
 import { useAuthStore } from '../store/authStore';
 import { API_BASE_URL } from '../config';
 
 const { Panel } = Collapse;
+const { Option } = Select;
 
 export default function Import() {
     const [activeTab, setActiveTab] = useState('students');
