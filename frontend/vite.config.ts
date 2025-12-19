@@ -53,24 +53,6 @@ export default defineConfig({
 
     rollupOptions: {
       output: {
-        // 手动分割大型依赖
-        manualChunks: {
-          // React 核心
-          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-          // Ant Design 核心
-          'vendor-antd': ['antd', '@ant-design/icons'],
-          // Ant Design Pro 组件
-          'vendor-pro': [
-            '@ant-design/pro-components',
-            '@ant-design/pro-layout',
-            '@ant-design/pro-table',
-            '@ant-design/pro-form',
-          ],
-          // 图表库
-          'vendor-charts': ['recharts'],
-          // 工具库
-          'vendor-utils': ['dayjs', 'lodash', 'xlsx', 'zustand'],
-        },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {

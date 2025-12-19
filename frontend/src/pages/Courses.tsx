@@ -2,16 +2,7 @@ import { useState, useRef } from 'react';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { ProTable, ModalForm, ProFormText, ProFormSelect } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
-
-// Temporary workaround for import issues - we'll use inline components
-const Button = ({ children, ...props }: any) => <button {...props}>{children}</button>;
-const Space = ({ children }: any) => <div style={{ display: 'flex', gap: '8px' }}>{children}</div>;
-const Popconfirm = ({ children, onConfirm, title }: any) => 
-  <span onClick={() => window.confirm(title) && onConfirm?.()}>{children}</span>;
-const message = {
-  success: (msg: string) => alert(msg),
-  error: (msg: string) => alert(msg),
-};
+import { Button, Space, Popconfirm, message } from 'antd';
 import type { Course } from '../types';
 import api from '../services/api';
 
@@ -149,28 +140,28 @@ export default function Courses() {
                 request={async (params) => {
                     try {
                         const data = await api.course.list();
-                        
+
                         // Apply search filters
                         let filteredData = data;
-                        
+
                         if (params.name) {
-                            filteredData = filteredData.filter(course => 
+                            filteredData = filteredData.filter(course =>
                                 course.name.includes(params.name as string)
                             );
                         }
-                        
+
                         if (params.grade) {
-                            filteredData = filteredData.filter(course => 
+                            filteredData = filteredData.filter(course =>
                                 Number(course.grade) === Number(params.grade)
                             );
                         }
-                        
+
                         // Apply pagination
                         const { current = 1, pageSize = 10 } = params;
                         const start = (current - 1) * pageSize;
                         const end = start + pageSize;
                         const paginatedData = filteredData.slice(start, end);
-                        
+
                         return {
                             data: paginatedData,
                             success: true,

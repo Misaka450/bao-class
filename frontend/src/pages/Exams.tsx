@@ -2,17 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { ProTable, ModalForm, ProFormText, ProFormSelect, ProFormDatePicker, ProFormTextArea } from '@ant-design/pro-components';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
-
-// Temporary workaround for import issues
-const Button = ({ children, ...props }: any) => <button {...props}>{children}</button>;
-const Space = ({ children }: any) => <div style={{ display: 'flex', gap: '8px' }}>{children}</div>;
-const Popconfirm = ({ children, onConfirm, title }: any) => 
-  <span onClick={() => window.confirm(title) && onConfirm?.()}>{children}</span>;
-const Tag = ({ children, ...props }: any) => <span style={{ background: '#1890ff', color: 'white', padding: '2px 8px', borderRadius: '4px', margin: '2px' }} {...props}>{children}</span>;
-const message = {
-  success: (msg: string) => alert(msg),
-  error: (msg: string) => alert(msg),
-};
+import { Button, Space, Popconfirm, Tag, message } from 'antd';
 import dayjs from 'dayjs';
 import type { Exam, Course, Class } from '../types';
 import api from '../services/api';
@@ -102,16 +92,16 @@ export default function Exams() {
     };
 
     const columns: ProColumns<Exam>[] = [
-        { 
-            title: 'ID', 
-            dataIndex: 'id', 
-            key: 'id', 
+        {
+            title: 'ID',
+            dataIndex: 'id',
+            key: 'id',
             width: 80,
             hideInSearch: true,
         },
-        { 
-            title: '考试名称', 
-            dataIndex: 'name', 
+        {
+            title: '考试名称',
+            dataIndex: 'name',
             key: 'name',
             copyable: true,
         },
@@ -130,9 +120,9 @@ export default function Exams() {
                 </>
             ),
         },
-        { 
-            title: '考试日期', 
-            dataIndex: 'exam_date', 
+        {
+            title: '考试日期',
+            dataIndex: 'exam_date',
             key: 'exam_date',
             valueType: 'date',
         },
@@ -183,28 +173,28 @@ export default function Exams() {
                 request={async (params) => {
                     try {
                         const data = await api.exam.list();
-                        
+
                         // Apply search filters
                         let filteredData = data;
-                        
+
                         if (params.name) {
-                            filteredData = filteredData.filter(exam => 
+                            filteredData = filteredData.filter(exam =>
                                 exam.name.includes(params.name as string)
                             );
                         }
-                        
+
                         if (params.exam_date) {
-                            filteredData = filteredData.filter(exam => 
+                            filteredData = filteredData.filter(exam =>
                                 exam.exam_date === params.exam_date
                             );
                         }
-                        
+
                         // Apply pagination
                         const { current = 1, pageSize = 10 } = params;
                         const start = (current - 1) * pageSize;
                         const end = start + pageSize;
                         const paginatedData = filteredData.slice(start, end);
-                        
+
                         return {
                             data: paginatedData,
                             success: true,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, Tabs, Button, Upload, message, Alert, Table, Select, Form } from 'antd';
 import { DownloadOutlined, UploadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import type { RcFile } from 'antd/es/upload/interface';
@@ -19,9 +19,9 @@ export default function Import() {
     useEffect(() => {
         fetchClasses();
         fetchExams();
-    }, [fetchClasses, fetchExams]);
+    }, [token]);
 
-    const fetchClasses = async () => {
+    const fetchClasses = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/classes`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -31,9 +31,9 @@ export default function Import() {
         } catch (error) {
             console.error('Failed to fetch classes', error);
         }
-    };
+    }, [token]);
 
-    const fetchExams = async () => {
+    const fetchExams = useCallback(async () => {
         try {
             const res = await fetch(`${API_BASE_URL}/api/exams`, {
                 headers: { Authorization: `Bearer ${token}` },
@@ -43,7 +43,7 @@ export default function Import() {
         } catch (error) {
             console.error('Failed to fetch exams', error);
         }
-    };
+    }, [token]);
 
     const handleDownloadTemplate = async (type: string) => {
         try {
