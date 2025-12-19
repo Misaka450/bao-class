@@ -13,8 +13,10 @@
       "vite/client"
     ],
     "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     /* Bundler mode */
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
     "moduleDetection": "force",
@@ -23,17 +25,39 @@
     /* Path Aliases - Ant Design Pro Convention */
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/components/*": ["src/components/*"],
-      "@/pages/*": ["src/pages/*"],
-      "@/services/*": ["src/services/*"],
-      "@/utils/*": ["src/utils/*"],
-      "@/hooks/*": ["src/hooks/*"],
-      "@/types/*": ["src/types/*"],
-      "@/store/*": ["src/store/*"],
-      "@/config/*": ["src/config/*"],
-      "@/layouts/*": ["src/layouts/*"],
-      "@/assets/*": ["src/assets/*"]
+      "@/*": [
+        "src/*"
+      ],
+      "@/components/*": [
+        "src/components/*"
+      ],
+      "@/pages/*": [
+        "src/pages/*"
+      ],
+      "@/services/*": [
+        "src/services/*"
+      ],
+      "@/utils/*": [
+        "src/utils/*"
+      ],
+      "@/hooks/*": [
+        "src/hooks/*"
+      ],
+      "@/types/*": [
+        "src/types/*"
+      ],
+      "@/store/*": [
+        "src/store/*"
+      ],
+      "@/config/*": [
+        "src/config/*"
+      ],
+      "@/layouts/*": [
+        "src/layouts/*"
+      ],
+      "@/assets/*": [
+        "src/assets/*"
+      ]
     },
     /* Linting */
     "strict": false,

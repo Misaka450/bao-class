@@ -23,13 +23,13 @@ export const SkeletonLoading: React.FC<SkeletonLoadingProps> = ({
     return <>{children}</>;
   }
 
-  const renderTableSkeleton = () => (
+  const RenderTableSkeleton = () => (
     <Card bordered={false}>
       <Skeleton active={active} paragraph={{ rows: rows + 2 }} title />
     </Card>
   );
 
-  const renderFormSkeleton = () => (
+  const RenderFormSkeleton = () => (
     <Card bordered={false}>
       <Space direction="vertical" style={{ width: '100%' }} size="large">
         <Skeleton.Input active={active} block />
@@ -39,19 +39,19 @@ export const SkeletonLoading: React.FC<SkeletonLoadingProps> = ({
     </Card>
   );
 
-  const renderCardSkeleton = () => (
+  const RenderCardSkeleton = () => (
     <Card bordered={false}>
       <Skeleton active={active} avatar title paragraph={{ rows: 3 }} />
     </Card>
   );
 
-  const renderListSkeleton = () => (
+  const RenderListSkeleton = () => (
     <div style={{ padding: '24px' }}>
       <Skeleton active={active} avatar paragraph={{ rows: rows }} />
     </div>
   );
 
-  const renderChartSkeleton = () => (
+  const RenderChartSkeleton = () => (
     <Card bordered={false}>
       <div style={{ height: 300, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Skeleton.Button active={active} size="small" style={{ width: 120 }} />
@@ -60,46 +60,46 @@ export const SkeletonLoading: React.FC<SkeletonLoadingProps> = ({
     </Card>
   );
 
-  const renderProfileSkeleton = () => (
+  const RenderProfileSkeleton = () => (
     <Space direction="vertical" style={{ width: '100%' }} size="large">
       <Card bordered={false}>
         <Skeleton active={active} avatar={{ size: 'large', shape: 'circle' }} title paragraph={{ rows: 1 }} />
       </Card>
       <Row gutter={24}>
-        <Col span={12}><renderChartSkeleton /></Col>
-        <Col span={12}><renderChartSkeleton /></Col>
+        <Col span={12}><RenderChartSkeleton /></Col>
+        <Col span={12}><RenderChartSkeleton /></Col>
       </Row>
-      <renderTableSkeleton />
+      <RenderTableSkeleton />
     </Space>
   );
 
-  const renderPageSkeleton = () => (
+  const RenderPageSkeleton = () => (
     <div style={{ padding: '24px' }}>
       <Skeleton active={active} title={{ width: '30%' }} paragraph={{ rows: 1 }} />
       <div style={{ marginTop: 24 }}>
         <Row gutter={[24, 24]}>
           <Col span={24}><Skeleton.Input active={active} block style={{ height: 100 }} /></Col>
-          <Col span={12}><renderChartSkeleton /></Col>
-          <Col span={12}><renderChartSkeleton /></Col>
-          <Col span={24}><renderTableSkeleton /></Col>
+          <Col span={12}><RenderChartSkeleton /></Col>
+          <Col span={12}><RenderChartSkeleton /></Col>
+          <Col span={24}><RenderTableSkeleton /></Col>
         </Row>
       </div>
     </div>
   );
 
-  const renderCustomSkeleton = () => (
+  const RenderCustomSkeleton = () => (
     <Skeleton active={active} paragraph={{ rows }} />
   );
 
   const skeletonMap = {
-    table: renderTableSkeleton,
-    form: renderFormSkeleton,
-    card: renderCardSkeleton,
-    list: renderListSkeleton,
-    chart: renderChartSkeleton,
-    profile: renderProfileSkeleton,
-    page: renderPageSkeleton,
-    custom: renderCustomSkeleton,
+    table: RenderTableSkeleton,
+    form: RenderFormSkeleton,
+    card: RenderCardSkeleton,
+    list: RenderListSkeleton,
+    chart: RenderChartSkeleton,
+    profile: RenderProfileSkeleton,
+    page: RenderPageSkeleton,
+    custom: RenderCustomSkeleton,
   };
 
   return skeletonMap[type]();

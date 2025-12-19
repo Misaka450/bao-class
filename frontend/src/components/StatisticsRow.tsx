@@ -3,6 +3,8 @@ import { Row, Col, Statistic } from 'antd';
 import type { StatisticProps } from 'antd';
 
 interface StatItem extends StatisticProps {
+    title?: React.ReactNode;
+    value?: string | number;
     key?: string | number;
     xs?: number;
     sm?: number;
