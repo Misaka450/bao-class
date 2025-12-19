@@ -34,7 +34,12 @@ export default function Login() {
             navigate('/dashboard');
         } catch (error) {
             console.error('Login error:', error);
-            setError('登录失败，请检查网络连接');
+            // 显示后端返回的具体错误信息
+            if (error instanceof Error) {
+                setError(error.message);
+            } else {
+                setError('登录失败，请稍后重试');
+            }
         } finally {
             setLoading(false);
         }
