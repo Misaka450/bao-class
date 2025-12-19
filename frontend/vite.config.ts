@@ -86,7 +86,7 @@ export default defineConfig({
   },
 
   esbuild: {
-    // 生产环境移除 console.log 和 debugger
-    drop: process.env.NODE_ENV === 'production' ? ['console', 'debugger'] : [],
+    // 生产环境仅移除 debugger，保留 console 以便调试
+    drop: process.env.NODE_ENV === 'production' ? ['debugger'] : [],
   },
 })
