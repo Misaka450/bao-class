@@ -506,6 +506,21 @@ importRoute.post('/ai-scores', async (c) => {
 
     } catch (error: any) {
         console.error('AI Recognition Error:', error)
+
+        // Handle Llama license agreement error
+        if (error.message && error.message.includes('agree') && error.message.includes('submit the prompt')) {
+            try {
+                console.log('Attempting to accept Llama model license...')
+                await c.env.AI.run('@cf/meta/llama-3.2-11b-vision-instruct', {
+                    messages: [{ role: 'user', content: 'agree' }]
+                })
+                return c.json({ error: '系统已自动接受 AI 模型使用协议，请重新上传照片进行识别。' }, 500)
+            } catch (agreeError) {
+                console.error('Failed to accept license:', agreeError)
+                return c.json({ error: '自动接受模型协议失败，请联系管理员。' }, 500)
+            }
+        }
+
         return c.json({ error: `识别过程出错: ${error.message}` }, 500)
     }
 })
