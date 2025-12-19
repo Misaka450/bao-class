@@ -244,7 +244,8 @@ export default function ScoresList() {
                 rowKey="student_id"
                 loading={loading}
                 search={false}
-                scroll={{ x: 'max-content', y: 'calc(100vh - 420px)' }}
+                size="small"
+                scroll={{ x: 'max-content', y: 'calc(100vh - 260px)' }}
                 cardProps={{
                     bodyStyle: { padding: 0 }
                 }}
@@ -252,7 +253,7 @@ export default function ScoresList() {
                     pageSize: 20,
                     showTotal: (total: number) => `共 ${total} 名学生`,
                     showSizeChanger: true,
-                    pageSizeOptions: ['20', '50', '100'],
+                    pageSizeOptions: ['20', '50', '100', '200'],
                 }}
                 options={{
                     reload: () => { },
