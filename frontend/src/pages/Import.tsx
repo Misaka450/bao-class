@@ -23,7 +23,7 @@ export default function Import() {
     const [previewData, setPreviewData] = useState<any[]>([]);
     const [validationResult, setValidationResult] = useState<any>(null);
     const [uploadedFile, setUploadedFile] = useState<RcFile | null>(null);
-    const [result, setResult] = useState<any>(null);
+
 
     // AI 相关状态
     const [aiRecognizing, setAiRecognizing] = useState(false);
