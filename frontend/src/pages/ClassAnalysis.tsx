@@ -7,7 +7,7 @@ import {
 import { TrophyOutlined, RobotOutlined } from '@ant-design/icons';
 import ClassAiReportCard from '../components/ClassAiReportCard';
 import ExamQualityCard from '../components/ExamQualityCard';
-import HeatmapChart from '../components/HeatmapChart';
+import ScoreDistributionChart from '../components/ScoreDistributionChart';
 import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
 import { useClassTrend, useClassSubjectTrend, useGradeComparison } from '../hooks/useClassAnalysis';
@@ -23,8 +23,8 @@ export default function ClassAnalysis() {
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [selectedExamId, setSelectedExamId] = useState<string>('');
     const [activeTab, setActiveTab] = useState('overview');
-    const [heatmapData, setHeatmapData] = useState<any>(null);
-    const [loadingHeatmap, setLoadingHeatmap] = useState(false);
+    const [distributionData, setDistributionData] = useState<any>(null);
+    const [loadingDistribution, setLoadingDistribution] = useState(false);
 
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
@@ -199,31 +199,31 @@ export default function ClassAnalysis() {
         );
     };
 
-    // Fetch heatmap data when exam changes
+    // Fetch distribution data when exam changes
     useEffect(() => {
-        const fetchHeatmap = async () => {
+        const fetchDistribution = async () => {
             if (!selectedClassId || !selectedExamId) {
-                setHeatmapData(null);
+                setDistributionData(null);
                 return;
             }
 
-            setLoadingHeatmap(true);
+            setLoadingDistribution(true);
             try {
                 const response = await fetch(
-                    `${import.meta.env.VITE_API_URL || 'https://api.980823.xyz/api'}/analysis/class/${selectedClassId}/exam/${selectedExamId}/heatmap`,
+                    `${import.meta.env.VITE_API_URL || 'https://api.980823.xyz/api'}/analysis/class/${selectedClassId}/exam/${selectedExamId}/distribution`,
                     { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
                 );
                 const data = await response.json();
-                setHeatmapData(data);
+                setDistributionData(data);
             } catch (error) {
-                console.error('Failed to fetch heatmap:', error);
-                setHeatmapData(null);
+                console.error('Failed to fetch distribution:', error);
+                setDistributionData(null);
             } finally {
-                setLoadingHeatmap(false);
+                setLoadingDistribution(false);
             }
         };
 
-        fetchHeatmap();
+        fetchDistribution();
     }, [selectedClassId, selectedExamId]);
 
     const renderAiTab = () => (
@@ -240,20 +240,11 @@ export default function ClassAnalysis() {
                 </Row>
             </Col>
 
-            {/* 右侧：热力图 */}
+            {/* 右侧：成绩分布图 */}
             <Col xs={24} xl={12}>
-                {loadingHeatmap ? (
-                    <Card style={{ height: '100%', minHeight: 600 }}>
-                        <div style={{ textAlign: 'center', padding: 40 }}>加载中...</div>
-                    </Card>
-                ) : (
-                    <div style={{
-                        position: window.innerWidth >= 1200 ? 'sticky' : 'relative',
-                        top: window.innerWidth >= 1200 ? 24 : 0
-                    }}>
-                        <HeatmapChart data={heatmapData} />
-                    </div>
-                )}
+                <Card title="各科成绩分布" bordered={false} style={{ height: '100%' }}>
+                    <ScoreDistributionChart data={distributionData} loading={loadingDistribution} />
+                </Card>
             </Col>
         </Row>
     );

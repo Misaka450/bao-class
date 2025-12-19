@@ -391,8 +391,8 @@ analysis.post('/class/report/refresh', async (c) => {
     }
 })
 
-// Get heatmap data for class exam (student x subject matrix)
-analysis.get('/class/:classId/exam/:examId/heatmap', async (c) => {
+// Get class score distribution for exam
+analysis.get('/class/:classId/exam/:examId/distribution', async (c) => {
     const classId = parseInt(c.req.param('classId'))
     const examId = parseInt(c.req.param('examId'))
 
@@ -401,25 +401,6 @@ analysis.get('/class/:classId/exam/:examId/heatmap', async (c) => {
     }
 
     try {
-        // Get all students in the class
-        const studentsResult = await c.env.DB.prepare(`
-            SELECT id, name, student_id
-            FROM students
-            WHERE class_id = ?
-            ORDER BY student_id
-        `).bind(classId).all()
-
-        if (!studentsResult.results || studentsResult.results.length === 0) {
-            return c.json({
-                students: [],
-                subjects: [],
-                matrix: [],
-                classAvg: []
-            })
-        }
-
-        const students = studentsResult.results as Array<{ id: number; name: string; student_id: string }>
-
         // Get all subjects for this exam
         const subjectsResult = await c.env.DB.prepare(`
             SELECT DISTINCT c.id, c.name
@@ -430,83 +411,50 @@ analysis.get('/class/:classId/exam/:examId/heatmap', async (c) => {
         `).bind(examId).all()
 
         if (!subjectsResult.results || subjectsResult.results.length === 0) {
-            return c.json({
-                students: students.map(s => s.name),
-                subjects: [],
-                matrix: [],
-                classAvg: []
-            })
+            return c.json([])
         }
 
         const subjects = subjectsResult.results as Array<{ id: number; name: string }>
 
         // Get all scores for this exam and class
-        // Get all scores for this exam and class (filtered by exam_id, student filtering done in memory or via simplified query if needed)
-        // Since we want specific class, we can filter by students of that class.
-        // Option 1: WHERE student_id IN (SELECT id FROM students WHERE class_id = ?) - still subquery but faster than join on large sets?
-        // Option 2: Just select all scores for exam and filter in memory? No, exam might cover multiple classes.
-        // Let's use the IN clause with student IDs we already have.
-
-        const studentIds = students.map(s => s.id)
-        if (studentIds.length === 0) {
-            return c.json({
-                students: [],
-                subjects: [],
-                matrix: [],
-                classAvg: []
-            })
-        }
-
         const scoresResult = await c.env.DB.prepare(`
-            SELECT student_id, course_id, score
-            FROM scores 
-            WHERE exam_id = ? AND student_id IN (${studentIds.join(',')})
-        `).bind(examId).all()
+            SELECT sc.course_id, sc.score
+            FROM scores sc
+            JOIN students s ON sc.student_id = s.id
+            WHERE sc.exam_id = ? AND s.class_id = ?
+        `).bind(examId, classId).all()
 
-        // Build score map: student_id (int) -> { course_id (int) -> score }
-        const scoreMap = new Map<number, Map<number, number>>()
-        scoresResult.results.forEach((row: any) => {
-            if (!scoreMap.has(row.student_id)) {
-                scoreMap.set(row.student_id, new Map())
+        const scores = scoresResult.results as Array<{ course_id: number; score: number }>
+
+        // Aggregate distribution
+        const distribution = subjects.map(subject => {
+            const subjectScores = scores.filter(s => s.course_id === subject.id).map(s => s.score)
+
+            let fail = 0
+            let pass = 0
+            let good = 0
+            let excellent = 0
+
+            subjectScores.forEach(score => {
+                if (score < 60) fail++
+                else if (score < 75) pass++
+                else if (score < 85) good++
+                else excellent++
+            })
+
+            return {
+                subject: subject.name,
+                fail,
+                pass,
+                good,
+                excellent
             }
-            scoreMap.get(row.student_id)!.set(row.course_id, row.score)
         })
 
-        // Build matrix
-        const matrix: number[][] = []
-        students.forEach(student => {
-            const row: number[] = []
-            const studentScores = scoreMap.get(student.id) || new Map()
-            subjects.forEach(subject => {
-                // Use course id to lookup score
-                row.push(studentScores.get(subject.id) || 0)
-            })
-            matrix.push(row)
-        })
-
-        // Calculate class averages for each subject
-        const classAvg: number[] = []
-        subjects.forEach((subject, subjectIndex) => {
-            let sum = 0
-            let count = 0
-            matrix.forEach(row => {
-                if (row[subjectIndex] > 0) {
-                    sum += row[subjectIndex]
-                    count++
-                }
-            })
-            classAvg.push(count > 0 ? parseFloat((sum / count).toFixed(1)) : 0)
-        })
-
-        return c.json({
-            students: students.map(s => s.name),
-            subjects: subjects.map(s => s.name),
-            matrix,
-            classAvg
-        })
+        return c.json(distribution)
     } catch (error) {
-        console.error('Heatmap error:', error)
-        return c.json({ error: 'Failed to fetch heatmap data' }, 500)
+        console.error('Distribution error:', error)
+        return c.json({ error: 'Failed to fetch distribution data' }, 500)
     }
 })
 
