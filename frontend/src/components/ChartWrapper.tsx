@@ -34,7 +34,7 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
             width: '100%',
             position: 'relative'
         }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
                 {children}
             </ResponsiveContainer>
         </div>
