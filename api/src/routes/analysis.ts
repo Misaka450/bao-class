@@ -295,71 +295,55 @@ ${dataStr}
 
 5. **格式要求**：使用 Markdown 格式，加粗标题`
 
-        // 4. Call AI (使用 Qwen-3-30B，优化参数以提升报告质量)
-        const response: any = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
-            messages: [
-                { role: 'system', content: '你是一个资深的教育数据分析专家，擅长从考试数据中挖掘深层次的教学问题，并提出切实可行的改进方案。请使用中文，提供专业、深入、有价值的分析报告。' },
-                { role: 'user', content: prompt }
-            ],
-            max_tokens: 1200,
-            temperature: 0.7
-        })
+        // 4. Call AI (ModelScope DeepSeek-V3.2)
+        console.log('Calling AI model deepseek-ai/DeepSeek-V3.2')
 
-        console.log('Raw AI Response:', JSON.stringify(response))
-
-        // 应用学生档案的完整响应解析逻辑（已验证可用）
         let report = '未能生成报告';
 
         try {
-            // Format 1: Direct response field
-            if (response && response.response && typeof response.response === 'string') {
-                console.log('Found response.response');
-                report = response.response;
+            const apiKey = c.env.DASHSCOPE_API_KEY;
+            if (!apiKey) {
+                throw new Error('DASHSCOPE_API_KEY is missing');
             }
-            // Format 2: Result field
-            else if (response && response.result && typeof response.result === 'string') {
-                console.log('Found response.result (string)');
-                report = response.result;
-            }
-            // Format 3: Result.response field
-            else if (response && response.result && response.result.response && typeof response.result.response === 'string') {
-                console.log('Found response.result.response');
-                report = response.result.response;
-            }
-            // Format 4: Choices array (OpenAI-like format) - Qwen model specific
-            else if (response && response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
-                console.log('Found response.choices');
-                const choice = response.choices[0];
 
-                if (choice.message && choice.message.content !== undefined && choice.message.content !== null) {
-                    if (typeof choice.message.content === 'string') {
-                        console.log('Found choice.message.content');
-                        report = choice.message.content;
-                    }
-                }
-            }
-            // Format 5: Output array with messages
-            else if (response && response.output && Array.isArray(response.output)) {
-                console.log('Found response.output');
-                const messageOutput = response.output.find((item: any) =>
-                    item.type === 'message' && item.role === 'assistant' && item.content);
+            const startTime = Date.now();
+            const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-ai/DeepSeek-V3.2',
+                    messages: [
+                        { role: 'system', content: '你是一个资深的教育数据分析专家，擅长从考试数据中挖掘深层次的教学问题，并提出切实可行的改进方案。请使用中文，提供专业、深入、有价值的分析报告。' },
+                        { role: 'user', content: prompt }
+                    ],
+                    max_tokens: 2000, // Increase token limit for detailed reports
+                    temperature: 0.7,
+                    enable_thinking: true
+                })
+            });
 
-                if (messageOutput && Array.isArray(messageOutput.content)) {
-                    const textContent = messageOutput.content.find((content: any) =>
-                        content.type === 'output_text' && content.text);
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`ModelScope API Error: ${response.status} ${response.statusText} - ${errorText}`);
+            }
 
-                    if (textContent && textContent.text) {
-                        console.log('Found output_text content');
-                        report = textContent.text;
-                    }
-                }
+            const data: any = await response.json();
+            const endTime = Date.now();
+            console.log(`AI response received in ${endTime - startTime}ms`);
+
+            // Log reasoning content if available
+            if (data.choices?.[0]?.message?.reasoning_content) {
+                console.log('Reasoning Content:', data.choices[0].message.reasoning_content);
             }
-            else if (response && response.text && typeof response.text === 'string') {
-                console.log('Found response.text');
-                report = response.text;
-            }
-            else {
-                console.log('No recognizable response format found');
+
+            // Extract content
+            if (data.choices?.[0]?.message?.content) {
+                report = data.choices[0].message.content;
+            } else {
+                console.error('Invalid response structure:', JSON.stringify(data));
             }
 
             // Clean up the report
@@ -367,9 +351,10 @@ ${dataStr}
                 report = report.trim();
                 console.log('Final report length:', report.length);
             }
-        } catch (parseError) {
-            console.error('Error parsing AI response:', parseError);
-            report = '未能生成报告';
+
+        } catch (aiError: any) {
+            console.error('AI generation error:', aiError);
+            report = `未能生成报告: ${aiError.message}`;
         }
 
         // 5. Store in Cache

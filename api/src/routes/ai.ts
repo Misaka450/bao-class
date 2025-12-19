@@ -232,186 +232,97 @@ ${student.name}同学：[150字左右的评语内容，语气温和诚恳，多�
         console.log('System Prompt:', systemPrompt);
         console.log('User Prompt:', userPrompt);
 
-        // 4. Call AI Model with retry mechanism
+        // 4. Call AI Model (ModelScope DeepSeek-V3.2)
         try {
-            console.log('Calling AI model @cf/qwen/qwen3-30b-a3b-fp8');
-            
-            // Add retry mechanism for Qwen model
+            console.log('Calling AI model deepseek-ai/DeepSeek-V3.2');
+
+            const apiKey = c.env.DASHSCOPE_API_KEY;
+            if (!apiKey) {
+                throw new Error('DASHSCOPE_API_KEY is missing');
+            }
+
             let comment = '评语生成失败';
-            let retries = 0;
-            const maxRetries = 3;
-            
-            while (comment === '评语生成失败' && retries < maxRetries) {
-                if (retries > 0) {
-                    console.log(`Retry attempt ${retries} for AI comment generation`);
-                    // Add a small delay between retries
-                    await new Promise(resolve => setTimeout(resolve, 1000 * retries));
-                }
-                
-                try {
-                    console.log('Calling AI model @cf/qwen/qwen3-30b-a3b-fp8 with prompt length:', userPrompt.length);
-                    const startTime = Date.now();
-                    
-                    const response = await c.env.AI.run('@cf/qwen/qwen3-30b-a3b-fp8' as any, {
+
+            try {
+                console.log('Calling ModelScope API...');
+                const startTime = Date.now();
+
+                const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'deepseek-ai/DeepSeek-V3.2',
                         messages: [
                             { role: 'system', content: systemPrompt },
                             { role: 'user', content: userPrompt }
                         ],
-                        max_tokens: 500, // Increase max_tokens to ensure complete comment generation
-                        temperature: 0.7 + (retries * 0.1) // Slightly increase temperature on retries
-                    }) as any
+                        // Enable thinking (DeepSeek specific)
+                        enable_thinking: true
+                    })
+                });
 
-                    const endTime = Date.now();
-                    console.log(`AI response received in ${endTime - startTime}ms`);
-                    console.log('AI response keys:', response ? Object.keys(response) : 'null');
-
-                    // Handle the response format from @cf/qwen/qwen3-30b-a3b-fp8
-                    try {
-                        // Log the raw response for debugging
-                        console.log('Raw AI response:', JSON.stringify(response, null, 2));
-
-                        // Check for different possible response formats
-                        
-                        // Format 1: Direct response field
-                        if (response && response.response && typeof response.response === 'string') {
-                            console.log('Found response.response');
-                            comment = response.response;
-                        }
-                        // Format 2: Result field
-                        else if (response && response.result && typeof response.result === 'string') {
-                            console.log('Found response.result');
-                            comment = response.result;
-                        }
-                        // Format 3: Result.response field
-                        else if (response && response.result && response.result.response && typeof response.result.response === 'string') {
-                            console.log('Found response.result.response');
-                            comment = response.result.response;
-                        }
-                        // Format 4: Choices array (OpenAI-like format) - Qwen model specific
-                        else if (response && response.choices && Array.isArray(response.choices) && response.choices.length > 0) {
-                            console.log('Found response.choices');
-                            const choice = response.choices[0];
-                            
-                            // Check content first (preferred output)
-                            if (choice.message && choice.message.content !== undefined && choice.message.content !== null) {
-                                // Ensure content is a string
-                                if (typeof choice.message.content === 'string') {
-                                    console.log('Found choice.message.content');
-                                    comment = choice.message.content;
-                                }
-                            }
-                            // For Qwen model, if content is null, we should not use reasoning_content as it contains thinking process
-                            // Instead, we should treat this as a failed generation
-                            else if (choice.message && choice.message.reasoning_content) {
-                                console.log('Found choice.message.reasoning_content, ignoring it');
-                                // We don't use reasoning_content anymore as it contains the AI's thinking process, not the final output
-                                comment = '评语生成失败';
-                            }
-                        }
-                        // Format 5: Output array with messages
-                        else if (response && response.output && Array.isArray(response.output)) {
-                            console.log('Found response.output');
-                            // Look for the message with type 'message' and role 'assistant'
-                            const messageOutput = response.output.find((item: any) =>
-                                item.type === 'message' && item.role === 'assistant' && item.content);
-
-                            if (messageOutput && Array.isArray(messageOutput.content)) {
-                                // Look for the output_text content
-                                const textContent = messageOutput.content.find((content: any) =>
-                                    content.type === 'output_text' && content.text);
-
-                                if (textContent && textContent.text) {
-                                    console.log('Found output_text content');
-                                    comment = textContent.text;
-                                }
-                            }
-                        } else {
-                            console.log('No recognizable response format found');
-                        }
-
-                        // Clean up the comment
-                        if (typeof comment === 'string') {
-                            comment = comment.trim();
-                            // Remove any potential markdown code blocks if the model outputs them
-                            comment = comment.replace(/^```[\s\S]*?\n/, '').replace(/\n```$/, '');
-                            console.log('Final comment length:', comment.length);
-                            
-                            // Check if the comment contains AI thinking process
-                            const forbiddenPhrases = [
-                                '好的，', '我需要', '首先，', '用户', '现在开始组织语言', 
-                                '首先', '接下来', '然后', '最后', '注意', '检查', '确保',
-                                '可能需要', '可能', '应该', '必须', '需要', '要求',
-                                '结构方面', '开头称呼', '评语需要', '用户的要求',
-                                '老师的建议', '老师的提示', '用户需求', '用户信息',
-                                '平均分', '成绩趋势', '优势科目', '薄弱科目', '考试记录'
-                            ];
-                            
-                            let containsForbiddenPhrase = false;
-                            for (const phrase of forbiddenPhrases) {
-                                if (comment.includes(phrase)) {
-                                    containsForbiddenPhrase = true;
-                                    break;
-                                }
-                            }
-                            
-                            if (containsForbiddenPhrase) {
-                                console.log('Comment contains AI thinking process, treating as failed generation');
-                                comment = '评语生成失败';
-                            }
-                            
-                            // Check if comment starts correctly
-                            else if (!comment.startsWith(`${student.name}同学：`)) {
-                                console.log('Comment does not start correctly, treating as failed generation');
-                                comment = '评语生成失败';
-                            }
-                            
-                            // Additional validation: Check if comment is too long (likely contains thinking process)
-                            else if (comment.length > 300) {
-                                console.log('Comment is too long, likely contains thinking process, treating as failed generation');
-                                comment = '评语生成失败';
-                            }
-                            
-                            // Additional validation: Check if comment contains too many colons (likely contains thinking process)
-                            else if ((comment.match(/:/g) || []).length > 5) {
-                                console.log('Comment contains too many colons, likely contains thinking process, treating as failed generation');
-                                comment = '评语生成失败';
-                            }
-                        } else {
-                            console.log('Comment is not a string, type:', typeof comment);
-                            comment = '评语生成失败';
-                        }
-                    } catch (parseError) {
-                        console.error('Error parsing AI response:', parseError);
-                        comment = '评语生成失败';
-                    }
-                } catch (aiCallError) {
-                    console.error('AI call error:', aiCallError);
-                    comment = '评语生成失败';
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('ModelScope API Error:', response.status, errorText);
+                    throw new Error(`ModelScope API Error: ${response.status} ${response.statusText}`);
                 }
-                
-                retries++;
-            }
-            
-            // If we still failed after retries, log the error
-            if (comment === '评语生成失败') {
-                console.log(`Failed to generate comment after ${maxRetries} attempts`);
+
+                const data: any = await response.json();
+                const endTime = Date.now();
+                console.log(`AI response received in ${endTime - startTime}ms`);
+
+                // Log reasoning content if available (for debugging)
+                if (data.choices?.[0]?.message?.reasoning_content) {
+                    console.log('Reasoning Content:', data.choices[0].message.reasoning_content);
+                }
+
+                // Extract content
+                if (data.choices?.[0]?.message?.content) {
+                    comment = data.choices[0].message.content;
+                } else {
+                    console.error('Invalid response structure:', JSON.stringify(data));
+                }
+
+                // Clean up the comment
+                if (typeof comment === 'string' && comment !== '评语生成失败') {
+                    comment = comment.trim();
+                    // Remove any potential markdown code blocks
+                    comment = comment.replace(/^```[\s\S]*?\n/, '').replace(/\n```$/, '');
+
+                    // Check if comment starts correctly
+                    if (!comment.startsWith(`${student.name}同学：`) && !comment.startsWith(`"${student.name}同学：`)) {
+                        // Sometimes models wrap in quotes or miss the prefix
+                        console.log('Comment prefix mismatch, attempting to fix...');
+                        // If it doesn't start with the name but is a valid comment, we might want to keep it or prepend the name
+                        // For now, let's just log it.
+                    }
+                }
+
+            } catch (aiCallError: any) {
+                console.error('AI call error:', aiCallError);
+                comment = `评语生成失败: ${aiCallError.message}`;
             }
 
-            console.log('Parsed comment:', comment);
-            console.log('Comment length:', comment.length);
+            console.log('Final Comment:', comment);
 
-            // Ensure comment is a string
-            if (typeof comment !== 'string' || comment.length < 10) {
-                console.warn('Invalid comment generated:', comment);
-                comment = '评语生成失败，请重试。';
+            // Ensure comment is a string and valid
+            if (typeof comment !== 'string' || comment.length < 10 || comment.includes('评语生成失败')) {
+                // Don't save failed comments
+                return c.json({
+                    success: false,
+                    comment: comment,
+                    cached: false
+                });
             }
 
             // 6. Save to KV and DB
-            if (comment !== '评语生成失败' && comment !== '评语生成失败，请重试。') {
+            if (comment !== '评语生成失败') {
                 try {
                     console.log('Updating KV cache for student_id:', student_id);
                     await c.env.KV.put(cacheKey, comment, { expirationTtl: 3600 });
-                    console.log('KV cache updated successfully');
 
                     await c.env.DB.prepare(`
                         INSERT INTO ai_comments (student_id, comment, metadata)
@@ -424,17 +335,16 @@ ${student.name}同学：[150字左右的评语内容，语气温和诚恳，多�
                             trend,
                             strong_subjects: strongSubjects,
                             weak_subjects: weakSubjects,
-                            model: '@cf/qwen/qwen3-30b-a3b-fp8'
+                            model: 'deepseek-ai/DeepSeek-V3.2'
                         })
                     ).run();
-                    console.log('Database updated successfully');
                 } catch (saveError) {
                     console.warn('Failed to save comment:', saveError);
                 }
             }
 
             return c.json({
-                success: !comment.includes('失败'),
+                success: true,
                 comment: comment,
                 cached: false,
                 metadata: {

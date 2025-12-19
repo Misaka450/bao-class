@@ -101,4 +101,5 @@ export interface Env {
   AI: Ai;
   JWT_SECRET: string;
   ENVIRONMENT?: string;
+  DASHSCOPE_API_KEY?: string;
 }
