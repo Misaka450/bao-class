@@ -441,21 +441,35 @@ analysis.get('/class/:classId/exam/:examId/heatmap', async (c) => {
         const subjects = subjectsResult.results as Array<{ id: number; name: string }>
 
         // Get all scores for this exam and class
-        const scoresResult = await c.env.DB.prepare(`
-            SELECT s.student_id, c.name as course_name, sc.score
-            FROM scores sc
-            JOIN students s ON sc.student_id = s.id
-            JOIN courses c ON sc.course_id = c.id
-            WHERE sc.exam_id = ? AND s.class_id = ?
-        `).bind(examId, classId).all()
+        // Get all scores for this exam and class (filtered by exam_id, student filtering done in memory or via simplified query if needed)
+        // Since we want specific class, we can filter by students of that class.
+        // Option 1: WHERE student_id IN (SELECT id FROM students WHERE class_id = ?) - still subquery but faster than join on large sets?
+        // Option 2: Just select all scores for exam and filter in memory? No, exam might cover multiple classes.
+        // Let's use the IN clause with student IDs we already have.
 
-        // Build score map: student_id -> { course_name -> score }
-        const scoreMap = new Map<number, Map<string, number>>()
+        const studentIds = students.map(s => s.id)
+        if (studentIds.length === 0) {
+            return c.json({
+                students: [],
+                subjects: [],
+                matrix: [],
+                classAvg: []
+            })
+        }
+
+        const scoresResult = await c.env.DB.prepare(`
+            SELECT student_id, course_id, score
+            FROM scores 
+            WHERE exam_id = ? AND student_id IN (${studentIds.join(',')})
+        `).bind(examId).all()
+
+        // Build score map: student_id (int) -> { course_id (int) -> score }
+        const scoreMap = new Map<number, Map<number, number>>()
         scoresResult.results.forEach((row: any) => {
             if (!scoreMap.has(row.student_id)) {
                 scoreMap.set(row.student_id, new Map())
             }
-            scoreMap.get(row.student_id)!.set(row.course_name, row.score)
+            scoreMap.get(row.student_id)!.set(row.course_id, row.score)
         })
 
         // Build matrix
@@ -464,7 +478,8 @@ analysis.get('/class/:classId/exam/:examId/heatmap', async (c) => {
             const row: number[] = []
             const studentScores = scoreMap.get(student.id) || new Map()
             subjects.forEach(subject => {
-                row.push(studentScores.get(subject.name) || 0)
+                // Use course id to lookup score
+                row.push(studentScores.get(subject.id) || 0)
             })
             matrix.push(row)
         })
