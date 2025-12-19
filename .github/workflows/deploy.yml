@@ -22,7 +22,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install All Dependencies
-        run: npm ci --legacy-peer-deps --ignore-scripts || npm install --legacy-peer-deps --ignore-scripts
+        run: npm ci --legacy-peer-deps || npm install --legacy-peer-deps
 
       # Backend deployment
       - name: Deploy Backend to Cloudflare Workers
