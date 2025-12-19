@@ -86,9 +86,10 @@ export function prefetchResources(urls: string[]) {
 }
 
 /**
- * Service Worker registration for caching
+ * Service Worker registration for caching (Disabled due to stale cache issues)
  */
 export function registerServiceWorker() {
+  /*
   if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
     window.addEventListener('load', () => {
       navigator.serviceWorker
@@ -101,6 +102,7 @@ export function registerServiceWorker() {
         });
     });
   }
+  */
 }
 
 /**
