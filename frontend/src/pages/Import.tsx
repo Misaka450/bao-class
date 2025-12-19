@@ -801,17 +801,39 @@ export default function Import() {
                                         title: '识别出的姓名',
                                         dataIndex: 'name',
                                         key: 'name',
-                                        render: (text, record) => (
-                                            <span style={{ color: record.matched ? 'inherit' : '#ff4d4f' }}>
-                                                {text} {!record.matched && <Tag color="error">未匹配</Tag>}
-                                            </span>
+                                        render: (text, record, index) => (
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <Input
+                                                    value={text}
+                                                    onChange={(e) => {
+                                                        const newData = [...aiPreviewData];
+                                                        newData[index].name = e.target.value;
+                                                        // Update match status based on new name? 
+                                                        // For now, let's keep it simple, maybe just update the name used for display.
+                                                        // Real matching logic is complex, might need re-run match or manual select.
+                                                        setAiPreviewData(newData);
+                                                    }}
+                                                    style={{ width: 120, marginRight: 8 }}
+                                                />
+                                                {!record.matched && <Tag color="error">未匹配</Tag>}
+                                            </div>
                                         )
                                     },
                                     {
                                         title: '成绩',
                                         dataIndex: 'score',
                                         key: 'score',
-                                        render: (text) => <Tag color="blue">{text}</Tag>
+                                        render: (text, record, index) => (
+                                            <Input
+                                                value={text}
+                                                onChange={(e) => {
+                                                    const newData = [...aiPreviewData];
+                                                    newData[index].score = e.target.value;
+                                                    setAiPreviewData(newData);
+                                                }}
+                                                style={{ width: 100 }}
+                                            />
+                                        )
                                     },
                                     {
                                         title: '关联系统学生',
