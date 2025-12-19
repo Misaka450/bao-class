@@ -47,8 +47,8 @@ app.use('/*', cors({
   allowHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// 速率限制中间件 - 防止API滥用
-app.use('/api/*', rateLimiter(15 * 60 * 1000, 1000)); // 15分钟1000次请求
+// 速率限制中间件 - 防止API滥用 (调整为 1分钟 1000次，提高容错性)
+app.use('/api/*', rateLimiter(1 * 60 * 1000, 1000));
 
 // 日志中间件
 app.use('/api/*', loggingMiddleware);

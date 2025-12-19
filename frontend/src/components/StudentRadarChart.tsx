@@ -10,7 +10,7 @@ const StudentRadarChart: React.FC<Props> = ({ data }) => {
     return (
         <Card title="学科能力雷达 (Z-Score)" bordered={false}>
             <div style={{ width: '100%', height: 300, minHeight: 300, position: 'relative' }}>
-                <ResponsiveContainer width="100%" height={300}>
+                <ResponsiveContainer width="100%" height={300} minWidth={0}>
                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data}>
                         <PolarGrid />
                         <PolarAngleAxis dataKey="subject" />

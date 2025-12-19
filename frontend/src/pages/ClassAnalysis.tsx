@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, Select, Spin, Typography, Row, Col, Empty, Tabs, Statistic } from 'antd';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -20,7 +20,7 @@ export default function ClassAnalysis() {
 
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
-            setTimeout(() => setSelectedClassId(classes[0].id.toString()), 0);
+            setSelectedClassId(classes[0].id.toString());
         }
     }, [classes, selectedClassId]);
 
@@ -201,7 +201,7 @@ export default function ClassAnalysis() {
         </Row>
     );
 
-    const items = [
+    const items = useMemo(() => [
         {
             key: 'overview',
             label: '综合走势',
@@ -222,7 +222,7 @@ export default function ClassAnalysis() {
             label: <span><RobotOutlined /> AI 智能分析</span>,
             children: renderAiTab(),
         },
-    ];
+    ], [selectedClassId, latestExamId, trendData, subjectData, gradeData]);
 
     return (
         <div>

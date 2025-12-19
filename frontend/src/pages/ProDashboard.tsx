@@ -44,28 +44,24 @@ export default function ProDashboard() {
     // 自动选择逻辑
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
-            // Use setTimeout to avoid synchronous setState in effect
-            setTimeout(() => setSelectedClassId(classes[0].id.toString()), 0);
+            setSelectedClassId(classes[0].id.toString());
         }
     }, [classes, selectedClassId]);
 
     useEffect(() => {
         if (exams.length > 0) {
-            // 如果当前选中的考试不在新的考试列表中，或者还没有选中考试，则选中第一个
             const currentExamExists = exams.some(e => e.id.toString() === selectedExamId);
             if (!currentExamExists || !selectedExamId) {
-                // Use setTimeout to avoid synchronous setState in effect
-                setTimeout(() => setSelectedExamId(exams[0].id.toString()), 0);
+                setSelectedExamId(exams[0].id.toString());
             }
         } else if (exams.length === 0 && selectedExamId) {
-            setTimeout(() => setSelectedExamId(''), 0);
+            setSelectedExamId('');
         }
     }, [exams, selectedExamId]);
 
     // 当考试改变时，重置科目选择
     useEffect(() => {
-        // Use setTimeout to avoid synchronous setState in effect
-        setTimeout(() => setSelectedCourseId(''), 0);
+        setSelectedCourseId('');
     }, [selectedExamId]);
 
     // Optimize: memoize highest score calculation
@@ -111,7 +107,7 @@ export default function ProDashboard() {
                                 isCourseSelected={!!selectedCourseId}
                             />
                         </ProCard>
-                        
+
                         <ProCard colSpan={{ xs: 24, lg: 8 }} ghost>
                             <Card title="核心指标" className="stat-card" bodyStyle={{ height: 360, display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>
                                 <Statistic

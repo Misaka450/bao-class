@@ -10,7 +10,7 @@ const StudentHistoryChart: React.FC<Props> = ({ data }) => {
     return (
         <Card title="成绩与排名双轴趋势" bordered={false}>
             <div style={{ width: '100%', height: 300, minHeight: 300, position: 'relative' }}>
-                <ResponsiveContainer width="99%" height={300}>
+                <ResponsiveContainer width="99%" height={300} minWidth={0}>
                     <ComposedChart data={data}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="exam_name" angle={-15} textAnchor="end" height={60} />
