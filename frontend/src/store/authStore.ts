@@ -7,6 +7,8 @@ interface User {
     role: 'admin' | 'head_teacher' | 'teacher' | 'student' | 'parent';
     name: string;
     avatar?: string;
+    authorizedClassIds?: number[] | 'ALL';
+    authorizedCourseIds?: number[] | 'ALL';
 }
 
 interface AuthState {
@@ -19,23 +21,36 @@ interface AuthState {
 // Initialize state from localStorage
 const getInitialState = () => {
     const token = localStorage.getItem('token');
+    const userJson = localStorage.getItem('user');
     let user: User | null = null;
 
     if (token) {
         if (isTokenExpired(token)) {
             localStorage.removeItem('token');
+            localStorage.removeItem('user');
             return { token: null, user: null };
         }
 
-        const decoded = parseToken(token);
-        if (decoded) {
-            user = {
-                id: decoded.userId,
-                username: decoded.username,
-                role: decoded.role,
-                name: decoded.username, // Fallback as name is not in token usually, or map if available
-                avatar: undefined
-            };
+        if (userJson) {
+            try {
+                user = JSON.parse(userJson);
+            } catch (e) {
+                console.error('Failed to parse user from localStorage', e);
+            }
+        }
+
+        // Fallback or verify if user is missing but token exists
+        if (!user) {
+            const decoded = parseToken(token);
+            if (decoded) {
+                user = {
+                    id: decoded.userId,
+                    username: decoded.username,
+                    role: decoded.role,
+                    name: decoded.username,
+                    avatar: undefined
+                };
+            }
         }
     }
 
@@ -49,10 +64,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     token: initialState.token,
     login: (user, token) => {
         localStorage.setItem('token', token);
+        localStorage.setItem('user', JSON.stringify(user));
         set({ user, token });
     },
     logout: () => {
         localStorage.removeItem('token');
+        localStorage.removeItem('user');
         set({ user: null, token: null });
     },
 }));

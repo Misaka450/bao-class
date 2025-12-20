@@ -12,12 +12,6 @@ analysis.use('*', authMiddleware)
 // Class Focus Group Analysis
 analysis.get('/class/focus/:classId', async (c) => {
     const classId = Number(c.req.param('classId'))
-    const user = c.get('user')
-
-    if (!await checkClassAccess(c.env.DB, user, classId)) {
-        return c.json({ error: 'Forbidden' }, 403)
-    }
-
     try {
         // Get latest exam for this specific class
         const latestExam = await c.env.DB.prepare(`
@@ -148,12 +142,9 @@ analysis.get('/exam/quality/:examId', async (c) => {
     const user = c.get('user')
 
     try {
-        // 校验对该考试所属班级的权限
+        // 校验对该考试所属班级的权限 (移除，允许全员查看)
         const exam = await c.env.DB.prepare('SELECT class_id FROM exams WHERE id = ?').bind(examId).first<any>()
         if (!exam) return c.json({ error: 'Exam not found' }, 404)
-        if (!await checkClassAccess(c.env.DB, user, exam.class_id)) {
-            return c.json({ error: 'Forbidden' }, 403)
-        }
 
         // Get all courses for this exam
         const courses = await c.env.DB.prepare(`
@@ -237,11 +228,6 @@ analysis.get('/exam/quality/:examId', async (c) => {
 analysis.get('/class/report/:classId/:examId', async (c) => {
     const classId = Number(c.req.param('classId'))
     const examId = c.req.param('examId')
-    const user = c.get('user')
-
-    if (!await checkClassAccess(c.env.DB, user, classId)) {
-        return c.json({ error: 'Forbidden' }, 403)
-    }
 
     try {
         // 1. Check Cache

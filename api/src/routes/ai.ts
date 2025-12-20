@@ -384,12 +384,9 @@ ai.get('/comments/:studentId', async (c) => {
         throw new AppError('Invalid student ID', 400);
     }
 
-    // 权限校验
+    // 权限校验 (移除，允许全员查看历史记录)
     const studentInfo = await c.env.DB.prepare('SELECT class_id FROM students WHERE id = ?').bind(studentId).first<any>()
     if (!studentInfo) return c.json({ error: 'Student not found' }, 404)
-    if (!await checkClassAccess(c.env.DB, user, studentInfo.class_id)) {
-        return c.json({ error: 'Forbidden' }, 403)
-    }
 
     try {
         const result = await c.env.DB.prepare(`

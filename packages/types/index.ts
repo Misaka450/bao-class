@@ -91,6 +91,7 @@ export interface StudentProfileData {
         name: string;
         student_id: string;
         class_name: string;
+        class_id: number;
     };
     history: {
         exam_id: number;

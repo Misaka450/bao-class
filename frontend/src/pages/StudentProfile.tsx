@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, Row, Col, Typography, Table, Tag, message, Button, Empty, Modal, Input, List, Popconfirm } from 'antd';
 import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined, ClockCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import api from '../services/api';
+import { useAuthStore } from '../store/authStore';
 import { useStudentProfile } from '../hooks/useStudentProfile';
 import PageHeader from '../components/PageHeader';
 import ChartWrapper from '../components/ChartWrapper';
@@ -15,6 +16,7 @@ export default function StudentProfile() {
     const { Title, Text, Paragraph } = Typography;
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user } = useAuthStore();
     const { data, isLoading: loading, error, refetch: fetchData } = useStudentProfile(id ? Number(id) : undefined);
     const [aiComment, setAiComment] = useState<string>('');
     const [generatingComment, setGeneratingComment] = useState(false);
@@ -131,7 +133,7 @@ export default function StudentProfile() {
             <Modal
                 title="编辑评语"
                 open={editingCommentId !== null}
-                onOk={() => { /* handleSaveEdit logic */ message.info('Edit functionality moved or needs re-implementation'); setEditingCommentId(null); }}
+                onOk={handleSaveEdit}
                 onCancel={() => setEditingCommentId(null)}
                 okText="保存"
                 cancelText="取消"
@@ -283,70 +285,80 @@ export default function StudentProfile() {
                 </Col>
 
                 {/* AI 智能评语与历史记录 - 放在下方 */}
-                <Col xs={24} md={16}>
-                    <Card
-                        title={<span><RobotOutlined style={{ color: '#1890ff', marginRight: 8 }} />AI 智能评语</span>}
-                        bordered={false}
-                        extra={
-                            <Button
-                                type="primary"
-                                size="small"
-                                icon={aiComment ? <ReloadOutlined /> : <RobotOutlined />}
-                                onClick={() => handleGenerateComment(!!aiComment)}
-                                loading={generatingComment}
-                            >
-                                {aiComment ? '重新生成' : '一键生成'}
-                            </Button>
-                        }
-                    >
-                        {aiComment ? (
-                            <>
-                                <div style={{ background: '#f6ffed', padding: 16, borderRadius: 8, border: '1px solid #b7eb8f', marginBottom: 8 }}>
-                                    <Paragraph style={{ marginBottom: 0, fontSize: 15, lineHeight: 1.8 }}>
-                                        {aiComment}
-                                    </Paragraph>
-                                </div>
-                                {commentSource && (
-                                    <Text type="secondary" style={{ fontSize: 12 }}>
-                                        <ClockCircleOutlined /> 来源：{commentSource}
-                                    </Text>
-                                )}
-                            </>
-                        ) : (
-                            <Empty
-                                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                description="点击上方按钮生成个性化评语"
-                            />
-                        )}
-                    </Card>
-                </Col>
+                {(() => {
+                    const isAuthorized = user?.role === 'admin' ||
+                        (user?.authorizedClassIds === 'ALL' || user?.authorizedClassIds?.includes(data.student.class_id));
 
-                <Col xs={24} md={8}>
-                    <Card title="评语历史记录" bordered={false} style={{ height: '100%' }}>
-                        <List
-                            loading={loadingHistory}
-                            dataSource={commentHistory}
-                            locale={{ emptyText: <Empty description="暂无历史评语" /> }}
-                            renderItem={(item) => (
-                                <List.Item
-                                    actions={[
-                                        <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEditComment(item.id, item.comment)} />,
-                                        <Popconfirm title="确定删除？" onConfirm={() => handleDeleteComment(item.id)}>
-                                            <Button type="link" size="small" danger icon={<DeleteOutlined />} />
-                                        </Popconfirm>
-                                    ]}
-                                    style={{ flexDirection: 'column', alignItems: 'flex-start' }}
+                    return (
+                        <>
+                            <Col xs={24} md={16}>
+                                <Card
+                                    title={<span><RobotOutlined style={{ color: '#1890ff', marginRight: 8 }} />AI 智能评语</span>}
+                                    bordered={false}
+                                    extra={
+                                        <Button
+                                            type="primary"
+                                            size="small"
+                                            icon={aiComment ? <ReloadOutlined /> : <RobotOutlined />}
+                                            onClick={() => handleGenerateComment(!!aiComment)}
+                                            loading={generatingComment}
+                                            disabled={!isAuthorized}
+                                        >
+                                            {aiComment ? '重新生成' : '一键生成'}
+                                        </Button>
+                                    }
                                 >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
-                                        <Text strong>{item.created_at ? new Date(item.created_at).toLocaleDateString() : '未知日期'}</Text>
-                                        {item.edited === 1 && <Tag color="orange">已编辑</Tag>}
-                                    </div>
-                                    <Paragraph type="secondary" ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}>{item.comment}</Paragraph>
-                                </List.Item>
-                            )}
-                        />
-                    </Card>
-                </Col>
+                                    {aiComment ? (
+                                        <>
+                                            <div style={{ background: '#f6ffed', padding: 16, borderRadius: 8, border: '1px solid #b7eb8f', marginBottom: 8 }}>
+                                                <Paragraph style={{ marginBottom: 0, fontSize: 15, lineHeight: 1.8 }}>
+                                                    {aiComment}
+                                                </Paragraph>
+                                            </div>
+                                            {commentSource && (
+                                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                                    <ClockCircleOutlined /> 来源：{commentSource}
+                                                </Text>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <Empty
+                                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                            description={isAuthorized ? "点击上方按钮生成个性化评语" : "暂无评语，且无权生成"}
+                                        />
+                                    )}
+                                </Card>
+                            </Col>
+
+                            <Col xs={24} md={8}>
+                                <Card title="评语历史记录" bordered={false} style={{ height: '100%' }}>
+                                    <List
+                                        loading={loadingHistory}
+                                        dataSource={commentHistory}
+                                        locale={{ emptyText: <Empty description="暂无历史评语" /> }}
+                                        renderItem={(item) => (
+                                            <List.Item
+                                                actions={isAuthorized ? [
+                                                    <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEditComment(item.id, item.comment)} />,
+                                                    <Popconfirm title="确定删除？" onConfirm={() => handleDeleteComment(item.id)}>
+                                                        <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+                                                    </Popconfirm>
+                                                ] : []}
+                                                style={{ flexDirection: 'column', alignItems: 'flex-start' }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: 8 }}>
+                                                    <Text strong>{item.created_at ? new Date(item.created_at).toLocaleDateString() : '未知日期'}</Text>
+                                                    {item.edited === 1 && <Tag color="orange">已编辑</Tag>}
+                                                </div>
+                                                <Paragraph type="secondary" ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}>{item.comment}</Paragraph>
+                                            </List.Item>
+                                        )}
+                                    />
+                                </Card>
+                            </Col>
+                        </>
+                    );
+                })()}
             </Row>
         </div>
     );

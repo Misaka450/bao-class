@@ -105,38 +105,47 @@ export default function Students() {
         {
             title: '操作',
             key: 'action',
-            width: 150,
+            width: 200,
             hideInSearch: true,
-            render: (_, record) => (
-                <Space>
-                    <Button
-                        type="link"
-                        icon={<UserOutlined />}
-                        onClick={() => navigate(`/student-profile/${record.id}`)}
-                    >
-                        档案
-                    </Button>
-                    <Button
-                        type="link"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    >
-                        编辑
-                    </Button>
-                    {canDelete && (
-                        <Popconfirm
-                            title="确定要删除吗？"
-                            onConfirm={() => handleDelete(record.id)}
-                            okText="确定"
-                            cancelText="取消"
+            render: (_, record) => {
+                const isAuthorized = user?.role === 'admin' ||
+                    (user?.authorizedClassIds === 'ALL' || user?.authorizedClassIds?.includes(record.class_id));
+
+                // 只有管理员或该班班主任可以删除学生
+                const canDeleteThis = user?.role === 'admin' || (user?.role === 'head_teacher' && isAuthorized);
+
+                return (
+                    <Space>
+                        <Button
+                            type="link"
+                            icon={<UserOutlined />}
+                            onClick={() => navigate(`/student-profile/${record.id}`)}
                         >
-                            <Button type="link" danger icon={<DeleteOutlined />}>
-                                删除
-                            </Button>
-                        </Popconfirm>
-                    )}
-                </Space>
-            ),
+                            档案
+                        </Button>
+                        <Button
+                            type="link"
+                            icon={<EditOutlined />}
+                            onClick={() => handleEdit(record)}
+                            disabled={!isAuthorized}
+                        >
+                            编辑
+                        </Button>
+                        {canDeleteThis && (
+                            <Popconfirm
+                                title="确定要删除吗？"
+                                onConfirm={() => handleDelete(record.id)}
+                                okText="确定"
+                                cancelText="取消"
+                            >
+                                <Button type="link" danger icon={<DeleteOutlined />}>
+                                    删除
+                                </Button>
+                            </Popconfirm>
+                        )}
+                    </Space>
+                );
+            },
         },
     ];
 

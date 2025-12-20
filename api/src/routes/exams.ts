@@ -20,26 +20,14 @@ exams.use('*', authMiddleware)
 
 // Get all exams with their courses
 exams.get('/', async (c) => {
-    const user = c.get('user')
-    const authorizedIds = await getAuthorizedClassIds(c.env.DB, user)
-
-    if (authorizedIds !== 'ALL' && authorizedIds.length === 0) return c.json([])
-
     try {
-        let sql = `
+        const sql = `
             SELECT e.*, cl.name as class_name 
             FROM exams e
             LEFT JOIN classes cl ON e.class_id = cl.id
+            ORDER BY e.exam_date DESC
         `
-        const params: any[] = []
-
-        if (authorizedIds !== 'ALL') {
-            sql += ` WHERE e.class_id IN (${authorizedIds.map(() => '?').join(',')})`
-            params.push(...authorizedIds)
-        }
-
-        sql += ' ORDER BY e.exam_date DESC'
-        const examsResult = await c.env.DB.prepare(sql).bind(...params).all()
+        const examsResult = await c.env.DB.prepare(sql).all()
 
         // For each exam, get its associated courses
         const examsWithCourses = await Promise.all(
@@ -79,12 +67,6 @@ exams.get('/:id', async (c) => {
         if (!examResult) {
             return c.json({ error: 'Exam not found' }, 404)
         }
-
-        const user = c.get('user')
-        if (!await checkClassAccess(c.env.DB, user, examResult.class_id)) {
-            return c.json({ error: 'Forbidden' }, 403)
-        }
-
 
         const coursesResult = await c.env.DB.prepare(`
             SELECT ec.*, c.name as course_name

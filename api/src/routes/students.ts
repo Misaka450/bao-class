@@ -15,30 +15,13 @@ const students = new Hono<{ Bindings: Env; Variables: Variables }>()
 students.use('*', authMiddleware)
 
 students.get('/', async (c) => {
-    const user = c.get('user')
-    const authorizedIds = await getAuthorizedClassIds(c.env.DB, user)
-
-    if (authorizedIds !== 'ALL' && authorizedIds.length === 0) return c.json([])
-
     const classIdFromQuery = c.req.query('class_id')
     let query = 'SELECT * FROM students'
     const params: (string | number)[] = []
 
-    if (authorizedIds === 'ALL') {
-        if (classIdFromQuery) {
-            query += ' WHERE class_id = ?'
-            params.push(classIdFromQuery)
-        }
-    } else {
-        // 过滤用户有权访问的班级
-        const filterIds = classIdFromQuery
-            ? authorizedIds.filter(id => id === Number(classIdFromQuery))
-            : authorizedIds
-
-        if (filterIds.length === 0) return c.json([])
-
-        query += ` WHERE class_id IN (${filterIds.map(() => '?').join(',')})`
-        params.push(...filterIds)
+    if (classIdFromQuery) {
+        query += ' WHERE class_id = ?'
+        params.push(classIdFromQuery)
     }
 
     query += ' ORDER BY created_at DESC'

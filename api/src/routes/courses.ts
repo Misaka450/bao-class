@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { Course } from '../db/types'
 import { logAction } from '../utils/logger'
 import { JWTPayload } from '../types'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, checkRole } from '../middleware/auth'
 
 type Bindings = {
     DB: D1Database
@@ -22,7 +22,7 @@ courses.get('/', async (c) => {
     return c.json(results)
 })
 
-courses.post('/', async (c) => {
+courses.post('/', checkRole('admin'), async (c) => {
     const { name, grade } = await c.req.json()
     if (!name || !grade) return c.json({ error: 'Name and grade are required' }, 400)
 
@@ -38,7 +38,7 @@ courses.post('/', async (c) => {
     return success ? c.json({ message: 'Course created' }, 201) : c.json({ error: 'Failed to create course' }, 500)
 })
 
-courses.put('/:id', async (c) => {
+courses.put('/:id', checkRole('admin'), async (c) => {
     const id = c.req.param('id')
     const { name, grade } = await c.req.json()
 
@@ -54,7 +54,7 @@ courses.put('/:id', async (c) => {
     return success ? c.json({ message: 'Course updated' }) : c.json({ error: 'Failed to update course' }, 500)
 })
 
-courses.delete('/:id', async (c) => {
+courses.delete('/:id', checkRole('admin'), async (c) => {
     const id = c.req.param('id')
     const { success } = await c.env.DB.prepare('DELETE FROM courses WHERE id = ?').bind(id).run()
 

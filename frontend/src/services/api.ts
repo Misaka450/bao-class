@@ -181,15 +181,17 @@ export const exportApi = {
 // ==================== 日志 API ====================
 
 export const logsApi = {
-    list: (params: { page?: number; limit?: number }) => {
+    list: (params: { current?: number; pageSize?: number }) => {
         const query = new URLSearchParams();
-        if (params.page) query.append('page', params.page.toString());
-        if (params.limit) query.append('limit', params.limit.toString());
+        if (params.current) query.append('page', params.current.toString());
+        if (params.pageSize) query.append('pageSize', params.pageSize.toString());
         return get<{
-            logs: Array<{
+            data: Array<{
                 id: number;
-                user_id: number;
+                username: string;
                 action: string;
+                entity_type: string;
+                entity_id: number;
                 details: string;
                 created_at: string;
             }>;

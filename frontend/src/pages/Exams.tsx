@@ -134,25 +134,36 @@ export default function Exams() {
             key: 'action',
             width: 150,
             hideInSearch: true,
-            render: (_, record) => (
-                <Space>
-                    <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-                        编辑
-                    </Button>
-                    {canDelete && (
-                        <Popconfirm
-                            title="确定要删除吗？"
-                            onConfirm={() => handleDelete(record.id)}
-                            okText="确定"
-                            cancelText="取消"
+            render: (_, record) => {
+                const isAdmin = user?.role === 'admin';
+                const isAuthorized = isAdmin || (user?.authorizedClassIds === 'ALL' || user?.authorizedClassIds?.includes(record.class_id));
+                const canDeleteThis = isAdmin || (user?.role === 'head_teacher' && isAuthorized);
+
+                return (
+                    <Space>
+                        <Button
+                            type="link"
+                            icon={<EditOutlined />}
+                            onClick={() => handleEdit(record)}
+                            disabled={!isAuthorized}
                         >
-                            <Button type="link" danger icon={<DeleteOutlined />}>
-                                删除
-                            </Button>
-                        </Popconfirm>
-                    )}
-                </Space>
-            ),
+                            编辑
+                        </Button>
+                        {canDeleteThis && (
+                            <Popconfirm
+                                title="确定要删除吗？"
+                                onConfirm={() => handleDelete(record.id)}
+                                okText="确定"
+                                cancelText="取消"
+                            >
+                                <Button type="link" danger icon={<DeleteOutlined />}>
+                                    删除
+                                </Button>
+                            </Popconfirm>
+                        )}
+                    </Space>
+                );
+            },
         },
     ];
 

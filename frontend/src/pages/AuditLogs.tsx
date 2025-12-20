@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Table, Card, Tag, message } from 'antd';
+import { Card, Tag } from 'antd';
 import { SafetyCertificateOutlined } from '@ant-design/icons';
-import type { ColumnsType } from 'antd/es/table';
-import { API_BASE_URL } from '../config';
-import { useAuthStore } from '../store/authStore';
+import type { ProColumns } from '@ant-design/pro-components';
+import { ProTable } from '@ant-design/pro-components';
 import PageHeader from '../components/PageHeader';
+import api from '../services/api';
 
 interface AuditLog {
     id: number;
@@ -17,54 +16,14 @@ interface AuditLog {
 }
 
 export default function AuditLogs() {
-    const [logs, setLogs] = useState<AuditLog[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [pagination, setPagination] = useState({
-        current: 1,
-        pageSize: 20,
-        total: 0,
-    });
-    const { token } = useAuthStore();
-
-    const fetchLogs = async (page = 1, pageSize = 20) => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/logs?page=${page}&pageSize=${pageSize}`, {
-                headers: { Authorization: `Bearer ${token}` },
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setLogs(data.data);
-                setPagination({
-                    current: data.page,
-                    pageSize: data.pageSize,
-                    total: data.total,
-                });
-            } else {
-                message.error('Failed to fetch logs');
-            }
-        } catch (error) {
-            message.error('Failed to fetch logs');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchLogs();
-    }, []);
-
-    const handleTableChange = (pagination: any) => {
-        fetchLogs(pagination.current, pagination.pageSize);
-    };
-
-    const columns: ColumnsType<AuditLog> = [
+    const columns: ProColumns<AuditLog>[] = [
         {
             title: '时间',
             dataIndex: 'created_at',
             key: 'created_at',
+            valueType: 'dateTime',
             width: 180,
-            render: (text) => new Date(text).toLocaleString(),
+            search: false,
         },
         {
             title: '用户',
@@ -77,15 +36,15 @@ export default function AuditLogs() {
             dataIndex: 'action',
             key: 'action',
             width: 150,
-            render: (action) => {
+            render: (_, record) => {
                 let color = 'blue';
-                if (action.includes('DELETE')) color = 'red';
-                else if (action.includes('CREATE')) color = 'green';
-                return <Tag color={color}>{action}</Tag>;
+                if (record.action.includes('DELETE')) color = 'red';
+                else if (record.action.includes('CREATE')) color = 'green';
+                return <Tag color={color}>{record.action}</Tag>;
             },
         },
         {
-            title: '对象类型',
+            title: '对象',
             dataIndex: 'entity_type',
             key: 'entity_type',
             width: 100,
@@ -95,13 +54,14 @@ export default function AuditLogs() {
             dataIndex: 'entity_id',
             key: 'entity_id',
             width: 80,
+            search: false,
         },
         {
             title: '详情',
             dataIndex: 'details',
             key: 'details',
             ellipsis: true,
-            render: (text) => <span title={text}>{text}</span>,
+            search: false,
         },
     ];
 
@@ -114,14 +74,27 @@ export default function AuditLogs() {
             />
 
             <Card bordered={false} bodyStyle={{ padding: 0 }}>
-                <Table
+                <ProTable<AuditLog>
                     columns={columns}
-                    dataSource={logs}
+                    request={async (params) => {
+                        const { data, total } = await api.logs.list({
+                            current: params.current,
+                            pageSize: params.pageSize,
+                        });
+                        return {
+                            data: data || [],
+                            total: total || 0,
+                            success: true,
+                        };
+                    }}
                     rowKey="id"
-                    loading={loading}
-                    pagination={pagination}
-                    onChange={handleTableChange}
-                    scroll={{ x: 'max-content' }}
+                    pagination={{
+                        pageSize: 20,
+                    }}
+                    search={false} // 后端暂未支持搜索，先禁用。后续可根据需求在 logs.ts 增加过滤
+                    dateFormatter="string"
+                    headerTitle="审计列表"
+                    toolBarRender={false}
                     size="small"
                 />
             </Card>

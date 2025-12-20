@@ -28,12 +28,6 @@ scores.get('/', async (c) => {
         return c.json({ error: 'Exam ID and Class ID are required' }, 400)
     }
 
-    const user = c.get('user')
-    if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
-        return c.json({ error: 'Forbidden' }, 403)
-    }
-
-
     try {
         let query = `
             SELECT 

@@ -19,20 +19,7 @@ const classes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 classes.use('*', authMiddleware)
 
 classes.get('/', async (c) => {
-    const user = c.get('user')
-    const authorizedIds = await getAuthorizedClassIds(c.env.DB, user)
-
-    let query = 'SELECT * FROM classes'
-    const params: any[] = []
-
-    if (authorizedIds !== 'ALL') {
-        if (authorizedIds.length === 0) return c.json([])
-        query += ` WHERE id IN (${authorizedIds.map(() => '?').join(',')})`
-        params.push(...authorizedIds)
-    }
-
-    query += ' ORDER BY created_at DESC'
-    const { results } = await c.env.DB.prepare(query).bind(...params).all<Class>()
+    const { results } = await c.env.DB.prepare('SELECT * FROM classes ORDER BY grade DESC, name ASC').all<Class>()
     return c.json(results)
 })
 

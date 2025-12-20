@@ -32,7 +32,7 @@ export default function Import() {
     const [aiPreviewData, setAiPreviewData] = useState<any[]>([]); // { name: string, score: number, studentId?: number, matched: boolean }
     const [selectedSubject, setSelectedSubject] = useState<string>();
 
-    const token = useAuthStore((state) => state.token);
+    const { user, token } = useAuthStore();
 
     useEffect(() => {
         fetchClasses();
@@ -580,126 +580,18 @@ export default function Import() {
         </div>
     );
 
-    const renderScoresTab = () => (
-        <div>
-            <Alert
-                message="导入说明"
-                description="1. 选择班级和考试下载模板（模板会自动包含该班级学生和考试科目）。 2. 填写分数。 3. 选择对应考试上传文件。"
-                type="info"
-                showIcon
-                style={{ marginBottom: 24 }}
-            />
+    const filteredClasses = classes.filter(c =>
+        user?.role === 'admin' ||
+        (user?.authorizedClassIds === 'ALL' || user?.authorizedClassIds?.includes(c.id))
+    );
 
-            <Steps current={currentStep} style={{ marginBottom: 24 }}>
-                <Steps.Step title="上传文件" />
-                <Steps.Step title="数据预览" />
-                <Steps.Step title="导入完成" />
-            </Steps>
-
-            {currentStep === 0 && (
-                <>
-                    <Card title="步骤 1: 下载模板" style={{ marginBottom: 16 }}>
-                        <Form layout="vertical" style={{ marginBottom: 16 }}>
-                            <Row gutter={16}>
-                                <Col xs={24} sm={12}>
-                                    <Form.Item label="选择班级" required>
-                                        <Select
-                                            style={{ width: '100%' }}
-                                            placeholder="请选择班级"
-                                            value={selectedClass}
-                                            onChange={setSelectedClass}
-                                            options={classes.map(c => ({ label: c.name, value: c.id }))}
-                                        />
-                                    </Form.Item>
-                                </Col>
-                                <Col xs={24} sm={12}>
-                                    <Form.Item label="选择考试" required>
-                                        <Select
-                                            style={{ width: '100%' }}
-                                            placeholder="请选择考试"
-                                            value={selectedExam}
-                                            onChange={setSelectedExam}
-                                            options={exams
-                                                .filter(e => !selectedClass || e.class_id === Number(selectedClass))
-                                                .map(e => ({ label: e.name, value: e.id }))}
-                                        />
-                                    </Form.Item>
-                                </Col>
-                            </Row>
-                        </Form>
-                        <Button
-                            type="primary"
-                            icon={<DownloadOutlined />}
-                            onClick={() => handleDownloadTemplate('scores')}
-                            disabled={!selectedClass || !selectedExam}
-                        >
-                            下载成绩导入模板
-                        </Button>
-                    </Card>
-
-                    <Card title="步骤 2: 上传文件">
-                        <div style={{ marginBottom: 16 }}>
-                            <span style={{ marginRight: 8, color: 'red' }}>*</span>
-                            <span style={{ marginRight: 8 }}>确认归属考试:</span>
-                            <Select
-                                style={{ width: '100%', maxWidth: 300 }}
-                                placeholder="请选择考试"
-                                value={selectedExam}
-                                onChange={setSelectedExam}
-                                options={exams
-                                    .filter(e => !selectedClass || e.class_id === Number(selectedClass))
-                                    .map(e => ({ label: e.name, value: e.id }))}
-                            />
-                        </div>
-                        <Upload.Dragger
-                            name="file"
-                            accept=".xlsx,.xls"
-                            beforeUpload={handleFileUpload}
-                            maxCount={1}
-                            disabled={validating || !selectedExam}
-                            showUploadList={false}
-                        >
-                            <p className="ant-upload-drag-icon">
-                                <UploadOutlined style={{ fontSize: 48, color: '#667eea' }} />
-                            </p>
-                            <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
-                            <p className="ant-upload-hint">支持 .xlsx 格式文件，上传后将自动验证数据</p>
-                        </Upload.Dragger>
-                    </Card>
-                </>
-            )}
-
-            {currentStep === 1 && (
-                <Card title="数据预览">
-                    {renderValidationSummary()}
-                    {renderPreviewTable()}
-                    <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-                        <Button onClick={handleReset}>重新选择文件</Button>
-                        <Button
-                            type="primary"
-                            onClick={handleConfirmImport}
-                            loading={uploading}
-                            disabled={validationResult?.invalid > 0}
-                        >
-                            {validationResult?.invalid > 0 ? '存在错误，无法导入' : '确认导入'}
-                        </Button>
-                    </div>
-                </Card>
-            )}
-
-            {currentStep === 2 && (
-                <>
-                    {renderResultSummary()}
-                    <Button type="primary" onClick={handleReset}>
-                        继续导入
-                    </Button>
-                </>
-            )}
-        </div>
+    const filteredExams = exams.filter(e =>
+        user?.role === 'admin' ||
+        (user?.authorizedClassIds === 'ALL' || user?.authorizedClassIds?.includes(e.class_id))
     );
 
     const tabItems = [
-        {
+        ...(user?.role === 'admin' ? [{
             key: 'students',
             label: (
                 <span>
@@ -707,7 +599,7 @@ export default function Import() {
                 </span>
             ),
             children: renderStudentsTab(),
-        },
+        }] : []),
         {
             key: 'scores',
             label: (
@@ -715,7 +607,123 @@ export default function Import() {
                     <FileExcelOutlined /> 成绩导入
                 </span>
             ),
-            children: renderScoresTab(),
+            children: (
+                <div>
+                    <Alert
+                        message="导入说明"
+                        description="1. 选择班级和考试下载模板（模板会自动包含该班级学生和考试科目）。 2. 填写分数。 3. 选择对应考试上传文件。"
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 24 }}
+                    />
+
+                    <Steps current={currentStep} style={{ marginBottom: 24 }}>
+                        <Steps.Step title="上传文件" />
+                        <Steps.Step title="数据预览" />
+                        <Steps.Step title="导入完成" />
+                    </Steps>
+
+                    {currentStep === 0 && (
+                        <>
+                            <Card title="步骤 1: 下载模板" style={{ marginBottom: 16 }}>
+                                <Form layout="vertical" style={{ marginBottom: 16 }}>
+                                    <Row gutter={16}>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item label="选择班级" required>
+                                                <Select
+                                                    style={{ width: '100%' }}
+                                                    placeholder="请选择班级"
+                                                    value={selectedClass}
+                                                    onChange={setSelectedClass}
+                                                    options={filteredClasses.map(c => ({ label: c.name, value: c.id }))}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={12}>
+                                            <Form.Item label="选择考试" required>
+                                                <Select
+                                                    style={{ width: '100%' }}
+                                                    placeholder="请选择考试"
+                                                    value={selectedExam}
+                                                    onChange={setSelectedExam}
+                                                    options={filteredExams
+                                                        .filter(e => !selectedClass || e.class_id === Number(selectedClass))
+                                                        .map(e => ({ label: e.name, value: e.id }))}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
+                                </Form>
+                                <Button
+                                    type="primary"
+                                    icon={<DownloadOutlined />}
+                                    onClick={() => handleDownloadTemplate('scores')}
+                                    disabled={!selectedClass || !selectedExam}
+                                >
+                                    下载成绩导入模板
+                                </Button>
+                            </Card>
+
+                            <Card title="步骤 2: 上传文件">
+                                <div style={{ marginBottom: 16 }}>
+                                    <span style={{ marginRight: 8, color: 'red' }}>*</span>
+                                    <span style={{ marginRight: 8 }}>确认归属考试:</span>
+                                    <Select
+                                        style={{ width: '100%', maxWidth: 300 }}
+                                        placeholder="请选择考试"
+                                        value={selectedExam}
+                                        onChange={setSelectedExam}
+                                        options={filteredExams
+                                            .filter(e => !selectedClass || e.class_id === Number(selectedClass))
+                                            .map(e => ({ label: e.name, value: e.id }))}
+                                    />
+                                </div>
+                                <Upload.Dragger
+                                    name="file"
+                                    accept=".xlsx,.xls"
+                                    beforeUpload={handleFileUpload}
+                                    maxCount={1}
+                                    disabled={validating || !selectedExam}
+                                    showUploadList={false}
+                                >
+                                    <p className="ant-upload-drag-icon">
+                                        <UploadOutlined style={{ fontSize: 48, color: '#667eea' }} />
+                                    </p>
+                                    <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
+                                    <p className="ant-upload-hint">支持 .xlsx 格式文件，上传后将自动验证数据</p>
+                                </Upload.Dragger>
+                            </Card>
+                        </>
+                    )}
+
+                    {currentStep === 1 && (
+                        <Card title="数据预览">
+                            {renderValidationSummary()}
+                            {renderPreviewTable()}
+                            <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+                                <Button onClick={handleReset}>重新选择文件</Button>
+                                <Button
+                                    type="primary"
+                                    onClick={handleConfirmImport}
+                                    loading={uploading}
+                                    disabled={validationResult?.invalid > 0}
+                                >
+                                    {validationResult?.invalid > 0 ? '存在错误，无法导入' : '确认导入'}
+                                </Button>
+                            </div>
+                        </Card>
+                    )}
+
+                    {currentStep === 2 && (
+                        <>
+                            {renderResultSummary()}
+                            <Button type="primary" onClick={handleReset}>
+                                继续导入
+                            </Button>
+                        </>
+                    )}
+                </div>
+            ),
         },
         {
             key: 'ai-scores',
@@ -771,7 +779,7 @@ export default function Import() {
                                                     placeholder="请选择班级"
                                                     value={selectedClass}
                                                     onChange={setSelectedClass}
-                                                    options={classes.map(c => ({ label: c.name, value: c.id }))}
+                                                    options={filteredClasses.map(c => ({ label: c.name, value: c.id }))}
                                                     style={{ width: '100%' }}
                                                 />
                                             </Form.Item>
@@ -782,7 +790,7 @@ export default function Import() {
                                                     placeholder="请选择考试"
                                                     value={selectedExam}
                                                     onChange={setSelectedExam}
-                                                    options={exams
+                                                    options={filteredExams
                                                         .filter(e => !selectedClass || e.class_id === Number(selectedClass))
                                                         .map(e => ({ label: e.name, value: e.id }))}
                                                     style={{ width: '100%' }}

@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from '../utils/crypto';
 import { generateToken } from '../utils/jwt';
 import { successResponse, errorResponse } from '../utils/response';
 import { authMiddleware } from '../middleware/auth';
+import { getAuthorizedClassIds, getAuthorizedCourseIds } from '../utils/auth';
 
 const auth = new Hono<{ Bindings: Env; Variables: { user: JWTPayload } }>();
 
@@ -57,6 +58,10 @@ auth.post('/login', async (c) => {
 
     const token = await generateToken(payload, c.env.JWT_SECRET);
 
+    // 获取授权范围
+    const authorizedClassIds = await getAuthorizedClassIds(c.env.DB, payload);
+    const authorizedCourseIds = await getAuthorizedCourseIds(c.env.DB, payload);
+
     return c.json(successResponse({
       token,
       user: {
@@ -64,6 +69,8 @@ auth.post('/login', async (c) => {
         username: user.username,
         role: user.role,
         name: user.name,
+        authorizedClassIds,
+        authorizedCourseIds,
       },
     }));
   } catch (error) {
@@ -85,7 +92,20 @@ auth.get('/me', authMiddleware, async (c) => {
       return c.json(errorResponse('用户不存在'), 404);
     }
 
-    return c.json(successResponse(userData));
+    // 获取授权范围
+    const payload: JWTPayload = {
+      userId: userData.id as number,
+      username: userData.username as string,
+      role: userData.role as any,
+    };
+    const authorizedClassIds = await getAuthorizedClassIds(c.env.DB, payload);
+    const authorizedCourseIds = await getAuthorizedCourseIds(c.env.DB, payload);
+
+    return c.json(successResponse({
+      ...userData,
+      authorizedClassIds,
+      authorizedCourseIds,
+    }));
   } catch (error) {
     return c.json(errorResponse('获取用户信息失败', (error as Error).message), 500);
   }

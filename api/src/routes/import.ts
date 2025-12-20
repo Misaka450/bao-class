@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
 import * as XLSX from 'xlsx'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, checkRole } from '../middleware/auth'
+import { checkClassAccess } from '../utils/auth'
 import { validateStudentsData, validateScoresData } from '../services/data-validator'
+import { JWTPayload } from '../types'
 
 type Bindings = {
     DB: D1Database
@@ -9,7 +11,7 @@ type Bindings = {
     DASHSCOPE_API_KEY: string
 }
 
-const importRoute = new Hono<{ Bindings: Bindings }>()
+const importRoute = new Hono<{ Bindings: Bindings; Variables: { user: JWTPayload } }>()
 
 // Apply auth middleware to all routes
 importRoute.use('*', authMiddleware)
@@ -50,7 +52,7 @@ importRoute.get('/template/students', async (c) => {
 })
 
 // Bulk import students from Excel (Optimized)
-importRoute.post('/students', async (c) => {
+importRoute.post('/students', checkRole('admin'), async (c) => {
     try {
         const formData = await c.req.formData()
         const file = formData.get('file') as File
@@ -168,6 +170,7 @@ importRoute.post('/students', async (c) => {
 
 // Bulk import scores from Excel (Optimized)
 importRoute.post('/scores', async (c) => {
+    const user = c.get('user')
     try {
         const formData = await c.req.formData()
         const file = formData.get('file') as File
@@ -209,6 +212,11 @@ importRoute.post('/scores', async (c) => {
             return c.json({ error: '考试不存在' }, 400)
         }
         const classId = examInfo.class_id as number
+
+        // 权限检查
+        if (!await checkClassAccess(c.env.DB, user, classId)) {
+            return c.json({ error: 'Forbidden: No access to this class' }, 403)
+        }
 
         // 2. Load all students of that class (id, student_id, name)
         const studentsResult = await c.env.DB.prepare(`
@@ -430,7 +438,7 @@ importRoute.post('/validate/students', async (c) => {
 })
 
 // AI score recognition from image
-importRoute.post('/ai-scores', async (c) => {
+importRoute.post('/ai-scores', checkRole(['admin', 'head_teacher', 'teacher']), async (c) => {
     try {
         const formData = await c.req.formData()
         const file = formData.get('file') as File

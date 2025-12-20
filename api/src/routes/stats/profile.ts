@@ -215,7 +215,8 @@ profile.get('/:studentId', async (c) => {
                 id: student.id,
                 name: student.name,
                 student_id: student.student_id,
-                class_name: student.class_name
+                class_name: student.class_name,
+                class_id: student.class_id
             },
             history: historyWithRank.reverse(), // Oldest to Newest for charts
             radar: radarData,
