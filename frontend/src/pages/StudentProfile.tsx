@@ -210,19 +210,38 @@ export default function StudentProfile() {
                             dataSource={data.history}
                             rowKey="exam_id"
                             scroll={{ x: 600 }}
+                            expandable={{
+                                expandedRowRender: (record) => (
+                                    <Table
+                                        columns={[
+                                            { title: '科目', dataIndex: 'subject', key: 'subject' },
+                                            { title: '分数', dataIndex: 'score', key: 'score', render: (text) => <Text strong>{text}</Text> },
+                                            { title: '班级平均', dataIndex: 'class_avg', key: 'class_avg' },
+                                            {
+                                                title: '班级排名',
+                                                dataIndex: 'class_rank',
+                                                key: 'class_rank',
+                                                render: (rank) => (
+                                                    <Tag color={rank <= 3 ? 'gold' : rank <= 10 ? 'blue' : 'default'}>
+                                                        第 {rank} 名
+                                                    </Tag>
+                                                )
+                                            },
+                                        ]}
+                                        dataSource={record.subjects}
+                                        pagination={false}
+                                        size="small"
+                                        rowKey="subject"
+                                    />
+                                ),
+                                rowExpandable: (record) => record.subjects && record.subjects.length > 0,
+                            }}
                             columns={[
                                 { title: '考试名称', dataIndex: 'exam_name', key: 'exam_name' },
                                 { title: '总分', dataIndex: 'total_score', key: 'total_score', sorter: (a, b) => a.total_score - b.total_score },
                                 { title: '班级排名', dataIndex: 'class_rank', key: 'class_rank' },
-                                { title: '年级排名', dataIndex: 'grade_rank', key: 'grade_rank' }, // Assuming grade_rank exists in data.history
+                                { title: '年级排名', dataIndex: 'grade_rank', key: 'grade_rank' },
                                 { title: '日期', dataIndex: 'exam_date', key: 'exam_date', render: (date) => new Date(date).toLocaleDateString() },
-                                {
-                                    title: '操作',
-                                    key: 'action',
-                                    render: (_, record) => (
-                                        <Button type="link" onClick={() => navigate(`/ exam - detail / ${record.exam_id} `)}>查看详情</Button>
-                                    )
-                                }
                             ]}
                             pagination={{ pageSize: 5 }}
                         />
@@ -288,7 +307,7 @@ export default function StudentProfile() {
                                         <Text strong>{item.created_at ? new Date(item.created_at).toLocaleDateString() : '未知日期'}</Text>
                                         {item.edited === 1 && <Tag color="orange">已编辑</Tag>}
                                     </div>
-                                    <Text type="secondary" ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}>{item.comment}</Text>
+                                    <Paragraph type="secondary" ellipsis={{ rows: 2, expandable: true, symbol: '展开' }}>{item.comment}</Paragraph>
                                 </List.Item>
                             )}
                         />
