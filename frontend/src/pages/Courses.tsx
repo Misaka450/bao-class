@@ -5,9 +5,12 @@ import { Button, Space, Popconfirm, message } from 'antd';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import type { Course } from '../types';
 import api from '../services/api';
+import { useAuthStore } from '../store/authStore';
 
 export default function Courses() {
     const actionRef = useRef<ActionType>(null);
+    const { user } = useAuthStore();
+    const isAdmin = user?.role === 'admin';
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCourse, setEditingCourse] = useState<Course | null>(null);
 
@@ -95,25 +98,27 @@ export default function Courses() {
             width: 150,
             hideInSearch: true,
             render: (_, record) => (
-                <Space>
-                    <Button
-                        type="link"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    >
-                        编辑
-                    </Button>
-                    <Popconfirm
-                        title="确定要删除吗？"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="确定"
-                        cancelText="取消"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            删除
+                isAdmin ? (
+                    <Space>
+                        <Button
+                            type="link"
+                            icon={<EditOutlined />}
+                            onClick={() => handleEdit(record)}
+                        >
+                            编辑
                         </Button>
-                    </Popconfirm>
-                </Space>
+                        <Popconfirm
+                            title="确定要删除吗？"
+                            onConfirm={() => handleDelete(record.id)}
+                            okText="确定"
+                            cancelText="取消"
+                        >
+                            <Button type="link" danger icon={<DeleteOutlined />}>
+                                删除
+                            </Button>
+                        </Popconfirm>
+                    </Space>
+                ) : null
             ),
         },
     ];
@@ -127,7 +132,7 @@ export default function Courses() {
                 search={{
                     labelWidth: 'auto',
                 }}
-                toolBarRender={() => [
+                toolBarRender={() => isAdmin ? [
                     <Button
                         key="add"
                         type="primary"
@@ -136,7 +141,7 @@ export default function Courses() {
                     >
                         添加课程
                     </Button>,
-                ]}
+                ] : []}
                 request={async (params) => {
                     try {
                         const data = await api.course.list();

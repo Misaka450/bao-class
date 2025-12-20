@@ -1,14 +1,14 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
+import { checkClassAccess } from '../utils/auth'
 import { AppError } from '../utils/AppError'
-import { Env } from '../types'
+import { Env, JWTPayload } from '../types'
 
-type Bindings = {
-    DB: D1Database
-    AI: Ai
+type Variables = {
+    user: JWTPayload
 }
 
-const ai = new Hono<{ Bindings: Env }>()
+const ai = new Hono<{ Bindings: Env; Variables: Variables }>()
 
 // Apply auth middleware
 ai.use('*', authMiddleware)
@@ -16,6 +16,14 @@ ai.use('*', authMiddleware)
 // Generate student comment
 ai.post('/generate-comment', async (c) => {
     const { student_id, exam_ids, force_regenerate } = await c.req.json()
+
+    // 权限校验：获取学生所属班级并检查权限
+    const user = c.get('user')
+    const studentInfo = await c.env.DB.prepare('SELECT class_id FROM students WHERE id = ?').bind(student_id).first<any>()
+    if (!studentInfo) return c.json({ error: 'Student not found' }, 404)
+    if (!await checkClassAccess(c.env.DB, user, studentInfo.class_id)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
 
     // Add debug log
     console.log('Received request with parameters:', { student_id, exam_ids, force_regenerate });
@@ -370,9 +378,17 @@ ${student.name}同学：[150字左右的评语内容，语气温和诚恳，多�
 // Get comment history for a student
 ai.get('/comments/:studentId', async (c) => {
     const studentId = parseInt(c.req.param('studentId'));
+    const user = c.get('user')
 
     if (isNaN(studentId)) {
         throw new AppError('Invalid student ID', 400);
+    }
+
+    // 权限校验
+    const studentInfo = await c.env.DB.prepare('SELECT class_id FROM students WHERE id = ?').bind(studentId).first<any>()
+    if (!studentInfo) return c.json({ error: 'Student not found' }, 404)
+    if (!await checkClassAccess(c.env.DB, user, studentInfo.class_id)) {
+        return c.json({ error: 'Forbidden' }, 403)
     }
 
     try {
@@ -397,6 +413,20 @@ ai.get('/comments/:studentId', async (c) => {
 ai.put('/comments/:id', async (c) => {
     const id = parseInt(c.req.param('id'));
     const { comment } = await c.req.json();
+    const user = c.get('user')
+
+    // 权限校验：拿到评论对应的学生班级
+    const commentInfo = await c.env.DB.prepare(`
+        SELECT s.class_id 
+        FROM ai_comments ac 
+        JOIN students s ON ac.student_id = s.id 
+        WHERE ac.id = ?
+    `).bind(id).first<any>()
+
+    if (!commentInfo) return c.json({ error: 'Comment not found' }, 404)
+    if (!await checkClassAccess(c.env.DB, user, commentInfo.class_id)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
 
     if (isNaN(id)) {
         throw new AppError('Invalid comment ID', 400);
@@ -431,6 +461,21 @@ ai.delete('/comments/:id', async (c) => {
     }
 
     try {
+        const user = c.get('user')
+
+        // 权限校验
+        const commentInfo = await c.env.DB.prepare(`
+            SELECT s.class_id 
+            FROM ai_comments ac 
+            JOIN students s ON ac.student_id = s.id 
+            WHERE ac.id = ?
+        `).bind(id).first<any>()
+
+        if (!commentInfo) return c.json({ error: 'Comment not found' }, 404)
+        if (!await checkClassAccess(c.env.DB, user, commentInfo.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         await c.env.DB.prepare(`
             DELETE FROM ai_comments WHERE id = ?
         `).bind(id).run();

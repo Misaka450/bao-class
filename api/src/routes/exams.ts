@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
 import { logAction } from '../utils/logger'
 import { JWTPayload } from '../types'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, checkRole } from '../middleware/auth'
+import { getAuthorizedClassIds, checkClassAccess } from '../utils/auth'
+
 
 type Bindings = {
     DB: D1Database
@@ -18,14 +20,26 @@ exams.use('*', authMiddleware)
 
 // Get all exams with their courses
 exams.get('/', async (c) => {
+    const user = c.get('user')
+    const authorizedIds = await getAuthorizedClassIds(c.env.DB, user)
+
+    if (authorizedIds !== 'ALL' && authorizedIds.length === 0) return c.json([])
+
     try {
-        // Get all exams with class info
-        const examsResult = await c.env.DB.prepare(`
+        let sql = `
             SELECT e.*, cl.name as class_name 
             FROM exams e
             LEFT JOIN classes cl ON e.class_id = cl.id
-            ORDER BY e.exam_date DESC
-        `).all()
+        `
+        const params: any[] = []
+
+        if (authorizedIds !== 'ALL') {
+            sql += ` WHERE e.class_id IN (${authorizedIds.map(() => '?').join(',')})`
+            params.push(...authorizedIds)
+        }
+
+        sql += ' ORDER BY e.exam_date DESC'
+        const examsResult = await c.env.DB.prepare(sql).bind(...params).all()
 
         // For each exam, get its associated courses
         const examsWithCourses = await Promise.all(
@@ -60,11 +74,17 @@ exams.get('/:id', async (c) => {
             FROM exams e
             LEFT JOIN classes cl ON e.class_id = cl.id
             WHERE e.id = ?
-        `).bind(id).first()
+        `).bind(id).first<any>()
 
         if (!examResult) {
             return c.json({ error: 'Exam not found' }, 404)
         }
+
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, examResult.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
 
         const coursesResult = await c.env.DB.prepare(`
             SELECT ec.*, c.name as course_name
@@ -86,9 +106,15 @@ exams.get('/:id', async (c) => {
 exams.post('/', async (c) => {
     const { name, class_id, exam_date, description, courses } = await c.req.json()
 
+    const user = c.get('user')
     if (!name || !class_id || !exam_date || !courses || !Array.isArray(courses) || courses.length === 0) {
         return c.json({ error: 'Name, class_id, exam_date, and courses are required' }, 400)
     }
+
+    if (!await checkClassAccess(c.env.DB, user, class_id)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
+
 
     try {
         // Insert exam
@@ -125,6 +151,20 @@ exams.put('/:id', async (c) => {
     const { name, class_id, exam_date, description, courses } = await c.req.json()
 
     try {
+        const user = c.get('user')
+        const originalExam = await c.env.DB.prepare('SELECT class_id FROM exams WHERE id = ?').bind(id).first<any>()
+        if (!originalExam) return c.json({ error: 'Exam not found' }, 404)
+
+        if (!await checkClassAccess(c.env.DB, user, originalExam.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
+        if (class_id && class_id !== originalExam.class_id) {
+            if (!await checkClassAccess(c.env.DB, user, class_id)) {
+                return c.json({ error: 'Forbidden' }, 403)
+            }
+        }
+
         // Update exam basic info
         const updateResult = await c.env.DB.prepare(
             'UPDATE exams SET name = ?, class_id = ?, exam_date = ?, description = ? WHERE id = ?'
@@ -147,8 +187,9 @@ exams.put('/:id', async (c) => {
             }
         }
 
-        const user = c.get('user')
-        await logAction(c.env.DB, user.userId, user.username, 'UPDATE_EXAM', 'exam', Number(id), { name, class_id, exam_date })
+        if (updateResult.success) {
+            await logAction(c.env.DB, user.userId, user.username, 'UPDATE_EXAM', 'exam', Number(id), { name, class_id, exam_date })
+        }
 
         return c.json({ message: 'Exam updated' })
     } catch (error) {
@@ -162,6 +203,14 @@ exams.delete('/:id', async (c) => {
     const id = c.req.param('id')
 
     try {
+        const user = c.get('user')
+        const originalExam = await c.env.DB.prepare('SELECT class_id FROM exams WHERE id = ?').bind(id).first<any>()
+        if (!originalExam) return c.json({ error: 'Exam not found' }, 404)
+
+        if (!await checkClassAccess(c.env.DB, user, originalExam.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         // First delete associated scores
         await c.env.DB.prepare('DELETE FROM scores WHERE exam_id = ?').bind(id).run()
 
@@ -169,7 +218,6 @@ exams.delete('/:id', async (c) => {
         const { success } = await c.env.DB.prepare('DELETE FROM exams WHERE id = ?').bind(id).run()
 
         if (success) {
-            const user = c.get('user')
             await logAction(c.env.DB, user.userId, user.username, 'DELETE_EXAM', 'exam', Number(id), { id })
         }
 

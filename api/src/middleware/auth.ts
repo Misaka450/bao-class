@@ -16,3 +16,14 @@ export const authMiddleware = createMiddleware<{ Bindings: Env; Variables: { use
         return c.json({ success: false, message: 'Invalid token' }, 401)
     }
 })
+
+export const checkRole = (roles: (string | string[])) => createMiddleware<{ Bindings: Env; Variables: { user: JWTPayload } }>(async (c, next) => {
+    const user = c.get('user')
+    const allowedRoles = Array.isArray(roles) ? roles : [roles]
+
+    if (!user || !allowedRoles.includes(user.role)) {
+        return c.json({ success: false, message: 'Forbidden: 权限不足' }, 403)
+    }
+    await next()
+})
+

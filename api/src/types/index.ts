@@ -1,5 +1,5 @@
 // 用户角色类型
-export type UserRole = 'admin' | 'teacher' | 'student' | 'parent';
+export type UserRole = 'admin' | 'head_teacher' | 'teacher' | 'student' | 'parent';
 
 // 用户类型
 export interface User {

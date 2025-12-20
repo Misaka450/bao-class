@@ -6,9 +6,12 @@ import { Button, Space, Popconfirm, Tag, message } from 'antd';
 import dayjs from 'dayjs';
 import type { Exam, Course, Class } from '../types';
 import api from '../services/api';
+import { useAuthStore } from '../store/authStore';
 
 export default function Exams() {
     const actionRef = useRef<ActionType>(null);
+    const { user } = useAuthStore();
+    const canDelete = user?.role === 'admin' || user?.role === 'head_teacher';
     const [classes, setClasses] = useState<Class[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -136,16 +139,18 @@ export default function Exams() {
                     <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
                         编辑
                     </Button>
-                    <Popconfirm
-                        title="确定要删除吗？"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="确定"
-                        cancelText="取消"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            删除
-                        </Button>
-                    </Popconfirm>
+                    {canDelete && (
+                        <Popconfirm
+                            title="确定要删除吗？"
+                            onConfirm={() => handleDelete(record.id)}
+                            okText="确定"
+                            cancelText="取消"
+                        >
+                            <Button type="link" danger icon={<DeleteOutlined />}>
+                                删除
+                            </Button>
+                        </Popconfirm>
+                    )}
                 </Space>
             ),
         },

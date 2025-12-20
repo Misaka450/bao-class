@@ -1,20 +1,22 @@
 import { Hono } from 'hono'
 import { authMiddleware } from '../middleware/auth'
+import { checkClassAccess } from '../utils/auth'
 import { AppError } from '../utils/AppError'
+import { Env, JWTPayload } from '../types'
 
-type Bindings = {
-    DB: D1Database
-    AI: Ai
-}
-
-const analysis = new Hono<{ Bindings: Bindings }>()
+const analysis = new Hono<{ Bindings: Env; Variables: { user: JWTPayload } }>()
 
 // Apply auth middleware to all routes
 analysis.use('*', authMiddleware)
 
 // Class Focus Group Analysis
 analysis.get('/class/focus/:classId', async (c) => {
-    const classId = c.req.param('classId')
+    const classId = Number(c.req.param('classId'))
+    const user = c.get('user')
+
+    if (!await checkClassAccess(c.env.DB, user, classId)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
 
     try {
         // Get latest exam for this specific class
@@ -24,8 +26,8 @@ analysis.get('/class/focus/:classId', async (c) => {
             JOIN students st ON s.student_id = st.id
             WHERE st.class_id = ?
             ORDER BY e.exam_date DESC LIMIT 1
-        `).bind(classId).first()
-        const examId = latestExam?.id
+        `).bind(classId).first<any>()
+        const examId = latestExam?.id as number
 
         // 1. Critical Students (Borderline Pass/Fail or Excellent)
         // 55-62 (Danger of failing), 85-92 (Close to excellent) - 扩大范围以匹配更多学生
@@ -143,8 +145,16 @@ analysis.get('/class/focus/:classId', async (c) => {
 // Exam Quality Analysis
 analysis.get('/exam/quality/:examId', async (c) => {
     const examId = c.req.param('examId')
+    const user = c.get('user')
 
     try {
+        // 校验对该考试所属班级的权限
+        const exam = await c.env.DB.prepare('SELECT class_id FROM exams WHERE id = ?').bind(examId).first<any>()
+        if (!exam) return c.json({ error: 'Exam not found' }, 404)
+        if (!await checkClassAccess(c.env.DB, user, exam.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         // Get all courses for this exam
         const courses = await c.env.DB.prepare(`
             SELECT ec.course_id, c.name, ec.full_score
@@ -225,8 +235,13 @@ analysis.get('/exam/quality/:examId', async (c) => {
 
 // Get or Generate Class AI Diagnostic Report
 analysis.get('/class/report/:classId/:examId', async (c) => {
-    const classId = c.req.param('classId')
+    const classId = Number(c.req.param('classId'))
     const examId = c.req.param('examId')
+    const user = c.get('user')
+
+    if (!await checkClassAccess(c.env.DB, user, classId)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
 
     try {
         // 1. Check Cache
@@ -301,8 +316,9 @@ ${dataStr}
         let report = '未能生成报告';
 
         try {
-            const apiKey = c.env.DASHSCOPE_API_KEY;
-            if (!apiKey) {
+            const apiKey = c.env.JWT_SECRET; // 这里原来写错了，应该是从环境变量拿，但 Env 接口里有 DASHSCOPE_API_KEY
+            const dashScopeKey = c.env.DASHSCOPE_API_KEY;
+            if (!dashScopeKey) {
                 throw new Error('DASHSCOPE_API_KEY is missing');
             }
 
@@ -376,6 +392,11 @@ ${dataStr}
 // Refresh AI Diagnostic Report
 analysis.post('/class/report/refresh', async (c) => {
     const { classId, examId } = await c.req.json()
+    const user = c.get('user')
+
+    if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
 
     try {
         // Delete cache to force regenerate on next GET

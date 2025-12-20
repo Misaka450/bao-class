@@ -2,7 +2,8 @@ import { Hono } from 'hono'
 import { Class } from '../db/types'
 import { logAction } from '../utils/logger'
 import { JWTPayload } from '../types'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, checkRole } from '../middleware/auth'
+import { getAuthorizedClassIds, checkClassAccess } from '../utils/auth'
 
 type Bindings = {
     DB: D1Database
@@ -18,11 +19,24 @@ const classes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 classes.use('*', authMiddleware)
 
 classes.get('/', async (c) => {
-    const { results } = await c.env.DB.prepare('SELECT * FROM classes ORDER BY created_at DESC').all<Class>()
+    const user = c.get('user')
+    const authorizedIds = await getAuthorizedClassIds(c.env.DB, user)
+
+    let query = 'SELECT * FROM classes'
+    const params: any[] = []
+
+    if (authorizedIds !== 'ALL') {
+        if (authorizedIds.length === 0) return c.json([])
+        query += ` WHERE id IN (${authorizedIds.map(() => '?').join(',')})`
+        params.push(...authorizedIds)
+    }
+
+    query += ' ORDER BY created_at DESC'
+    const { results } = await c.env.DB.prepare(query).bind(...params).all<Class>()
     return c.json(results)
 })
 
-classes.post('/', async (c) => {
+classes.post('/', checkRole('admin'), async (c) => {
     const { name, grade, teacher_id } = await c.req.json()
     if (!name || !grade) return c.json({ error: 'Name and grade are required' }, 400)
 
@@ -39,7 +53,17 @@ classes.post('/', async (c) => {
 })
 
 classes.put('/:id', async (c) => {
-    const id = c.req.param('id')
+    const id = Number(c.req.param('id'))
+    const user = c.get('user')
+
+    // 只有管理员或该班班主任可以修改班级信息
+    const isAuthorized = user.role === 'admin' || await (async () => {
+        const cls = await c.env.DB.prepare('SELECT teacher_id FROM classes WHERE id = ?').bind(id).first()
+        return cls && cls.teacher_id === user.userId
+    })()
+
+    if (!isAuthorized) return c.json({ error: 'Forbidden' }, 403)
+
     const { name, grade, teacher_id } = await c.req.json()
 
     const { success } = await c.env.DB.prepare(
@@ -47,14 +71,13 @@ classes.put('/:id', async (c) => {
     ).bind(name, grade, teacher_id || null, id).run()
 
     if (success) {
-        const user = c.get('user')
-        await logAction(c.env.DB, user.userId, user.username, 'UPDATE_CLASS', 'class', Number(id), { name, grade })
+        await logAction(c.env.DB, user.userId, user.username, 'UPDATE_CLASS', 'class', id, { name, grade })
     }
 
     return success ? c.json({ message: 'Class updated' }) : c.json({ error: 'Failed to update class' }, 500)
 })
 
-classes.delete('/:id', async (c) => {
+classes.delete('/:id', checkRole('admin'), async (c) => {
     const id = c.req.param('id')
 
     try {

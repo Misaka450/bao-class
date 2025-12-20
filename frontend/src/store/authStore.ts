@@ -4,7 +4,7 @@ import { parseToken, isTokenExpired } from '../utils/jwt';
 interface User {
     id: number;
     username: string;
-    role: 'admin' | 'teacher' | 'student' | 'parent';
+    role: 'admin' | 'head_teacher' | 'teacher' | 'student' | 'parent';
     name: string;
     avatar?: string;
 }

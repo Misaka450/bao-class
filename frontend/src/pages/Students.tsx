@@ -6,9 +6,12 @@ import { Button, Modal, Space, Popconfirm, message } from 'antd';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import type { Student, Class } from '../types';
 import api from '../services/api';
+import { useAuthStore } from '../store/authStore';
 
 export default function Students() {
     const navigate = useNavigate();
+    const { user } = useAuthStore();
+    const canDelete = user?.role === 'admin' || user?.role === 'head_teacher';
     const actionRef = useRef<ActionType>(null);
     const [classes, setClasses] = useState<Class[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -120,16 +123,18 @@ export default function Students() {
                     >
                         编辑
                     </Button>
-                    <Popconfirm
-                        title="确定要删除吗？"
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="确定"
-                        cancelText="取消"
-                    >
-                        <Button type="link" danger icon={<DeleteOutlined />}>
-                            删除
-                        </Button>
-                    </Popconfirm>
+                    {canDelete && (
+                        <Popconfirm
+                            title="确定要删除吗？"
+                            onConfirm={() => handleDelete(record.id)}
+                            okText="确定"
+                            cancelText="取消"
+                        >
+                            <Button type="link" danger icon={<DeleteOutlined />}>
+                                删除
+                            </Button>
+                        </Popconfirm>
+                    )}
                 </Space>
             ),
         },

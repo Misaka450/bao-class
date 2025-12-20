@@ -1,7 +1,9 @@
 import { Hono } from 'hono'
 import { logAction } from '../utils/logger'
 import { JWTPayload } from '../types'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, checkRole } from '../middleware/auth'
+import { checkClassAccess, checkCourseAccess } from '../utils/auth'
+
 
 type Bindings = {
     DB: D1Database
@@ -25,6 +27,12 @@ scores.get('/', async (c) => {
     if (!examId || !classId) {
         return c.json({ error: 'Exam ID and Class ID are required' }, 400)
     }
+
+    const user = c.get('user')
+    if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
+
 
     try {
         let query = `
@@ -75,6 +83,18 @@ scores.post('/batch', async (c) => {
         return c.json({ error: 'exam_id, course_id, and scores array are required' }, 400)
     }
 
+    const user = c.get('user')
+
+    // 权限校验：首先拿到 exam 对应的 class_id
+    const exam = await c.env.DB.prepare('SELECT class_id FROM exams WHERE id = ?').bind(exam_id).first<any>()
+    if (!exam) return c.json({ error: 'Exam not found' }, 404)
+
+    // 校验对该班级该科目的修改权限
+    if (!await checkCourseAccess(c.env.DB, user, exam.class_id, course_id)) {
+        return c.json({ error: 'Forbidden: 无法在该班级录入此科目分数' }, 403)
+    }
+
+
     try {
         let updatedCount = 0
         for (const item of scoreList) {
@@ -95,7 +115,6 @@ scores.post('/batch', async (c) => {
             updatedCount++
         }
 
-        const user = c.get('user')
         await logAction(c.env.DB, user.userId, user.username, 'BATCH_UPDATE_SCORES', 'score', null, { exam_id, course_id, count: updatedCount })
 
         return c.json({ message: 'Scores updated successfully' })
@@ -110,10 +129,24 @@ scores.delete('/:id', async (c) => {
     const id = c.req.param('id')
 
     try {
+        const user = c.get('user')
+        // 获取成绩详情以获取 class_id 和 course_id
+        const scoreInfo = await c.env.DB.prepare(`
+            SELECT s.class_id, sc.course_id 
+            FROM scores sc
+            JOIN students s ON sc.student_id = s.id
+            WHERE sc.id = ?
+        `).bind(id).first<any>()
+
+        if (!scoreInfo) return c.json({ error: 'Score not found' }, 404)
+
+        if (!await checkCourseAccess(c.env.DB, user, scoreInfo.class_id, scoreInfo.course_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         const { success } = await c.env.DB.prepare('DELETE FROM scores WHERE id = ?').bind(id).run()
 
         if (success) {
-            const user = c.get('user')
             await logAction(c.env.DB, user.userId, user.username, 'DELETE_SCORE', 'score', Number(id), { id })
         }
 
