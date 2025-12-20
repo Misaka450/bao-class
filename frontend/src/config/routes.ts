@@ -51,6 +51,7 @@ const StudentProfile = React.lazy(() => import('../pages/StudentProfile'));
 const ClassAnalysis = React.lazy(() => import('../pages/ClassAnalysis'));
 const ManagementAlerts = React.lazy(() => import('../pages/ManagementAlerts'));
 const AuditLogs = React.lazy(() => import('../pages/AuditLogs'));
+const Users = React.lazy(() => import('../pages/Users'));
 
 /**
  * Main route configuration
@@ -203,6 +204,15 @@ const routes: RouteConfig[] = [
     access: ['admin'],
     title: '操作日志 - 班级管理系统',
     description: '查看系统操作记录和审计信息',
+  },
+  {
+    path: '/users',
+    name: '用户管理',
+    icon: React.createElement(UserOutlined),
+    component: Users,
+    access: ['admin'],
+    title: '用户管理 - 班级管理系统',
+    description: '维护系统登录账号和权限分配',
   },
 ];
 

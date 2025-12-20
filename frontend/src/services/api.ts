@@ -228,6 +228,14 @@ export const aiApi = {
         del(`/api/ai/comments/${id}`),
 };
 
+// ==================== 用户管理 API ====================
+export const userApi = {
+    list: () => get<User[]>('/api/users'),
+    create: (data: any) => post('/api/users', data),
+    update: (id: number, data: any) => put(`/api/users/${id}`, data),
+    delete: (id: number) => del(`/api/users/${id}`),
+};
+
 // ==================== 默认导出 ====================
 
 const api = {
@@ -243,6 +251,7 @@ const api = {
     export: exportApi,
     logs: logsApi,
     ai: aiApi,
+    user: userApi,
 };
 
 export default api;

@@ -25,6 +25,7 @@ import analysis from './routes/analysis';
 import exportRoute from './routes/export';
 import logs from './routes/logs';
 import ai from './routes/ai';
+import users from './routes/users';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -88,6 +89,7 @@ app.route('/api/upload', upload);
 app.route('/api/export', exportRoute);
 app.route('/api/logs', logs);
 app.route('/api/ai', ai);
+app.route('/api/users', users);
 app.route('/api/init', init);
 app.route('/api/debug', debug);
 
