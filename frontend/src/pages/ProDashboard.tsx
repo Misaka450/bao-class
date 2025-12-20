@@ -136,7 +136,7 @@ export default function ProDashboard() {
                                                     color: '#10b981',
                                                     fontFamily: 'Poppins, sans-serif'
                                                 }}>
-                                                    {highestScore?.toFixed(1) || '--'}
+                                                    {typeof highestScore === 'number' ? highestScore.toFixed(1) : '--'}
                                                 </div>
                                             </div>
                                         </Col>
@@ -157,7 +157,7 @@ export default function ProDashboard() {
                                                     color: '#3b82f6',
                                                     fontFamily: 'Poppins, sans-serif'
                                                 }}>
-                                                    {stats?.average_score?.toFixed(1) || '--'}
+                                                    {typeof stats?.average_score === 'number' ? stats.average_score.toFixed(1) : '--'}
                                                 </div>
                                             </div>
                                         </Col>
@@ -180,7 +180,7 @@ export default function ProDashboard() {
                                                     color: '#f59e0b',
                                                     fontFamily: 'Poppins, sans-serif'
                                                 }}>
-                                                    {stats?.pass_rate?.toFixed(1) || '--'}<span style={{ fontSize: '14px', fontWeight: 500 }}>%</span>
+                                                    {stats?.pass_rate != null ? Number(stats.pass_rate).toFixed(1) : '--'}<span style={{ fontSize: '14px', fontWeight: 500 }}>%</span>
                                                 </div>
                                             </div>
                                         </Col>
@@ -199,7 +199,7 @@ export default function ProDashboard() {
                                                     color: '#8b5cf6',
                                                     fontFamily: 'Poppins, sans-serif'
                                                 }}>
-                                                    {stats?.excellent_rate?.toFixed(1) || '--'}<span style={{ fontSize: '14px', fontWeight: 500 }}>%</span>
+                                                    {stats?.excellent_rate != null ? Number(stats.excellent_rate).toFixed(1) : '--'}<span style={{ fontSize: '14px', fontWeight: 500 }}>%</span>
                                                 </div>
                                             </div>
                                         </Col>
