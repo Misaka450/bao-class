@@ -54,7 +54,8 @@ export default function Login() {
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         }}>
             <div style={{
-                width: 400,
+                width: '90%',
+                maxWidth: 400,
                 backgroundColor: 'white',
                 borderRadius: '8px',
                 padding: '24px',

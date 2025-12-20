@@ -151,15 +151,15 @@ export default function ClassAnalysis() {
             <Row gutter={[24, 24]}>
                 <Col span={24}>
                     <Card bordered={false}>
-                        <Row gutter={24} align="middle">
-                            <Col span={8}>
+                        <Row gutter={[24, 24]} align="middle">
+                            <Col xs={24} sm={8}>
                                 <Statistic
                                     title="当前考试"
                                     value={gradeData.exam_info.exam_name}
-                                    valueStyle={{ fontSize: 20 }}
+                                    valueStyle={{ fontSize: 18 }}
                                 />
                             </Col>
-                            <Col span={8}>
+                            <Col xs={12} sm={8}>
                                 <Statistic
                                     title="年级排名"
                                     value={gradeData.current_class.rank}
@@ -167,7 +167,7 @@ export default function ClassAnalysis() {
                                     suffix={`/ ${gradeData.classes.length}`}
                                 />
                             </Col>
-                            <Col span={8}>
+                            <Col xs={12} sm={8}>
                                 <Statistic
                                     title="平均分"
                                     value={gradeData.classes.find((c: any) => c.class_id === gradeData.current_class.class_id)?.average_score || 0}
@@ -274,11 +274,11 @@ export default function ClassAnalysis() {
                 title="班级成绩走势"
                 subtitle="多维度分析班级成绩表现与趋势"
                 extra={
-                    <Space>
+                    <Space wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
                         <Select
                             value={selectedClassId}
                             onChange={setSelectedClassId}
-                            style={{ width: 160 }}
+                            style={{ minWidth: 140, flex: 1 }}
                             placeholder="选择班级"
                         >
                             {classes.map((cls: any) => (
@@ -290,7 +290,7 @@ export default function ClassAnalysis() {
                         <Select
                             value={selectedExamId}
                             onChange={setSelectedExamId}
-                            style={{ width: 220 }}
+                            style={{ minWidth: 180, flex: 1 }}
                             placeholder="选择考试"
                         >
                             {exams.map((exam: any) => (

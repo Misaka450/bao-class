@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Tabs, Button, Upload, message, Alert, Table, Select, Form, Steps, Descriptions, Collapse, Tag, Input } from 'antd';
+import { Card, Tabs, Button, Upload, message, Alert, Table, Select, Form, Steps, Descriptions, Collapse, Tag, Input, Row, Col } from 'antd';
 import type { UploadFile, RcFile } from 'antd/es/upload/interface';
 import { DownloadOutlined, UploadOutlined, FileExcelOutlined, CheckCircleOutlined, WarningOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import * as XLSX from 'xlsx';
@@ -599,27 +599,33 @@ export default function Import() {
             {currentStep === 0 && (
                 <>
                     <Card title="步骤 1: 下载模板" style={{ marginBottom: 16 }}>
-                        <Form layout="inline" style={{ marginBottom: 16 }}>
-                            <Form.Item label="选择班级" required>
-                                <Select
-                                    style={{ width: 200 }}
-                                    placeholder="请选择班级"
-                                    value={selectedClass}
-                                    onChange={setSelectedClass}
-                                    options={classes.map(c => ({ label: c.name, value: c.id }))}
-                                />
-                            </Form.Item>
-                            <Form.Item label="选择考试" required>
-                                <Select
-                                    style={{ width: 200 }}
-                                    placeholder="请选择考试"
-                                    value={selectedExam}
-                                    onChange={setSelectedExam}
-                                    options={exams
-                                        .filter(e => !selectedClass || e.class_id === Number(selectedClass))
-                                        .map(e => ({ label: e.name, value: e.id }))}
-                                />
-                            </Form.Item>
+                        <Form layout="vertical" style={{ marginBottom: 16 }}>
+                            <Row gutter={16}>
+                                <Col xs={24} sm={12}>
+                                    <Form.Item label="选择班级" required>
+                                        <Select
+                                            style={{ width: '100%' }}
+                                            placeholder="请选择班级"
+                                            value={selectedClass}
+                                            onChange={setSelectedClass}
+                                            options={classes.map(c => ({ label: c.name, value: c.id }))}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                                <Col xs={24} sm={12}>
+                                    <Form.Item label="选择考试" required>
+                                        <Select
+                                            style={{ width: '100%' }}
+                                            placeholder="请选择考试"
+                                            value={selectedExam}
+                                            onChange={setSelectedExam}
+                                            options={exams
+                                                .filter(e => !selectedClass || e.class_id === Number(selectedClass))
+                                                .map(e => ({ label: e.name, value: e.id }))}
+                                        />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
                         </Form>
                         <Button
                             type="primary"
@@ -636,7 +642,7 @@ export default function Import() {
                             <span style={{ marginRight: 8, color: 'red' }}>*</span>
                             <span style={{ marginRight: 8 }}>确认归属考试:</span>
                             <Select
-                                style={{ width: 200 }}
+                                style={{ width: '100%', maxWidth: 300 }}
                                 placeholder="请选择考试"
                                 value={selectedExam}
                                 onChange={setSelectedExam}
@@ -758,37 +764,46 @@ export default function Import() {
                         <Card title="AI 识别结果核对">
                             <div style={{ marginBottom: 16 }}>
                                 <Form layout="vertical">
-                                    <div style={{ display: 'flex', gap: 16 }}>
-                                        <Form.Item label="确认班级" required style={{ flex: 1 }}>
-                                            <Select
-                                                placeholder="请选择班级"
-                                                value={selectedClass}
-                                                onChange={setSelectedClass}
-                                                options={classes.map(c => ({ label: c.name, value: c.id }))}
-                                            />
-                                        </Form.Item>
-                                        <Form.Item label="确认考试" required style={{ flex: 1 }}>
-                                            <Select
-                                                placeholder="请选择考试"
-                                                value={selectedExam}
-                                                onChange={setSelectedExam}
-                                                options={exams
-                                                    .filter(e => !selectedClass || e.class_id === Number(selectedClass))
-                                                    .map(e => ({ label: e.name, value: e.id }))}
-                                            />
-                                        </Form.Item>
-                                        <Form.Item label="确认科目" required style={{ flex: 1 }}>
-                                            <Select
-                                                placeholder="请选择科目"
-                                                value={selectedSubject}
-                                                onChange={setSelectedSubject}
-                                                options={(exams.find(e => e.id === Number(selectedExam))?.courses || []).map((c: any) => ({
-                                                    label: c.course_name,
-                                                    value: c.course_name
-                                                }))}
-                                            />
-                                        </Form.Item>
-                                    </div>
+                                    <Row gutter={16}>
+                                        <Col xs={24} sm={8}>
+                                            <Form.Item label="确认班级" required>
+                                                <Select
+                                                    placeholder="请选择班级"
+                                                    value={selectedClass}
+                                                    onChange={setSelectedClass}
+                                                    options={classes.map(c => ({ label: c.name, value: c.id }))}
+                                                    style={{ width: '100%' }}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={8}>
+                                            <Form.Item label="确认考试" required>
+                                                <Select
+                                                    placeholder="请选择考试"
+                                                    value={selectedExam}
+                                                    onChange={setSelectedExam}
+                                                    options={exams
+                                                        .filter(e => !selectedClass || e.class_id === Number(selectedClass))
+                                                        .map(e => ({ label: e.name, value: e.id }))}
+                                                    style={{ width: '100%' }}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                        <Col xs={24} sm={8}>
+                                            <Form.Item label="确认科目" required>
+                                                <Select
+                                                    placeholder="请选择科目"
+                                                    value={selectedSubject}
+                                                    onChange={setSelectedSubject}
+                                                    options={(exams.find(e => e.id === Number(selectedExam))?.courses || []).map((c: any) => ({
+                                                        label: c.course_name,
+                                                        value: c.course_name
+                                                    }))}
+                                                    style={{ width: '100%' }}
+                                                />
+                                            </Form.Item>
+                                        </Col>
+                                    </Row>
                                 </Form>
                             </div>
 

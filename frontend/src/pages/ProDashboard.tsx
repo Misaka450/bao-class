@@ -124,8 +124,8 @@ export default function ProDashboard() {
                                     valueStyle={{ color: '#3b82f6', fontSize: '2rem', fontFamily: 'Poppins' }}
                                     prefix={<RiseOutlined />}
                                 />
-                                <Row gutter={16}>
-                                    <Col span={12}>
+                                <Row gutter={[16, 16]}>
+                                    <Col xs={12} sm={12}>
                                         <Statistic
                                             title="及格率"
                                             value={stats?.pass_rate}
@@ -134,7 +134,7 @@ export default function ProDashboard() {
                                             prefix={<CheckCircleOutlined />}
                                         />
                                     </Col>
-                                    <Col span={12}>
+                                    <Col xs={12} sm={12}>
                                         <Statistic
                                             title="优秀率"
                                             value={stats?.excellent_rate}

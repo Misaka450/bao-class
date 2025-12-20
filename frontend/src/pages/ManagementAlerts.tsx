@@ -94,7 +94,7 @@ export default function ManagementAlerts() {
                     <Select
                         value={selectedClassId}
                         onChange={setSelectedClassId}
-                        style={{ width: 220 }}
+                        style={{ minWidth: 200, width: '100%' }}
                         placeholder="选择班级"
                     >
                         {classes.map((cls) => (
