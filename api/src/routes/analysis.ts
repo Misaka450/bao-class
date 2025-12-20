@@ -355,17 +355,24 @@ ${dataStr}
 
         } catch (aiError: any) {
             console.error('AI generation error:', aiError);
-            report = `未能生成报告: ${aiError.message}`;
+            // 返回错误但不缓存
+            return c.json({
+                report: `未能生成报告: ${aiError.message}`,
+                cached: false,
+                error: true
+            });
         }
 
-        // 5. Store in Cache
-        await c.env.DB.prepare(`
-            INSERT INTO ai_class_reports (class_id, exam_id, report_content)
-            VALUES (?, ?, ?)
-            ON CONFLICT(class_id, exam_id) DO UPDATE SET
-            report_content = excluded.report_content,
-            updated_at = CURRENT_TIMESTAMP
-        `).bind(classId, examId, report).run()
+        // 5. Store in Cache (only successful reports)
+        if (report && !report.startsWith('未能生成报告')) {
+            await c.env.DB.prepare(`
+                INSERT INTO ai_class_reports (class_id, exam_id, report_content)
+                VALUES (?, ?, ?)
+                ON CONFLICT(class_id, exam_id) DO UPDATE SET
+                report_content = excluded.report_content,
+                updated_at = CURRENT_TIMESTAMP
+            `).bind(classId, examId, report).run();
+        }
 
         return c.json({ report, cached: false })
     } catch (error: any) {
