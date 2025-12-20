@@ -522,7 +522,7 @@ export default function Import() {
 
             {currentStep === 0 && (
                 <>
-                    <Card title="步骤 1: 下载模板" style={{ marginBottom: 16 }}>
+                    <Card title={<span><DownloadOutlined style={{ color: '#1890ff', marginRight: 8 }} />步骤 1: 下载模板</span>} style={{ marginBottom: 16 }}>
                         <Button
                             type="primary"
                             icon={<DownloadOutlined />}
@@ -532,7 +532,7 @@ export default function Import() {
                         </Button>
                     </Card>
 
-                    <Card title="步骤 2: 上传文件">
+                    <Card title={<span><UploadOutlined style={{ color: '#52c41a', marginRight: 8 }} />步骤 2: 上传文件</span>}>
                         <Upload.Dragger
                             name="file"
                             accept=".xlsx,.xls"
@@ -552,7 +552,7 @@ export default function Import() {
             )}
 
             {currentStep === 1 && (
-                <Card title="数据预览">
+                <Card title={<span><CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />数据预览与验证</span>}>
                     {renderValidationSummary()}
                     {renderPreviewTable()}
                     <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
@@ -595,7 +595,7 @@ export default function Import() {
             key: 'students',
             label: (
                 <span>
-                    <FileExcelOutlined /> 学生导入
+                    <FileExcelOutlined style={{ marginRight: 4 }} /> 学生导入
                 </span>
             ),
             children: renderStudentsTab(),
@@ -604,7 +604,7 @@ export default function Import() {
             key: 'scores',
             label: (
                 <span>
-                    <FileExcelOutlined /> 成绩导入
+                    <FileExcelOutlined style={{ marginRight: 4 }} /> 成绩导入
                 </span>
             ),
             children: (
@@ -625,11 +625,11 @@ export default function Import() {
 
                     {currentStep === 0 && (
                         <>
-                            <Card title="步骤 1: 下载模板" style={{ marginBottom: 16 }}>
+                            <Card title={<span><DownloadOutlined style={{ color: '#1890ff', marginRight: 8 }} />步骤 1: 下载定制模板</span>} style={{ marginBottom: 16 }}>
                                 <Form layout="vertical" style={{ marginBottom: 16 }}>
                                     <Row gutter={16}>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item label="选择班级" required>
+                                            <Form.Item label="选择班级" required tooltip="仅显示您管辖的班级">
                                                 <Select
                                                     style={{ width: '100%' }}
                                                     placeholder="请选择班级"
@@ -640,15 +640,16 @@ export default function Import() {
                                             </Form.Item>
                                         </Col>
                                         <Col xs={24} sm={12}>
-                                            <Form.Item label="选择考试" required>
+                                            <Form.Item label="选择考试" required tooltip="系统将根据班级自动过滤考试">
                                                 <Select
                                                     style={{ width: '100%' }}
-                                                    placeholder="请选择考试"
+                                                    placeholder={selectedClass ? "请选择考试" : "请先选择班级"}
                                                     value={selectedExam}
                                                     onChange={setSelectedExam}
                                                     options={filteredExams
                                                         .filter(e => !selectedClass || e.class_id === Number(selectedClass))
                                                         .map(e => ({ label: e.name, value: e.id }))}
+                                                    disabled={!selectedClass}
                                                 />
                                             </Form.Item>
                                         </Col>
@@ -660,14 +661,13 @@ export default function Import() {
                                     onClick={() => handleDownloadTemplate('scores')}
                                     disabled={!selectedClass || !selectedExam}
                                 >
-                                    下载成绩导入模板
+                                    生成并下载成绩模板
                                 </Button>
                             </Card>
 
-                            <Card title="步骤 2: 上传文件">
-                                <div style={{ marginBottom: 16 }}>
-                                    <span style={{ marginRight: 8, color: 'red' }}>*</span>
-                                    <span style={{ marginRight: 8 }}>确认归属考试:</span>
+                            <Card title={<span><UploadOutlined style={{ color: '#52c41a', marginRight: 8 }} />步骤 2: 上传成绩文件</span>}>
+                                <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                                    <span style={{ marginRight: 12, fontWeight: 500 }}>确认归属考试:</span>
                                     <Select
                                         style={{ width: '100%', maxWidth: 300 }}
                                         placeholder="请选择考试"

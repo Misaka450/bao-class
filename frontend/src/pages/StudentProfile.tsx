@@ -310,15 +310,34 @@ export default function StudentProfile() {
                                 >
                                     {aiComment ? (
                                         <>
-                                            <div style={{ background: '#f6ffed', padding: 16, borderRadius: 8, border: '1px solid #b7eb8f', marginBottom: 8 }}>
-                                                <Paragraph style={{ marginBottom: 0, fontSize: 15, lineHeight: 1.8 }}>
+                                            <div style={{
+                                                background: 'rgba(240, 245, 255, 0.6)',
+                                                padding: '20px',
+                                                borderRadius: '12px',
+                                                border: '1px solid rgba(145, 202, 255, 0.5)',
+                                                marginBottom: '12px',
+                                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
+                                                position: 'relative',
+                                                overflow: 'hidden'
+                                            }}>
+                                                <div style={{
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: '4px',
+                                                    height: '100%',
+                                                    background: 'linear-gradient(to bottom, #1890ff, #722ed1)'
+                                                }} />
+                                                <Paragraph style={{ marginBottom: 0, fontSize: '16px', lineHeight: '1.8', color: '#1e293b' }}>
                                                     {aiComment}
                                                 </Paragraph>
                                             </div>
                                             {commentSource && (
-                                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                                    <ClockCircleOutlined /> 来源：{commentSource}
-                                                </Text>
+                                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                    <Tag icon={<ClockCircleOutlined />} color="default" style={{ fontSize: '11px', opacity: 0.7, border: 'none', background: 'transparent' }}>
+                                                        来源：{commentSource}
+                                                    </Tag>
+                                                </div>
                                             )}
                                         </>
                                     ) : (
