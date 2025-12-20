@@ -114,17 +114,17 @@ export default function ProDashboard() {
                                 className="glass-card"
                                 bordered={false}
                                 style={{ height: '100%' }}
-                                bodyStyle={{ height: 360, padding: '32px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
+                                bodyStyle={{ height: 360, padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
                             >
                                 {/* 指标网格 - 更加清爽的布局 */}
                                 {/* 指标网格 - 充实版布局 */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '16px', height: '100%' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '12px', height: '100%' }}>
                                     {/* 最高分 */}
                                     <div style={{
                                         background: 'linear-gradient(145deg, #ffffff 0%, rgba(16, 185, 129, 0.08) 100%)',
                                         borderRadius: '16px',
                                         border: '1px solid rgba(16, 185, 129, 0.15)',
-                                        padding: '20px',
+                                        padding: '16px',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'center',
@@ -134,7 +134,7 @@ export default function ProDashboard() {
                                         <div style={{
                                             color: '#10b981',
                                             fontSize: '24px',
-                                            marginBottom: '8px',
+                                            marginBottom: '6px',
                                             padding: '10px',
                                             background: 'rgba(255,255,255,0.8)',
                                             borderRadius: '50%',
@@ -143,7 +143,7 @@ export default function ProDashboard() {
                                             <TrophyOutlined />
                                         </div>
                                         <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>最高分</div>
-                                        <div style={{ fontSize: '26px', fontWeight: 700, color: '#10b981', fontFamily: 'Poppins' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#10b981', fontFamily: 'Poppins' }}>
                                             {typeof highestScore === 'number' ? highestScore.toFixed(1) : '--'}
                                         </div>
                                     </div>
@@ -153,7 +153,7 @@ export default function ProDashboard() {
                                         background: 'linear-gradient(145deg, #ffffff 0%, rgba(59, 130, 246, 0.08) 100%)',
                                         borderRadius: '16px',
                                         border: '1px solid rgba(59, 130, 246, 0.15)',
-                                        padding: '20px',
+                                        padding: '16px',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'center',
@@ -163,7 +163,7 @@ export default function ProDashboard() {
                                         <div style={{
                                             color: '#3b82f6',
                                             fontSize: '24px',
-                                            marginBottom: '8px',
+                                            marginBottom: '6px',
                                             padding: '10px',
                                             background: 'rgba(255,255,255,0.8)',
                                             borderRadius: '50%',
@@ -172,7 +172,7 @@ export default function ProDashboard() {
                                             <RiseOutlined />
                                         </div>
                                         <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{selectedCourseId ? "平均分" : "平均总分"}</div>
-                                        <div style={{ fontSize: '26px', fontWeight: 700, color: '#3b82f6', fontFamily: 'Poppins' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#3b82f6', fontFamily: 'Poppins' }}>
                                             {stats?.average_score != null ? Number(stats.average_score).toFixed(1) : '--'}
                                         </div>
                                     </div>
@@ -182,7 +182,7 @@ export default function ProDashboard() {
                                         background: 'linear-gradient(145deg, #ffffff 0%, rgba(245, 158, 11, 0.08) 100%)',
                                         borderRadius: '16px',
                                         border: '1px solid rgba(245, 158, 11, 0.15)',
-                                        padding: '20px',
+                                        padding: '16px',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'center',
@@ -192,7 +192,7 @@ export default function ProDashboard() {
                                         <div style={{
                                             color: '#f59e0b',
                                             fontSize: '24px',
-                                            marginBottom: '8px',
+                                            marginBottom: '6px',
                                             padding: '10px',
                                             background: 'rgba(255,255,255,0.8)',
                                             borderRadius: '50%',
@@ -201,7 +201,7 @@ export default function ProDashboard() {
                                             <CheckCircleOutlined />
                                         </div>
                                         <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>及格率</div>
-                                        <div style={{ fontSize: '26px', fontWeight: 700, color: '#f59e0b', fontFamily: 'Poppins' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#f59e0b', fontFamily: 'Poppins' }}>
                                             {stats?.pass_rate != null ? Number(stats.pass_rate).toFixed(1) : '--'}
                                             <span style={{ fontSize: '14px', fontWeight: 500, marginLeft: '2px' }}>%</span>
                                         </div>
@@ -212,7 +212,7 @@ export default function ProDashboard() {
                                         background: 'linear-gradient(145deg, #ffffff 0%, rgba(139, 92, 246, 0.08) 100%)',
                                         borderRadius: '16px',
                                         border: '1px solid rgba(139, 92, 246, 0.15)',
-                                        padding: '20px',
+                                        padding: '16px',
                                         display: 'flex',
                                         flexDirection: 'column',
                                         justifyContent: 'center',
@@ -222,7 +222,7 @@ export default function ProDashboard() {
                                         <div style={{
                                             color: '#8b5cf6',
                                             fontSize: '24px',
-                                            marginBottom: '8px',
+                                            marginBottom: '6px',
                                             padding: '10px',
                                             background: 'rgba(255,255,255,0.8)',
                                             borderRadius: '50%',
@@ -231,7 +231,7 @@ export default function ProDashboard() {
                                             <StarOutlined />
                                         </div>
                                         <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>优秀率</div>
-                                        <div style={{ fontSize: '26px', fontWeight: 700, color: '#8b5cf6', fontFamily: 'Poppins' }}>
+                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#8b5cf6', fontFamily: 'Poppins' }}>
                                             {stats?.excellent_rate != null ? Number(stats.excellent_rate).toFixed(1) : '--'}
                                             <span style={{ fontSize: '14px', fontWeight: 500, marginLeft: '2px' }}>%</span>
                                         </div>
