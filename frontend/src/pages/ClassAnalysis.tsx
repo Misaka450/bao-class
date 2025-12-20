@@ -230,12 +230,6 @@ export default function ClassAnalysis() {
                 }
             />
 
-            {/* AI 分析摘要 */}
-            <ClassAiReportCard
-                classId={selectedClassId}
-                examId={selectedExamId ? Number(selectedExamId) : 0}
-            />
-
             {loading ? (
                 <div style={{ padding: 40, textAlign: 'center' }}>
                     <Spin size="large" tip="正在分析数据..." />
@@ -249,6 +243,12 @@ export default function ClassAnalysis() {
                     {renderSubjectModule()}
                 </>
             )}
+
+            {/* AI 分析摘要 */}
+            <ClassAiReportCard
+                classId={selectedClassId}
+                examId={selectedExamId ? Number(selectedExamId) : 0}
+            />
         </Space>
     );
 }
