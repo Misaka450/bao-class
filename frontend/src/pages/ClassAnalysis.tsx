@@ -1,20 +1,16 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Select, Spin, Typography, Row, Col, Empty, Tabs, Statistic, Space } from 'antd';
+import { Card, Select, Spin, Typography, Row, Col, Empty, Statistic, Space, Tag } from 'antd';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-    AreaChart, Area, BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell
+    BarChart, Bar, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell
 } from 'recharts';
-import { TrophyOutlined, RobotOutlined } from '@ant-design/icons';
+import { TrophyOutlined, RiseOutlined } from '@ant-design/icons';
 import ClassAiReportCard from '../components/ClassAiReportCard';
-import ExamQualityCard from '../components/ExamQualityCard';
-import ScoreDistributionChart from '../components/ScoreDistributionChart';
 import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
 import { useClassTrend, useClassSubjectTrend, useGradeComparison } from '../hooks/useClassAnalysis';
-import api from '../services/api';
 import PageHeader from '../components/PageHeader';
 import ChartWrapper from '../components/ChartWrapper';
-import StatisticsRow from '../components/StatisticsRow';
 
 const { Title } = Typography;
 
@@ -22,9 +18,6 @@ export default function ClassAnalysis() {
     const { data: classes = [] } = useClassList();
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [selectedExamId, setSelectedExamId] = useState<string>('');
-    const [activeTab, setActiveTab] = useState('overview');
-    const [distributionData, setDistributionData] = useState<any>(null);
-    const [loadingDistribution, setLoadingDistribution] = useState(false);
 
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
@@ -57,158 +50,137 @@ export default function ClassAnalysis() {
     const loading = loadingTrend || loadingSubject || loadingGrade;
 
     // Render functions for each tab
-    const renderOverviewTab = () => (
-        <Row gutter={[24, 24]}>
-            <Col span={24}>
-                <Card title="平均分走势" bordered={false} className="glass-card">
-                    <ChartWrapper>
-                        <LineChart data={trendData?.trends || []}>
-                            <defs>
-                                <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="var(--primary-color)" stopOpacity={0.1} />
-                                    <stop offset="95%" stopColor="var(--primary-color)" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                                dataKey="exam_name"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#64748b', fontSize: 12 }}
-                                dy={10}
-                            />
-                            <YAxis
-                                domain={[0, 'auto']}
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#64748b', fontSize: 12 }}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    borderRadius: '12px',
-                                    border: 'none',
-                                    boxShadow: 'var(--shadow-lg)',
-                                    background: 'rgba(255, 255, 255, 0.95)',
-                                    backdropFilter: 'blur(4px)'
-                                }}
-                            />
-                            <Legend verticalAlign="top" height={36} iconType="circle" />
-                            <Line
-                                type="monotone"
-                                dataKey="average_score"
-                                name="平均分"
-                                stroke="var(--primary-color)"
-                                strokeWidth={4}
-                                dot={{ fill: 'var(--primary-color)', strokeWidth: 2, r: 4, stroke: '#fff' }}
-                                activeDot={{ r: 6, strokeWidth: 0 }}
-                                animationDuration={1500}
-                                animationBegin={0}
-                            />
-                        </LineChart>
-                    </ChartWrapper>
-                </Card>
-            </Col>
-            <Col span={24}>
-                <Card title="及格率与优秀率走势 (%)" bordered={false} className="glass-card">
-                    <ChartWrapper>
-                        <AreaChart data={trendData?.trends || []}>
-                            <defs>
-                                <linearGradient id="colorPass" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colorExc" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis
-                                dataKey="exam_name"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#64748b', fontSize: 12 }}
-                                dy={10}
-                            />
-                            <YAxis
-                                domain={[0, 100]}
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#64748b', fontSize: 12 }}
-                            />
-                            <Tooltip
-                                contentStyle={{
-                                    borderRadius: '12px',
-                                    border: 'none',
-                                    boxShadow: 'var(--shadow-lg)',
-                                    background: 'rgba(255, 255, 255, 0.95)',
-                                    backdropFilter: 'blur(4px)'
-                                }}
-                            />
-                            <Legend verticalAlign="top" height={36} iconType="circle" />
-                            <Area
-                                type="monotone"
-                                dataKey="pass_rate"
-                                name="及格率"
-                                stackId="1"
-                                stroke="#10b981"
-                                strokeWidth={3}
-                                fill="url(#colorPass)"
-                                animationDuration={1500}
-                                animationBegin={0}
-                            />
-                            <Area
-                                type="monotone"
-                                dataKey="excellent_rate"
-                                name="优秀率"
-                                stackId="2"
-                                stroke="#8b5cf6"
-                                strokeWidth={3}
-                                fill="url(#colorExc)"
-                                animationDuration={1500}
-                                animationBegin={0}
-                            />
-                        </AreaChart>
-                    </ChartWrapper>
-                </Card>
-            </Col>
-        </Row>
-    );
+    const renderComprehensiveModule = () => {
+        const currentClassInfo = gradeData ? gradeData.classes.find((c: any) => c.class_id === gradeData.current_class.class_id) : null;
+        const averageGradeScore = gradeData ? (gradeData.classes.reduce((acc: number, cur: any) => acc + cur.average_score, 0) / gradeData.classes.length) : 0;
+        const scoreDiff = currentClassInfo ? (currentClassInfo.average_score - averageGradeScore) : 0;
 
-    const renderSubjectTab = () => {
-        if (!subjectData?.subjects?.length) return <Empty description="暂无数据" />;
+        return (
+            <Card title="📊 综合成绩与排名分析" bordered={false} className="glass-card" style={{ marginBottom: 24 }}>
+                <Row gutter={[24, 24]}>
+                    {/* 左侧：平均分走势 */}
+                    <Col xs={24} lg={14}>
+                        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 16, fontWeight: 500 }}>班级平均分历史走势</span>
+                            <Tag color="blue">近 {trendData?.trends?.length || 0} 次考试</Tag>
+                        </div>
+                        <ChartWrapper height={320}>
+                            <LineChart data={trendData?.trends || []}>
+                                <defs>
+                                    <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="var(--primary-color)" stopOpacity={0.1} />
+                                        <stop offset="95%" stopColor="var(--primary-color)" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="exam_name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                                <YAxis domain={[0, 'auto']} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
+                                <Legend verticalAlign="top" height={36} />
+                                <Line
+                                    type="monotone"
+                                    dataKey="average_score"
+                                    name="班级平均分"
+                                    stroke="var(--primary-color)"
+                                    strokeWidth={4}
+                                    dot={{ fill: 'var(--primary-color)', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                                    activeDot={{ r: 6, strokeWidth: 0 }}
+                                    animationDuration={1500}
+                                />
+                            </LineChart>
+                        </ChartWrapper>
+                    </Col>
+
+                    {/* 右侧：年级对比概览 */}
+                    <Col xs={24} lg={10}>
+                        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ marginBottom: 16, fontSize: 16, fontWeight: 500 }}>当前考试年级定位</div>
+                            {gradeData && currentClassInfo ? (
+                                <>
+                                    <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+                                        <Col span={12}>
+                                            <Statistic
+                                                title="年级排名"
+                                                value={gradeData.current_class.rank}
+                                                suffix={`/ ${gradeData.classes.length}`}
+                                                valueStyle={{ color: '#faad14', fontWeight: 'bold' }}
+                                                prefix={<TrophyOutlined />}
+                                            />
+                                        </Col>
+                                        <Col span={12}>
+                                            <Statistic
+                                                title="超年级均分"
+                                                value={scoreDiff.toFixed(1)}
+                                                valueStyle={{ color: scoreDiff >= 0 ? '#52c41a' : '#ff4d4f' }}
+                                                prefix={<RiseOutlined />}
+                                            />
+                                        </Col>
+                                    </Row>
+                                    <div style={{ flex: 1, minHeight: 200 }}>
+                                        <ChartWrapper height={240}>
+                                            <BarChart data={gradeData.classes} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
+                                                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                                                <XAxis type="number" hide />
+                                                <YAxis dataKey="class_name" type="category" width={80} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                                                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} contentStyle={{ borderRadius: '8px', border: 'none' }} />
+                                                <Bar dataKey="average_score" name="平均分" barSize={20} radius={[0, 4, 4, 0]} animationDuration={1500}>
+                                                    {gradeData.classes.map((entry: any, index: number) => (
+                                                        <Cell key={`cell-${index}`} fill={entry.class_id === gradeData.current_class.class_id ? 'var(--primary-color)' : '#e2e8f0'} />
+                                                    ))}
+                                                </Bar>
+                                            </BarChart>
+                                        </ChartWrapper>
+                                    </div>
+                                </>
+                            ) : <Empty description="暂无年级数据" />}
+                        </div>
+                    </Col>
+                </Row>
+            </Card>
+        );
+    };
+
+    const renderSubjectModule = () => {
+        if (!subjectData?.subjects?.length) return null;
 
         const latestExamIndex = (subjectData.subjects[0]?.trends?.length || 0) - 1;
-        const radarData = subjectData.subjects.map(sub => ({
+        const radarData = subjectData.subjects.map((sub: any) => ({
             subject: sub.course_name,
-            passRate: sub.trends[latestExamIndex]?.pass_rate || 0,
-            fullMark: 100
+            score: sub.trends[latestExamIndex]?.average_score || 0,
+            fullMark: 100 // 假设满分100，实际应从API获取
         }));
 
         return (
-            <Row gutter={[24, 24]}>
-                <Col xs={24} lg={12}>
-                    <Card title="各科目及格率对比 (最新考试)" bordered={false}>
-                        <ChartWrapper>
-                            <RadarChart cx="50%" cy="50%" outerRadius="80%" data={radarData}>
-                                <PolarGrid />
-                                <PolarAngleAxis dataKey="subject" />
-                                <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                                <Radar name="及格率" dataKey="passRate" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+            <Card title="🧬 学科优劣势透视" bordered={false} className="glass-card">
+                <Row gutter={[24, 24]}>
+                    {/* 左侧：学科雷达 */}
+                    <Col xs={24} lg={10}>
+                        <div style={{ marginBottom: 16, fontSize: 16, fontWeight: 500 }}>学科能力模型</div>
+                        <ChartWrapper height={320}>
+                            <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
+                                <PolarGrid stroke="#e2e8f0" />
+                                <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 12 }} />
+                                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                <Radar name="平均分" dataKey="score" stroke="var(--primary-color)" fill="var(--primary-color)" fillOpacity={0.6} animationDuration={1500} />
                                 <Tooltip />
-                                <Legend />
                             </RadarChart>
                         </ChartWrapper>
-                    </Card>
-                </Col>
-                <Col xs={24} lg={12}>
-                    <Card title="各科目平均分走势" bordered={false}>
-                        <ChartWrapper>
+                    </Col>
+
+                    {/* 右侧：学科走势 */}
+                    <Col xs={24} lg={14}>
+                        <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 16, fontWeight: 500 }}>各学科平均分变化</span>
+                            <Space>
+                                <small style={{ color: '#94a3b8' }}>点击图例隐藏/显示学科</small>
+                            </Space>
+                        </div>
+                        <ChartWrapper height={320}>
                             <LineChart>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="exam_name" allowDuplicatedCategory={false} />
-                                <YAxis domain={[0, 100]} />
-                                <Tooltip />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="exam_name" allowDuplicatedCategory={false} axisLine={false} tickLine={false} />
+                                <YAxis domain={[0, 'auto']} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
                                 <Legend />
                                 {subjectData.subjects.map((sub: any, index: number) => (
                                     <Line
@@ -217,187 +189,66 @@ export default function ClassAnalysis() {
                                         type="monotone"
                                         dataKey="average_score"
                                         name={sub.course_name}
-                                        stroke={['#8884d8', '#82ca9d', '#ffc658', '#ff7300'][index % 4]}
+                                        stroke={['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'][index % 6]}
+                                        strokeWidth={2}
+                                        dot={false}
+                                        activeDot={{ r: 4 }}
+                                        animationDuration={1500}
                                     />
                                 ))}
                             </LineChart>
                         </ChartWrapper>
-                    </Card>
-                </Col>
-            </Row>
+                    </Col>
+                </Row>
+            </Card>
         );
     };
-
-    const renderGradeTab = () => {
-        if (!gradeData) return <Empty description="暂无数据" />;
-
-        return (
-            <Row gutter={[24, 24]}>
-                <Col span={24}>
-                    <Card bordered={false}>
-                        <Row gutter={[24, 24]} align="middle">
-                            <Col xs={24} sm={8}>
-                                <Statistic
-                                    title="当前考试"
-                                    value={gradeData.exam_info.exam_name}
-                                    valueStyle={{ fontSize: 18 }}
-                                />
-                            </Col>
-                            <Col xs={12} sm={8}>
-                                <Statistic
-                                    title="年级排名"
-                                    value={gradeData.current_class.rank}
-                                    prefix={<TrophyOutlined style={{ color: '#faad14' }} />}
-                                    suffix={`/ ${gradeData.classes.length}`}
-                                />
-                            </Col>
-                            <Col xs={12} sm={8}>
-                                <Statistic
-                                    title="平均分"
-                                    value={gradeData.classes.find((c: any) => c.class_id === gradeData.current_class.class_id)?.average_score || 0}
-                                    precision={1}
-                                />
-                            </Col>
-                        </Row>
-                    </Card>
-                </Col>
-                <Col span={24}>
-                    <Card title="年级各班平均分对比" bordered={false}>
-                        <ChartWrapper height={400}>
-                            <BarChart data={gradeData.classes} layout="vertical" margin={{ left: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis type="number" domain={[0, 'auto']} />
-                                <YAxis dataKey="class_name" type="category" width={100} />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="average_score" name="平均总分" fill="#1890ff" barSize={30}>
-                                    {gradeData.classes.map((entry: any, index: number) => (
-                                        <Cell key={`cell-${index}`} fill={entry.class_id === gradeData.current_class.class_id ? '#ff7300' : '#1890ff'} />
-                                    ))}
-                                </Bar>
-                            </BarChart>
-                        </ChartWrapper>
-                    </Card>
-                </Col>
-            </Row>
-        );
-    };
-
-    // Fetch distribution data when exam changes
-    useEffect(() => {
-        const fetchDistribution = async () => {
-            if (!selectedClassId || !selectedExamId) {
-                setDistributionData(null);
-                return;
-            }
-
-            setLoadingDistribution(true);
-            try {
-                const response = await fetch(
-                    `${import.meta.env.VITE_API_URL || 'https://api.980823.xyz/api'}/analysis/class/${selectedClassId}/exam/${selectedExamId}/distribution`,
-                    { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
-                );
-                const data = await response.json();
-                setDistributionData(data);
-            } catch (error) {
-                console.error('Failed to fetch distribution:', error);
-                setDistributionData(null);
-            } finally {
-                setLoadingDistribution(false);
-            }
-        };
-
-        fetchDistribution();
-    }, [selectedClassId, selectedExamId]);
-
-    const renderAiTab = () => (
-        <Row gutter={[24, 24]}>
-            {/* 上半部分：图表概览 (考试质量 + 成绩分布) */}
-            <Col xs={24} xl={12}>
-                <ExamQualityCard examId={selectedExamId ? Number(selectedExamId) : undefined} />
-            </Col>
-            <Col xs={24} xl={12}>
-                <Card title="各科成绩分布" bordered={false} style={{ height: '100%' }}>
-                    <ScoreDistributionChart data={distributionData} loading={loadingDistribution} />
-                </Card>
-            </Col>
-
-            {/* 下半部分：AI 智能报告 (通栏) */}
-            <Col span={24}>
-                <ClassAiReportCard classId={selectedClassId} examId={selectedExamId ? Number(selectedExamId) : undefined} />
-            </Col>
-        </Row>
-    );
-
-    const items = useMemo(() => [
-        {
-            key: 'overview',
-            label: '综合走势',
-            children: renderOverviewTab(),
-        },
-        {
-            key: 'subject',
-            label: '科目分析',
-            children: renderSubjectTab(),
-        },
-        {
-            key: 'grade',
-            label: '年级对比',
-            children: renderGradeTab(),
-        },
-        {
-            key: 'ai',
-            label: <span><RobotOutlined /> AI 智能分析</span>,
-            children: renderAiTab(),
-        },
-    ], [selectedClassId, selectedExamId, trendData, subjectData, gradeData]);
 
     return (
-        <div>
+        <Space direction="vertical" size={24} style={{ width: '100%' }}>
             <PageHeader
-                title="班级成绩走势"
-                subtitle="多维度分析班级成绩表现与趋势"
+                title="班级学情分析"
+                subtitle="Class Performance Analysis"
                 extra={
-                    <Space wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
+                    <Space>
                         <Select
+                            placeholder="选择班级"
                             value={selectedClassId}
                             onChange={setSelectedClassId}
-                            style={{ minWidth: 140, flex: 1 }}
-                            placeholder="选择班级"
-                        >
-                            {classes.map((cls: any) => (
-                                <Select.Option key={cls.id} value={cls.id.toString()}>
-                                    {cls.name}
-                                </Select.Option>
-                            ))}
-                        </Select>
+                            style={{ width: 140 }}
+                            options={classes.map((c: any) => ({ label: c.name, value: c.id.toString() }))}
+                        />
                         <Select
+                            placeholder="选择考试"
                             value={selectedExamId}
                             onChange={setSelectedExamId}
-                            style={{ minWidth: 180, flex: 1 }}
-                            placeholder="选择考试"
-                        >
-                            {exams.map((exam: any) => (
-                                <Select.Option key={exam.id} value={exam.id.toString()}>
-                                    {exam.name}
-                                </Select.Option>
-                            ))}
-                        </Select>
+                            style={{ width: 180 }}
+                            options={exams.map((e: any) => ({ label: e.exam_name, value: e.id.toString() }))}
+                            allowClear
+                        />
                     </Space>
                 }
             />
 
-            <Spin spinning={loading}>
-                <Tabs
-                    defaultActiveKey="overview"
-                    activeKey={activeTab}
-                    onChange={setActiveTab}
-                    items={items}
-                    type="card"
-                    style={{ background: '#fff', padding: '16px', borderRadius: '8px' }}
-                    destroyInactiveTabPane
-                />
-            </Spin>
-        </div>
+            {/* AI 分析摘要 */}
+            <ClassAiReportCard
+                classId={selectedClassId}
+                examId={selectedExamId ? Number(selectedExamId) : 0}
+            />
+
+            {loading ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                    <Spin size="large" tip="正在分析数据..." />
+                </div>
+            ) : (
+                <>
+                    {/* 模块一：综合成绩与排名 */}
+                    {renderComprehensiveModule()}
+
+                    {/* 模块二：学科优劣势透视 */}
+                    {renderSubjectModule()}
+                </>
+            )}
+        </Space>
     );
 }
