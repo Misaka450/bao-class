@@ -135,6 +135,8 @@ export default function StudentProfile() {
                 onCancel={() => setEditingCommentId(null)}
                 okText="保存"
                 cancelText="取消"
+                width="90%"
+                style={{ maxWidth: 600 }}
             >
                 <Input.TextArea
                     value={editingCommentText}

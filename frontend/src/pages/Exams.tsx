@@ -222,9 +222,10 @@ export default function Exams() {
                 onFinish={handleSubmit}
                 initialValues={editingExam || {}}
                 layout="vertical"
-                width={600}
                 modalProps={{
                     destroyOnClose: true,
+                    width: '90%',
+                    style: { maxWidth: 600 },
                 }}
             >
                 <ProFormText

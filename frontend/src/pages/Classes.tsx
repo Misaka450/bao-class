@@ -176,9 +176,10 @@ export default function Classes() {
                 onFinish={handleSubmit}
                 initialValues={editingClass || {}}
                 layout="vertical"
-                width={600}
                 modalProps={{
                     destroyOnClose: true,
+                    width: '90%',
+                    style: { maxWidth: 600 },
                 }}
             >
                 <ProFormText

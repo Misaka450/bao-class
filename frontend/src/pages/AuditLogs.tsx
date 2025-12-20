@@ -4,6 +4,7 @@ import { SafetyCertificateOutlined } from '@ant-design/icons';
 import type { ColumnsType } from 'antd/es/table';
 import { API_BASE_URL } from '../config';
 import { useAuthStore } from '../store/authStore';
+import PageHeader from '../components/PageHeader';
 
 interface AuditLog {
     id: number;
@@ -106,17 +107,13 @@ export default function AuditLogs() {
 
     return (
         <div>
-            <div style={{ marginBottom: 24 }}>
-                <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
-                    <SafetyCertificateOutlined style={{ marginRight: 8 }} />
-                    操作日志
-                </h2>
-                <p style={{ margin: '4px 0 0 0', color: '#666' }}>
-                    查看系统的操作记录，追踪数据变更
-                </p>
-            </div>
+            <PageHeader
+                title="操作日志"
+                subtitle="查看系统的操作记录，追踪数据变更"
+                icon={<SafetyCertificateOutlined />}
+            />
 
-            <Card>
+            <Card bordered={false} bodyStyle={{ padding: 0 }}>
                 <Table
                     columns={columns}
                     dataSource={logs}
@@ -124,6 +121,8 @@ export default function AuditLogs() {
                     loading={loading}
                     pagination={pagination}
                     onChange={handleTableChange}
+                    scroll={{ x: 'max-content' }}
+                    size="small"
                 />
             </Card>
         </div>
