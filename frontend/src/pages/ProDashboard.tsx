@@ -114,10 +114,10 @@ export default function ProDashboard() {
                                 className="glass-card"
                                 bordered={false}
                                 style={{ height: '100%' }}
-                                bodyStyle={{ padding: '20px' }}
+                                bodyStyle={{ height: 360, padding: '32px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
                             >
                                 {/* 指标网格 - 更加清爽的布局 */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px 24px' }}>
                                     {/* 最高分 */}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                         <div style={{
