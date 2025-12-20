@@ -203,7 +203,7 @@ export default function ProDashboard() {
                     {/* Student Stats Row */}
                     <ProCard ghost style={{ marginTop: 24 }} gutter={[24, 24]}>
                         {/* Top 5 Students */}
-                        <ProCard colSpan={{ xs: 24, md: 8 }} title="优秀学生 (Top 5)">
+                        <ProCard colSpan={{ xs: 24, md: 8 }} title="优秀学生 (Top 5)" style={{ height: '100%' }}>
                             <List
                                 itemLayout="horizontal"
                                 dataSource={topStudents}
@@ -220,7 +220,7 @@ export default function ProDashboard() {
                         </ProCard>
 
                         {/* Most Improved */}
-                        <ProCard colSpan={{ xs: 24, md: 8 }} title="进步最大 (Top 5)">
+                        <ProCard colSpan={{ xs: 24, md: 8 }} title="进步最大 (Top 5)" style={{ height: '100%' }}>
                             <List
                                 itemLayout="horizontal"
                                 dataSource={progress.improved.slice(0, 5)}
@@ -241,7 +241,7 @@ export default function ProDashboard() {
                         </ProCard>
 
                         {/* Biggest Decline */}
-                        <ProCard colSpan={{ xs: 24, md: 8 }} title="退步最大 (Top 5)">
+                        <ProCard colSpan={{ xs: 24, md: 8 }} title="退步最大 (Top 5)" style={{ height: '100%' }}>
                             <List
                                 itemLayout="horizontal"
                                 dataSource={progress.declined.slice(0, 5)}

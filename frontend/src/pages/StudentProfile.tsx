@@ -211,7 +211,7 @@ export default function StudentProfile() {
 
                 {/* 图表展示区 */}
                 <Col xs={24} lg={12}>
-                    <Card title="考试成绩趋势" bordered={false}>
+                    <Card title="考试成绩趋势" bordered={false} style={{ height: '100%' }}>
                         <ChartWrapper height={300}>
                             <LineChart data={data.history} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -235,7 +235,7 @@ export default function StudentProfile() {
                 </Col>
 
                 <Col xs={24} lg={12}>
-                    <Card title="最近科目表现" bordered={false}>
+                    <Card title="最近科目表现" bordered={false} style={{ height: '100%' }}>
                         <ChartWrapper height={300}>
                             <RadarChart cx="50%" cy="50%" outerRadius="80%" data={data.radar}>
                                 <PolarGrid />
