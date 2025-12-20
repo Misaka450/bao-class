@@ -85,6 +85,7 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
       }}
       // Sider settings
       siderWidth={responsiveLayout.siderWidth}
+      collapsedWidth={responsiveLayout.collapsedWidth}
       // Header settings
       headerContentRender={() => null}
       // Menu settings
