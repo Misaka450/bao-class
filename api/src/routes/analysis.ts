@@ -302,7 +302,6 @@ ${dataStr}
         let report = '未能生成报告';
 
         try {
-            const apiKey = c.env.JWT_SECRET; // 这里原来写错了，应该是从环境变量拿，但 Env 接口里有 DASHSCOPE_API_KEY
             const dashScopeKey = c.env.DASHSCOPE_API_KEY;
             if (!dashScopeKey) {
                 throw new Error('DASHSCOPE_API_KEY is missing');
@@ -312,7 +311,7 @@ ${dataStr}
             const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${apiKey}`,
+                    'Authorization': `Bearer ${dashScopeKey}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
