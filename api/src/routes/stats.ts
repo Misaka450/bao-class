@@ -37,8 +37,8 @@ stats.get('/class/:classId', async (c) => {
             return c.json({
                 total_students: 0,
                 average_score: 0,
-                pass_rate: "0.00",
-                excellent_rate: "0.00"
+                pass_rate: 0,
+                excellent_rate: 0
             })
         }
 
@@ -84,9 +84,9 @@ stats.get('/class/:classId', async (c) => {
 
         return c.json({
             total_students: totalStudents,
-            average_score: Number(stats?.average_score || 0).toFixed(2),
-            pass_rate: passRate.toFixed(2),
-            excellent_rate: excellentRate.toFixed(2)
+            average_score: Number(stats?.average_score || 0),
+            pass_rate: passRate,
+            excellent_rate: excellentRate
         })
     } catch (error) {
         console.error('Stats error:', error)

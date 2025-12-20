@@ -56,8 +56,8 @@ export interface Score {
 export interface Stats {
     total_students: number;
     average_score: number;
-    pass_rate: string;
-    excellent_rate: string;
+    pass_rate: number;
+    excellent_rate: number;
 }
 
 export interface Distribution {
