@@ -223,7 +223,7 @@ export default function ClassAnalysis() {
                             value={selectedExamId}
                             onChange={setSelectedExamId}
                             style={{ width: 180 }}
-                            options={exams.map((e: any) => ({ label: e.exam_name, value: e.id.toString() }))}
+                            options={exams.map((e: any) => ({ label: e.name, value: e.id.toString() }))}
                             allowClear
                         />
                     </Space>

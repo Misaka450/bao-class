@@ -170,7 +170,7 @@ const routes: RouteConfig[] = [
     children: [
       {
         path: '/analysis/class',
-        name: '班级成绩走势',
+        name: '班级学情分析',
         icon: React.createElement(BarChartOutlined),
         component: ClassAnalysis,
         access: ['admin', 'head_teacher', 'teacher'],
