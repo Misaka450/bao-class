@@ -199,6 +199,7 @@ const StudentHistoryChart: React.FC<Props> = ({ data }) => {
                                     fill="#ffd591"
                                     fillOpacity={0.2}
                                     stroke="none"
+                                    animationDuration={1500}
                                 />
                             )}
 
@@ -224,6 +225,7 @@ const StudentHistoryChart: React.FC<Props> = ({ data }) => {
                                     );
                                 }}
                                 activeDot={{ r: 8 }}
+                                animationDuration={1500}
                             />
 
                             {/* 班级平均线 */}
@@ -237,6 +239,7 @@ const StudentHistoryChart: React.FC<Props> = ({ data }) => {
                                     strokeWidth={2}
                                     strokeDasharray="5 5"
                                     dot={false}
+                                    animationDuration={1500}
                                 />
                             )}
 
@@ -250,6 +253,7 @@ const StudentHistoryChart: React.FC<Props> = ({ data }) => {
                                 strokeWidth={2}
                                 strokeDasharray="3 3"
                                 dot={false}
+                                animationDuration={1500}
                             />
 
                             {/* 排名线 */}
@@ -261,6 +265,7 @@ const StudentHistoryChart: React.FC<Props> = ({ data }) => {
                                 name="班级排名"
                                 strokeWidth={2}
                                 dot={{ r: 4 }}
+                                animationDuration={1500}
                             />
                         </ComposedChart>
                     </ResponsiveContainer>

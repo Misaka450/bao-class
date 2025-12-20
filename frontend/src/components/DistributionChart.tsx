@@ -18,7 +18,7 @@ export default function DistributionChart({ data, isCourseSelected }: Distributi
                         <XAxis dataKey="range" axisLine={false} tickLine={false} />
                         <YAxis axisLine={false} tickLine={false} />
                         <Tooltip cursor={{ fill: 'rgba(0,0,0,0.05)' }} />
-                        <Bar dataKey="count" name="人数" radius={[6, 6, 0, 0]}>
+                        <Bar dataKey="count" name="人数" radius={[6, 6, 0, 0]} animationDuration={1500}>
                             {data.map((_, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}

@@ -72,7 +72,6 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
       title={layoutConfig.title}
       logo={false}
       layout={layoutConfig.layout}
-      navTheme={layoutConfig.theme}
       splitMenus={responsiveLayout.splitMenus}
       contentWidth={responsiveLayout.contentWidth}
       fixedHeader={responsiveLayout.fixedHeader}
@@ -84,12 +83,9 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
       onCollapse={(collapsed) => {
         setCollapsed(collapsed);
       }}
-      // Mobile-specific settings
-      isMobile={responsiveLayout.isMobile}
+      // Sider settings
       siderWidth={responsiveLayout.siderWidth}
-      collapsedWidth={responsiveLayout.collapsedWidth}
-      // Header settings for responsive design
-      headerHeight={responsiveLayout.headerHeight}
+      // Header settings
       headerContentRender={() => null}
       // Menu settings
       menuProps={{
@@ -100,11 +96,12 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
       location={{
         pathname,
       }}
+      navTheme="light"
+      headerRender={false}
+      siderMenuType="group"
       menu={{
         locale: false,
-        request: async () => {
-          return accessibleRoutes;
-        },
+        request: async () => accessibleRoutes,
       }}
       menuItemRender={(item, dom) => (
         <Link to={item.path || '/'}>{dom}</Link>
@@ -112,28 +109,35 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
       avatarProps={{
         src: layoutConfig.userInfo.avatar,
         title: layoutConfig.userInfo.name,
-        render: (_, avatarChildren) => {
-          return (
-            <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-              <div style={{
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: responsiveLayout.isMobile ? 4 : 8
-              }}>
-                <Avatar
-                  style={{
-                    backgroundColor: designTokens.colorPrimary
-                  }}
-                  icon={<UserOutlined />}
-                  src={layoutConfig.userInfo.avatar}
-                  size={responsiveLayout.isMobile ? 'small' : 'default'}
-                />
-                {!responsiveLayout.isMobile && <span>{layoutConfig.userInfo.name}</span>}
-              </div>
-            </Dropdown>
-          );
-        },
+        render: (_, avatarChildren) => (
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow>
+            <div className="header-user-info" style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: responsiveLayout.isMobile ? 8 : 12,
+              padding: '6px 12px',
+              borderRadius: '12px',
+              transition: 'background-color 0.2s',
+              background: 'rgba(0,0,0,0.02)',
+              cursor: 'pointer'
+            }}>
+              <Avatar
+                style={{
+                  backgroundColor: 'var(--primary-color)',
+                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.2)'
+                }}
+                icon={<UserOutlined />}
+                src={layoutConfig.userInfo.avatar}
+                size={responsiveLayout.isMobile ? 'small' : 'default'}
+              />
+              {!responsiveLayout.isMobile && (
+                <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                  {layoutConfig.userInfo.name}
+                </span>
+              )}
+            </div>
+          </Dropdown>
+        ),
       }}
       onPageChange={(location) => {
         // 如果没有登录，重定向到登录页
@@ -145,10 +149,10 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
     >
       <PageContainer
         header={{
-          breadcrumb: responsiveLayout.isMobile ? false : {
-            routes: breadcrumbs.map(item => ({
+          breadcrumb: responsiveLayout.isMobile ? undefined : {
+            items: breadcrumbs.map(item => ({
               path: item.path,
-              breadcrumbName: item.name,
+              title: item.name,
             })),
           },
           title: false,

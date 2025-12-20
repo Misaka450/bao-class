@@ -214,12 +214,21 @@ export default function StudentProfile() {
                     <Card title="考试成绩趋势" bordered={false}>
                         <ChartWrapper height={300}>
                             <LineChart data={data.history} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="exam_name" />
-                                <YAxis domain={[0, 100]} />
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="exam_name" axisLine={false} tickLine={false} />
+                                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
                                 <Tooltip />
                                 <Legend />
-                                <Line type="monotone" dataKey="total_score" name="总分" stroke="#1890ff" strokeWidth={2} />
+                                <Line
+                                    type="monotone"
+                                    dataKey="total_score"
+                                    name="总分"
+                                    stroke="var(--primary-color)"
+                                    strokeWidth={3}
+                                    dot={{ fill: 'var(--primary-color)', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                                    activeDot={{ r: 6 }}
+                                    animationDuration={1500}
+                                />
                             </LineChart>
                         </ChartWrapper>
                     </Card>
@@ -232,7 +241,14 @@ export default function StudentProfile() {
                                 <PolarGrid />
                                 <PolarAngleAxis dataKey="subject" />
                                 <PolarRadiusAxis angle={30} domain={[0, 100]} />
-                                <Radar name="分数" dataKey="score" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                                <Radar
+                                    name="分数"
+                                    dataKey="score"
+                                    stroke="var(--primary-color)"
+                                    fill="var(--primary-color)"
+                                    fillOpacity={0.6}
+                                    animationDuration={1500}
+                                />
                                 <Tooltip />
                             </RadarChart>
                         </ChartWrapper>

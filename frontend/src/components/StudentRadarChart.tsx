@@ -15,7 +15,14 @@ const StudentRadarChart: React.FC<Props> = ({ data }) => {
                         <PolarGrid />
                         <PolarAngleAxis dataKey="subject" />
                         <PolarRadiusAxis angle={30} domain={[-3, 3]} />
-                        <Radar name="个人表现" dataKey="zScore" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                        <Radar
+                            name="个人表现"
+                            dataKey="zScore"
+                            stroke="var(--primary-color)"
+                            fill="var(--primary-color)"
+                            fillOpacity={0.6}
+                            animationDuration={1500}
+                        />
                         <Tooltip />
                         <Legend />
                     </RadarChart>

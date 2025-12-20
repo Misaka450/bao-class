@@ -61,10 +61,10 @@ const ScoreDistributionChart: React.FC<Props> = ({ data, loading }) => {
                             return map[value] || value;
                         }}
                     />
-                    <Bar dataKey="fail" name="fail" stackId="a" fill="#ff4d4f" />
-                    <Bar dataKey="pass" name="pass" stackId="a" fill="#faad14" />
-                    <Bar dataKey="good" name="good" stackId="a" fill="#1890ff" />
-                    <Bar dataKey="excellent" name="excellent" stackId="a" fill="#52c41a" />
+                    <Bar dataKey="fail" name="fail" stackId="a" fill="#ff4d4f" animationDuration={1500} />
+                    <Bar dataKey="pass" name="pass" stackId="a" fill="#faad14" animationDuration={1500} />
+                    <Bar dataKey="good" name="good" stackId="a" fill="#1890ff" animationDuration={1500} />
+                    <Bar dataKey="excellent" name="excellent" stackId="a" fill="#52c41a" animationDuration={1500} />
                 </BarChart>
             </ResponsiveContainer>
         </ChartWrapper>

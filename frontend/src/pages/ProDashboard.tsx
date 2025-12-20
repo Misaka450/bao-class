@@ -109,41 +109,84 @@ export default function ProDashboard() {
                         </ProCard>
 
                         <ProCard colSpan={{ xs: 24, lg: 8 }} ghost>
-                            <Card title="核心指标" className="stat-card" bodyStyle={{ height: 360, display: 'flex', flexDirection: 'column', justifyContent: 'space-around' }}>
-                                <Statistic
-                                    title="最高分"
-                                    value={highestScore}
-                                    precision={1}
-                                    valueStyle={{ color: '#10b981', fontSize: '2rem', fontFamily: 'Poppins' }}
-                                    prefix={<TrophyOutlined />}
-                                />
-                                <Statistic
-                                    title={selectedCourseId ? "平均分" : "平均总分"}
-                                    value={stats?.average_score}
-                                    precision={1}
-                                    valueStyle={{ color: '#3b82f6', fontSize: '2rem', fontFamily: 'Poppins' }}
-                                    prefix={<RiseOutlined />}
-                                />
-                                <Row gutter={[16, 16]}>
-                                    <Col xs={12} sm={12}>
+                            <Card
+                                title={<span style={{ fontWeight: 600 }}>核心指标概览</span>}
+                                className="stat-card"
+                                bordered={false}
+                                style={{
+                                    background: 'transparent',
+                                    boxShadow: 'none'
+                                }}
+                                bodyStyle={{ padding: '8px 0' }}
+                            >
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                        padding: '24px',
+                                        borderRadius: '20px',
+                                        color: 'white',
+                                        boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2)'
+                                    }}>
                                         <Statistic
-                                            title="及格率"
-                                            value={stats?.pass_rate}
-                                            suffix="%"
-                                            valueStyle={{ color: '#f59e0b', fontSize: '1.2rem', fontFamily: 'Poppins' }}
-                                            prefix={<CheckCircleOutlined />}
+                                            title={<span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>最高分</span>}
+                                            value={highestScore}
+                                            precision={1}
+                                            valueStyle={{ color: 'white', fontSize: '2.4rem', fontWeight: 800, fontFamily: 'Poppins' }}
+                                            prefix={<TrophyOutlined style={{ marginRight: 8, opacity: 0.9 }} />}
                                         />
-                                    </Col>
-                                    <Col xs={12} sm={12}>
+                                    </div>
+
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                        padding: '24px',
+                                        borderRadius: '20px',
+                                        color: 'white',
+                                        boxShadow: '0 10px 15px -3px rgba(59, 130, 246, 0.2)'
+                                    }}>
                                         <Statistic
-                                            title="优秀率"
-                                            value={stats?.excellent_rate}
-                                            suffix="%"
-                                            valueStyle={{ color: '#8b5cf6', fontSize: '1.2rem', fontFamily: 'Poppins' }}
-                                            prefix={<StarOutlined />}
+                                            title={<span style={{ color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>{selectedCourseId ? "平均分" : "平均总分"}</span>}
+                                            value={stats?.average_score}
+                                            precision={1}
+                                            valueStyle={{ color: 'white', fontSize: '2.4rem', fontWeight: 800, fontFamily: 'Poppins' }}
+                                            prefix={<RiseOutlined style={{ marginRight: 8, opacity: 0.9 }} />}
                                         />
-                                    </Col>
-                                </Row>
+                                    </div>
+
+                                    <Row gutter={16}>
+                                        <Col span={12}>
+                                            <div style={{
+                                                background: 'white',
+                                                padding: '16px',
+                                                borderRadius: '16px',
+                                                border: '1px solid #f1f5f9',
+                                                boxShadow: 'var(--shadow-sm)'
+                                            }}>
+                                                <Statistic
+                                                    title="及格率"
+                                                    value={stats?.pass_rate}
+                                                    suffix="%"
+                                                    valueStyle={{ color: '#f59e0b', fontSize: '1.4rem', fontWeight: 700, fontFamily: 'Poppins' }}
+                                                />
+                                            </div>
+                                        </Col>
+                                        <Col span={12}>
+                                            <div style={{
+                                                background: 'white',
+                                                padding: '16px',
+                                                borderRadius: '16px',
+                                                border: '1px solid #f1f5f9',
+                                                boxShadow: 'var(--shadow-sm)'
+                                            }}>
+                                                <Statistic
+                                                    title="优秀率"
+                                                    value={stats?.excellent_rate}
+                                                    suffix="%"
+                                                    valueStyle={{ color: '#8b5cf6', fontSize: '1.4rem', fontWeight: 700, fontFamily: 'Poppins' }}
+                                                />
+                                            </div>
+                                        </Col>
+                                    </Row>
+                                </div>
                             </Card>
                         </ProCard>
                     </ProCard>

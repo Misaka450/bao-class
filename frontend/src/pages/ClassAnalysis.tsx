@@ -60,30 +60,114 @@ export default function ClassAnalysis() {
     const renderOverviewTab = () => (
         <Row gutter={[24, 24]}>
             <Col span={24}>
-                <Card title="平均分走势" bordered={false}>
+                <Card title="平均分走势" bordered={false} className="glass-card">
                     <ChartWrapper>
                         <LineChart data={trendData?.trends || []}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="exam_name" />
-                            <YAxis domain={[0, 'auto']} />
-                            <Tooltip />
-                            <Legend />
-                            <Line type="monotone" dataKey="average_score" name="平均分" stroke="#1890ff" strokeWidth={3} activeDot={{ r: 8 }} />
+                            <defs>
+                                <linearGradient id="colorAvg" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="var(--primary-color)" stopOpacity={0.1} />
+                                    <stop offset="95%" stopColor="var(--primary-color)" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis
+                                dataKey="exam_name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#64748b', fontSize: 12 }}
+                                dy={10}
+                            />
+                            <YAxis
+                                domain={[0, 'auto']}
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#64748b', fontSize: 12 }}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    borderRadius: '12px',
+                                    border: 'none',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    background: 'rgba(255, 255, 255, 0.95)',
+                                    backdropFilter: 'blur(4px)'
+                                }}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="circle" />
+                            <Line
+                                type="monotone"
+                                dataKey="average_score"
+                                name="平均分"
+                                stroke="var(--primary-color)"
+                                strokeWidth={4}
+                                dot={{ fill: 'var(--primary-color)', strokeWidth: 2, r: 4, stroke: '#fff' }}
+                                activeDot={{ r: 6, strokeWidth: 0 }}
+                                animationDuration={1500}
+                                animationBegin={0}
+                            />
                         </LineChart>
                     </ChartWrapper>
                 </Card>
             </Col>
             <Col span={24}>
-                <Card title="及格率与优秀率走势 (%)" bordered={false}>
+                <Card title="及格率与优秀率走势 (%)" bordered={false} className="glass-card">
                     <ChartWrapper>
                         <AreaChart data={trendData?.trends || []}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="exam_name" />
-                            <YAxis domain={[0, 100]} />
-                            <Tooltip />
-                            <Legend />
-                            <Area type="monotone" dataKey="pass_rate" name="及格率" stackId="1" stroke="#82ca9d" fill="#82ca9d" fillOpacity={0.6} />
-                            <Area type="monotone" dataKey="excellent_rate" name="优秀率" stackId="2" stroke="#ffc658" fill="#ffc658" fillOpacity={0.6} />
+                            <defs>
+                                <linearGradient id="colorPass" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorExc" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis
+                                dataKey="exam_name"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#64748b', fontSize: 12 }}
+                                dy={10}
+                            />
+                            <YAxis
+                                domain={[0, 100]}
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#64748b', fontSize: 12 }}
+                            />
+                            <Tooltip
+                                contentStyle={{
+                                    borderRadius: '12px',
+                                    border: 'none',
+                                    boxShadow: 'var(--shadow-lg)',
+                                    background: 'rgba(255, 255, 255, 0.95)',
+                                    backdropFilter: 'blur(4px)'
+                                }}
+                            />
+                            <Legend verticalAlign="top" height={36} iconType="circle" />
+                            <Area
+                                type="monotone"
+                                dataKey="pass_rate"
+                                name="及格率"
+                                stackId="1"
+                                stroke="#10b981"
+                                strokeWidth={3}
+                                fill="url(#colorPass)"
+                                animationDuration={1500}
+                                animationBegin={0}
+                            />
+                            <Area
+                                type="monotone"
+                                dataKey="excellent_rate"
+                                name="优秀率"
+                                stackId="2"
+                                stroke="#8b5cf6"
+                                strokeWidth={3}
+                                fill="url(#colorExc)"
+                                animationDuration={1500}
+                                animationBegin={0}
+                            />
                         </AreaChart>
                     </ChartWrapper>
                 </Card>
