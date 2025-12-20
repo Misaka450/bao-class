@@ -163,11 +163,43 @@ export default function StudentProfile() {
                     <Card bordered={false} className="info-card">
                         <StatisticsRow
                             items={[
-                                { title: '性别', value: data.student.id % 2 === 0 ? '男' : '女', key: 'gender' },
-                                { title: '班级', value: data.student.class_name, key: 'class' },
-                                { title: '百分位', value: data.statistics?.percentile?.toFixed(1) || '0', suffix: '%', key: 'percentile' },
-                                { title: '近期进步', value: data.statistics?.rank_progress || 0, prefix: (data.statistics?.rank_progress || 0) > 0 ? <RiseOutlined style={{ color: '#3f8600' }} /> : <FallOutlined style={{ color: '#cf1322' }} />, key: 'progress' },
-                                { title: '已考次数', value: data.statistics?.total_exams || 0, key: 'exams' }
+                                {
+                                    title: '性别',
+                                    value: data.student.id % 2 === 0 ? '男' : '女',
+                                    key: 'gender',
+                                    flex: '1 0 18%',
+                                    valueStyle: { color: '#722ed1' }
+                                },
+                                {
+                                    title: '班级',
+                                    value: data.student.class_name,
+                                    key: 'class',
+                                    flex: '1 0 18%',
+                                    valueStyle: { color: '#1890ff' }
+                                },
+                                {
+                                    title: '百分位',
+                                    value: data.statistics?.percentile?.toFixed(1) || '0',
+                                    suffix: '%',
+                                    key: 'percentile',
+                                    flex: '1 0 18%',
+                                    valueStyle: { color: '#fa8c16' }
+                                },
+                                {
+                                    title: '近期进步',
+                                    value: data.statistics?.rank_progress || 0,
+                                    prefix: (data.statistics?.rank_progress || 0) > 0 ? <RiseOutlined /> : <FallOutlined />,
+                                    key: 'progress',
+                                    flex: '1 0 18%',
+                                    valueStyle: { color: (data.statistics?.rank_progress || 0) >= 0 ? '#52c41a' : '#f5222d' }
+                                },
+                                {
+                                    title: '已考次数',
+                                    value: data.statistics?.total_exams || 0,
+                                    key: 'exams',
+                                    flex: '1 0 18%',
+                                    valueStyle: { color: '#eb2f96' }
+                                }
                             ]}
                         />
                     </Card>

@@ -10,6 +10,7 @@ interface StatItem extends StatisticProps {
     sm?: number;
     md?: number;
     lg?: number;
+    flex?: string | number;
 }
 
 interface StatisticsRowProps {
@@ -29,14 +30,15 @@ export const StatisticsRow: React.FC<StatisticsRowProps> = ({
     return (
         <Row gutter={gutter} style={{ textAlign: 'center', ...style }}>
             {items.map((item, index) => {
-                const { key, xs, sm, md, lg, ...rest } = item;
+                const { key, xs, sm, md, lg, flex, ...rest } = item;
                 return (
                     <Col
                         key={key || index}
                         xs={xs || 24}
                         sm={sm || 12}
-                        md={md || defaultSpan}
-                        lg={lg || defaultSpan}
+                        md={md || (flex ? undefined : defaultSpan)}
+                        lg={lg || (flex ? undefined : defaultSpan)}
+                        flex={flex}
                     >
                         <Statistic {...rest} />
                     </Col>
