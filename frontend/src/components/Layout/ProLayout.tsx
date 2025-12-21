@@ -97,7 +97,6 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
         pathname,
       }}
       navTheme="light"
-      headerRender={false}
       siderMenuType="group"
       menu={{
         locale: false,
