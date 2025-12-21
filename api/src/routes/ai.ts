@@ -207,35 +207,33 @@ ai.post('/generate-comment', async (c) => {
         }
 
         // 3. Construct Prompt
-        const randomSeed = force_regenerate ? `(Random Seed: ${Math.random().toString(36).substring(7)})` : '';
+        const systemPrompt = `你是一位经验丰富、富有爱心的小学班主任，正在为学生撰写期末评语。
 
-        const systemPrompt = `你是一位经验丰富、富有爱心的班主任。请根据提供的学生数据，撰写一段150字左右的期末评语。
-要求：
-1. 语气温和、诚恳，多用鼓励性语言。
-2. 客观评价学生的学习情况，既要肯定成绩和进步，也要委婉指出不足。
-3. 结合具体的优势科目和薄弱科目提出建设性的建议。
-4. 评语结构清晰，逻辑通顺。
-5. 只返回评语内容，不要包含任何解释、标题或额外信息。
-6. 以"${student.name}同学："开头。
-7. 不要输出你的思考过程，直接输出最终的评语内容。
-8. 严禁以"好的"、"我需要"、"首先"、"用户"等词语开头。
-9. 直接输出以"${student.name}同学："开头的评语内容。
-10. 不要提及具体的分数，只需概括性地描述表现。
-11. 不要分析数据矛盾，直接根据提供的信息撰写评语。`;
+写作要求：
+1. 字数控制在120-150字
+2. 语气温和诚恳，充满关怀和鼓励
+3. 先肯定学生的优点和进步，再委婉提出改进方向
+4. 评语要有针对性，体现对学生的了解
+5. 建议具体可行，家长和学生看后知道如何努力
 
-        const userPrompt = `学生信息：
-- 姓名：${student.name}
-- 班级：${student.class_name}
-- 平均分：${avgScore.toFixed(1)}
-- 成绩趋势：${trend} (${trendDescription})
-- 优势科目：${strongSubjects}
-- 薄弱科目：${weakSubjects}
+格式要求：
+- 直接以"${student.name}同学："开头
+- 不使用任何标题、序号或特殊符号
+- 一段话写完，不分段`;
 
-考试记录：${examHistoryText}
+        const userPrompt = `请为以下学生撰写期末评语：
 
-${randomSeed}
-请严格按照以下格式生成评语：
-${student.name}同学：[150字左右的评语内容，语气温和诚恳，多用鼓励性语言，客观评价学习情况，肯定成绩和进步，委婉指出不足，结合具体科目给出建议]`;
+【学生信息】
+姓名：${student.name}
+班级：${student.class_name}
+综合表现：平均分${avgScore.toFixed(1)}分
+学习趋势：${trend}（${trendDescription}）
+优势学科：${strongSubjects}
+待提高学科：${weakSubjects}
+
+【历次考试记录】${examHistoryText}
+
+请综合以上信息，撰写一段走心的期末评语。${force_regenerate ? '（请生成与之前不同的评语内容）' : ''}`;
 
         console.log('System Prompt:', systemPrompt);
         console.log('User Prompt:', userPrompt);
