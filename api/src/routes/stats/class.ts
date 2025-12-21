@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { getLatestExamId } from '../../utils/dbHelpers'
 
 type Bindings = {
     DB: D1Database
@@ -16,17 +17,9 @@ classStats.get('/:classId', async (c) => {
         let targetExamId = examId
         let targetCourseId = courseId
 
+        // 使用缓存的工具函数获取最新考试ID
         if (!targetExamId) {
-            // Get latest exam for this class
-            const latestExam = await c.env.DB.prepare(`
-                SELECT id FROM exams 
-                WHERE class_id = ?
-                ORDER BY exam_date DESC LIMIT 1
-            `).bind(classId).first()
-
-            if (latestExam) {
-                targetExamId = latestExam.id as string
-            }
+            targetExamId = await getLatestExamId(c.env.DB, classId) || undefined
         }
 
         if (!targetExamId) {
@@ -94,19 +87,8 @@ classStats.get('/:classId/subjects', async (c) => {
     const examId = c.req.query('examId')
 
     try {
-        let targetExamId = examId
-
-        if (!targetExamId) {
-            const latestExam = await c.env.DB.prepare(`
-                SELECT id FROM exams 
-                WHERE class_id = ?
-                ORDER BY exam_date DESC LIMIT 1
-            `).bind(classId).first()
-
-            if (latestExam) {
-                targetExamId = latestExam.id as string
-            }
-        }
+        // 使用缓存的工具函数获取最新考试ID
+        const targetExamId = examId || await getLatestExamId(c.env.DB, classId)
 
         if (!targetExamId) {
             return c.json([])

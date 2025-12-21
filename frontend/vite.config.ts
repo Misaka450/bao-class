@@ -53,6 +53,14 @@ export default defineConfig({
 
     rollupOptions: {
       output: {
+        // 代码分割：将大型依赖分离为独立chunk
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-antd': ['antd', '@ant-design/icons'],
+          'vendor-antd-pro': ['@ant-design/pro-components', '@ant-design/pro-layout', '@ant-design/pro-table'],
+          'vendor-charts': ['recharts'],
+          'vendor-utils': ['dayjs', 'lodash', 'zustand'],
+        },
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',
         assetFileNames: (assetInfo) => {
