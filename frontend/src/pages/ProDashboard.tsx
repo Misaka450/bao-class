@@ -110,133 +110,48 @@ export default function ProDashboard() {
 
                         <ProCard colSpan={{ xs: 24, lg: 8 }} ghost>
                             <Card
-                                title={<span style={{ fontWeight: 600, fontSize: '16px' }}>📊 核心指标概览</span>}
-                                className="glass-card"
+                                title={<span style={{ fontWeight: 600, fontSize: '16px' }}>核心指标概览</span>}
+                                className="chart-card"
                                 bordered={false}
                                 style={{ height: '100%' }}
-                                bodyStyle={{ height: 360, padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
+                                bodyStyle={{ height: 360, padding: '20px 24px' }}
                             >
-                                {/* 指标网格 - 更加清爽的布局 */}
-                                {/* 指标网格 - 充实版布局 */}
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: '1fr 1fr', gap: '12px', height: '100%' }}>
-                                    {/* 最高分 */}
-                                    <div style={{
-                                        background: 'linear-gradient(145deg, #ffffff 0%, rgba(16, 185, 129, 0.08) 100%)',
-                                        borderRadius: '16px',
-                                        border: '1px solid rgba(16, 185, 129, 0.15)',
-                                        padding: '16px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        boxShadow: '0 4px 12px rgba(16, 185, 129, 0.05)'
-                                    }}>
-                                        <div style={{
-                                            color: '#10b981',
-                                            fontSize: '24px',
-                                            marginBottom: '6px',
-                                            padding: '10px',
-                                            background: 'rgba(255,255,255,0.8)',
-                                            borderRadius: '50%',
-                                            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.15)'
-                                        }}>
-                                            <TrophyOutlined />
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>最高分</div>
-                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#10b981', fontFamily: 'Poppins' }}>
-                                            {typeof highestScore === 'number' ? highestScore.toFixed(1) : '--'}
-                                        </div>
-                                    </div>
-
-                                    {/* 平均分 */}
-                                    <div style={{
-                                        background: 'linear-gradient(145deg, #ffffff 0%, rgba(59, 130, 246, 0.08) 100%)',
-                                        borderRadius: '16px',
-                                        border: '1px solid rgba(59, 130, 246, 0.15)',
-                                        padding: '16px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.05)'
-                                    }}>
-                                        <div style={{
-                                            color: '#3b82f6',
-                                            fontSize: '24px',
-                                            marginBottom: '6px',
-                                            padding: '10px',
-                                            background: 'rgba(255,255,255,0.8)',
-                                            borderRadius: '50%',
-                                            boxShadow: '0 2px 6px rgba(59, 130, 246, 0.15)'
-                                        }}>
-                                            <RiseOutlined />
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>{selectedCourseId ? "平均分" : "平均总分"}</div>
-                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#3b82f6', fontFamily: 'Poppins' }}>
-                                            {stats?.average_score != null ? Number(stats.average_score).toFixed(1) : '--'}
-                                        </div>
-                                    </div>
-
-                                    {/* 及格率 */}
-                                    <div style={{
-                                        background: 'linear-gradient(145deg, #ffffff 0%, rgba(245, 158, 11, 0.08) 100%)',
-                                        borderRadius: '16px',
-                                        border: '1px solid rgba(245, 158, 11, 0.15)',
-                                        padding: '16px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        boxShadow: '0 4px 12px rgba(245, 158, 11, 0.05)'
-                                    }}>
-                                        <div style={{
-                                            color: '#f59e0b',
-                                            fontSize: '24px',
-                                            marginBottom: '6px',
-                                            padding: '10px',
-                                            background: 'rgba(255,255,255,0.8)',
-                                            borderRadius: '50%',
-                                            boxShadow: '0 2px 6px rgba(245, 158, 11, 0.15)'
-                                        }}>
-                                            <CheckCircleOutlined />
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>及格率</div>
-                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#f59e0b', fontFamily: 'Poppins' }}>
-                                            {stats?.pass_rate != null ? Number(stats.pass_rate).toFixed(1) : '--'}
-                                            <span style={{ fontSize: '14px', fontWeight: 500, marginLeft: '2px' }}>%</span>
-                                        </div>
-                                    </div>
-
-                                    {/* 优秀率 */}
-                                    <div style={{
-                                        background: 'linear-gradient(145deg, #ffffff 0%, rgba(139, 92, 246, 0.08) 100%)',
-                                        borderRadius: '16px',
-                                        border: '1px solid rgba(139, 92, 246, 0.15)',
-                                        padding: '16px',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        boxShadow: '0 4px 12px rgba(139, 92, 246, 0.05)'
-                                    }}>
-                                        <div style={{
-                                            color: '#8b5cf6',
-                                            fontSize: '24px',
-                                            marginBottom: '6px',
-                                            padding: '10px',
-                                            background: 'rgba(255,255,255,0.8)',
-                                            borderRadius: '50%',
-                                            boxShadow: '0 2px 6px rgba(139, 92, 246, 0.15)'
-                                        }}>
-                                            <StarOutlined />
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>优秀率</div>
-                                        <div style={{ fontSize: '24px', fontWeight: 700, color: '#8b5cf6', fontFamily: 'Poppins' }}>
-                                            {stats?.excellent_rate != null ? Number(stats.excellent_rate).toFixed(1) : '--'}
-                                            <span style={{ fontSize: '14px', fontWeight: 500, marginLeft: '2px' }}>%</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <Row gutter={[16, 24]} style={{ height: '100%' }}>
+                                    <Col span={12}>
+                                        <Statistic
+                                            title="最高分"
+                                            value={typeof highestScore === 'number' ? highestScore.toFixed(1) : '--'}
+                                            prefix={<TrophyOutlined style={{ color: '#52c41a' }} />}
+                                            valueStyle={{ color: '#52c41a', fontSize: '24px', fontWeight: 600 }}
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <Statistic
+                                            title={selectedCourseId ? "平均分" : "平均总分"}
+                                            value={stats?.average_score != null ? Number(stats.average_score).toFixed(1) : '--'}
+                                            prefix={<RiseOutlined style={{ color: '#1890ff' }} />}
+                                            valueStyle={{ color: '#1890ff', fontSize: '24px', fontWeight: 600 }}
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <Statistic
+                                            title="及格率"
+                                            value={stats?.pass_rate != null ? Number(stats.pass_rate).toFixed(1) : '--'}
+                                            suffix="%"
+                                            prefix={<CheckCircleOutlined style={{ color: '#faad14' }} />}
+                                            valueStyle={{ color: '#faad14', fontSize: '24px', fontWeight: 600 }}
+                                        />
+                                    </Col>
+                                    <Col span={12}>
+                                        <Statistic
+                                            title="优秀率"
+                                            value={stats?.excellent_rate != null ? Number(stats.excellent_rate).toFixed(1) : '--'}
+                                            suffix="%"
+                                            prefix={<StarOutlined style={{ color: '#722ed1' }} />}
+                                            valueStyle={{ color: '#722ed1', fontSize: '24px', fontWeight: 600 }}
+                                        />
+                                    </Col>
+                                </Row>
                             </Card>
                         </ProCard>
                     </ProCard>
