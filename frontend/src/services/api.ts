@@ -154,7 +154,7 @@ export const analysisApi = {
         get<{ report: string; cached: boolean }>(`/api/analysis/class/report/${classId}/${examId}`),
 
     refreshClassAiReport: (classId: string, examId: number) =>
-        post<{ success: boolean; message: string }>('/api/analysis/class/report/refresh', { classId, examId }),
+        post<{ success: boolean; message: string; report?: string; cached?: boolean; error?: string }>('/api/analysis/class/report/refresh', { classId, examId }),
 };
 
 // ==================== 导入/导出 API ====================

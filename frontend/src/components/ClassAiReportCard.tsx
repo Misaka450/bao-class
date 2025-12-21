@@ -23,11 +23,20 @@ const ClassAiReportCard: React.FC<ClassAiReportCardProps> = ({ classId, examId }
         setError(null);
         try {
             if (isRefresh) {
-                await api.analysis.refreshClassAiReport(classId, examId);
+                // When refreshing, call refresh endpoint which returns the new report directly
+                const response = await api.analysis.refreshClassAiReport(classId, examId);
+                if (response.success && response.report) {
+                    setReport(response.report);
+                    setCached(false);
+                } else {
+                    throw new Error(response.error || '刷新报告失败');
+                }
+            } else {
+                // Normal fetch from the GET endpoint
+                const response = await api.analysis.getClassAiReport(classId, examId);
+                setReport(response.report);
+                setCached(response.cached);
             }
-            const response = await api.analysis.getClassAiReport(classId, examId);
-            setReport(response.report);
-            setCached(response.cached);
         } catch (err: any) {
             console.error('Failed to fetch AI report:', err);
             setError(err.message || '获取分析报告失败，请稍后重试');

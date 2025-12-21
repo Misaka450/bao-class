@@ -381,7 +381,7 @@ ${dataStr}
     }
 })
 
-// Refresh AI Diagnostic Report
+// Refresh AI Diagnostic Report - now returns the new report directly
 analysis.post('/class/report/refresh', async (c) => {
     const { classId, examId } = await c.req.json()
     const user = c.get('user')
@@ -391,16 +391,149 @@ analysis.post('/class/report/refresh', async (c) => {
     }
 
     try {
-        // Delete cache to force regenerate on next GET
+        // 1. Delete existing cache to force regenerate
         await c.env.DB.prepare(`
             DELETE FROM ai_class_reports 
             WHERE class_id = ? AND exam_id = ?
         `).bind(classId, examId).run()
 
-        return c.json({ success: true, message: 'Cache cleared, will regenerate on next view' })
-    } catch (error) {
+        // 2. Aggregate Data for AI (same logic as GET endpoint)
+        const classInfo = await c.env.DB.prepare('SELECT name FROM classes WHERE id = ?').bind(classId).first()
+        const examInfo = await c.env.DB.prepare('SELECT name FROM exams WHERE id = ?').bind(examId).first()
+
+        const stats = await c.env.DB.prepare(`
+            SELECT c.name as course_name, 
+                   AVG(s.score) as avg_score, 
+                   MAX(s.score) as max_score, 
+                   MIN(s.score) as min_score,
+                   COUNT(CASE WHEN s.score >= 60 THEN 1 END) * 100.0 / COUNT(*) as pass_rate
+            FROM scores s
+            JOIN courses c ON s.course_id = c.id
+            JOIN students st ON s.student_id = st.id
+            WHERE st.class_id = ? AND s.exam_id = ?
+            GROUP BY s.course_id
+        `).bind(classId, examId).all()
+
+        if (!stats.results || stats.results.length === 0) {
+            return c.json({ error: 'No data available for this class and exam' }, 404)
+        }
+
+        // 3. Construct Prompt
+        const dataStr = stats.results.map((r: any) =>
+            `- ${r.course_name}: 平均分 ${Number(r.avg_score).toFixed(1)}, 最高 ${r.max_score}, 最低 ${r.min_score}, 及格率 ${Number(r.pass_rate).toFixed(1)}%`
+        ).join('\n')
+
+        const prompt = `你是一位经验丰富的资深教育数据分析专家。请根据以下班级考试数据，生成一份专业、深入且具有指导价值的学情诊断报告。
+
+班级：${classInfo?.name}
+考试：${examInfo?.name}
+
+各科成绩详情：
+${dataStr}
+
+报告要求：
+1. **结构完整**：必须包含以下四个部分，每部分都要充实有料：
+   - 【整体学情分析】：综合评价班级整体表现，包括平均分水平、及格率分布、学科均衡度等
+   - 【优势亮点】：详细分析表现突出的科目，说明优势所在及可能的原因
+   - 【薄弱环节】：深入剖析存在问题的科目，指出具体短板（如分数段分布、两极分化等）
+   - 【改进建议】：针对薄弱科目提出3-5条具体可行的教学改进措施
+
+2. **内容深度**：
+   - 不要只罗列数据，要深入分析数据背后的教学问题
+   - 结合平均分、最高分、最低分、及格率等多维度数据进行综合判断
+   - 关注分数分布的均衡性、两极分化现象
+   - 改进建议要具体可操作，不要泛泛而谈
+
+3. **语言风格**：专业严谨但易读，适合教师阅读和参考
+
+4. **字数要求**：总字数 400-500 字，确保内容充实完整
+
+5. **格式要求**：使用 Markdown 格式，加粗标题`
+
+        // 4. Call AI to generate new report
+        console.log('Refreshing: Calling AI model deepseek-ai/DeepSeek-V3.2')
+
+        let report = '未能生成报告';
+
+        try {
+            const dashScopeKey = c.env.DASHSCOPE_API_KEY;
+            if (!dashScopeKey) {
+                throw new Error('DASHSCOPE_API_KEY is missing');
+            }
+
+            const startTime = Date.now();
+            const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${dashScopeKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-ai/DeepSeek-V3.2',
+                    messages: [
+                        { role: 'system', content: '你是一个资深的教育数据分析专家，擅长从考试数据中挖掘深层次的教学问题，并提出切实可行的改进方案。请使用中文，提供专业、深入、有价值的分析报告。' },
+                        { role: 'user', content: prompt }
+                    ],
+                    max_tokens: 2000,
+                    temperature: 0.7,
+                    enable_thinking: true
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`ModelScope API Error: ${response.status} ${response.statusText} - ${errorText}`);
+            }
+
+            const data: any = await response.json();
+            const endTime = Date.now();
+            console.log(`AI response received in ${endTime - startTime}ms`);
+
+            if (data.choices?.[0]?.message?.reasoning_content) {
+                console.log('Reasoning Content:', data.choices[0].message.reasoning_content);
+            }
+
+            if (data.choices?.[0]?.message?.content) {
+                report = data.choices[0].message.content.trim();
+                console.log('Refreshed report length:', report.length);
+            } else {
+                console.error('Invalid response structure:', JSON.stringify(data));
+            }
+
+        } catch (aiError: any) {
+            console.error('AI generation error during refresh:', aiError);
+            return c.json({
+                success: false,
+                error: aiError.message,
+                report: `未能生成报告: ${aiError.message}`,
+                cached: false
+            }, 500);
+        }
+
+        // 5. Store new report in cache
+        if (report && !report.startsWith('未能生成报告')) {
+            await c.env.DB.prepare(`
+                INSERT INTO ai_class_reports (class_id, exam_id, report_content)
+                VALUES (?, ?, ?)
+                ON CONFLICT(class_id, exam_id) DO UPDATE SET
+                report_content = excluded.report_content,
+                updated_at = CURRENT_TIMESTAMP
+            `).bind(classId, examId, report).run();
+        }
+
+        // 6. Return the new report directly
+        return c.json({
+            success: true,
+            message: 'Report regenerated successfully',
+            report: report,
+            cached: false
+        })
+    } catch (error: any) {
         console.error('Refresh report error:', error)
-        throw new AppError('Failed to refresh report', 500)
+        return c.json({
+            success: false,
+            error: error.message
+        }, 500)
     }
 })
 
