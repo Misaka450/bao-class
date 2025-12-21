@@ -5,10 +5,10 @@ import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyO
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useStudentProfile } from '../hooks/useStudentProfile';
-import PageHeader from '../components/PageHeader';
-import ChartWrapper from '../components/ChartWrapper';
+import { PageHeader } from '../components/Layout/PageHeader';
+import ChartWrapper from '../components/Charts/ChartWrapper';
 import StatisticsRow from '../components/StatisticsRow';
-import { SkeletonLoading } from '../components/Loading/SkeletonLoading';
+import { SkeletonLoading } from '../components/Feedback/Loading/SkeletonLoading';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import ClassAiReportCard from '../components/ClassAiReportCard';
 

@@ -11,7 +11,7 @@ import {
 } from '@ant-design/icons';
 import { ProCard } from '@ant-design/pro-components';
 import FilterBar from '../components/FilterBar';
-import DistributionChart from '../components/DistributionChart';
+import SimpleDistributionChart from '../components/Charts/SimpleDistributionChart';
 import { useClasses, useExams, useDashboardData } from '../hooks/useDashboard';
 
 export default function ProDashboard() {
@@ -102,9 +102,9 @@ export default function ProDashboard() {
                     {/* Main Stats & Distribution */}
                     <ProCard split="vertical" gutter={[24, 24]}>
                         <ProCard colSpan={{ xs: 24, lg: 16 }} ghost>
-                            <DistributionChart
+                            <SimpleDistributionChart
                                 data={distribution}
-                                isCourseSelected={!!selectedCourseId}
+                                title={selectedCourseId ? "单科成绩分布" : "总分成绩分布"}
                             />
                         </ProCard>
 

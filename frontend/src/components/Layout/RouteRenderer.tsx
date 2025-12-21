@@ -1,10 +1,10 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Spin } from 'antd';
-import routes, { RouteConfig, flattenRoutes } from '../config/routes';
-import RouteGuard from './RouteGuard';
-import { SkeletonLoading } from './Loading/SkeletonLoading';
-import { LazyLoadErrorBoundary } from './LazyLoadErrorBoundary';
+import routes, { RouteConfig, flattenRoutes } from '../../config/routes';
+import RouteGuard from '../Guards/RouteGuard';
+import { SkeletonLoading } from '../Feedback/Loading/SkeletonLoading';
+import { LazyLoadErrorBoundary } from '../Feedback/LazyLoadErrorBoundary';
 
 /**
  * Render a single route with proper guards

@@ -4,11 +4,11 @@ import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
 import { ProLayout, PageContainer } from '@ant-design/pro-layout';
 import { Dropdown, Avatar } from 'antd';
 import type { MenuProps } from 'antd';
-import { useAuthStore } from '../store/authStore';
-import routes, { filterRoutesByAccess, generateBreadcrumbs, getPageTitle } from '../config/routes';
-import { usePageTitle, useRouteChange } from '../utils/route';
-import { designTokens } from '../config/theme';
-import { useResponsiveLayout } from '../hooks/useResponsive';
+import { useAuthStore } from '../../store/authStore';
+import routes, { filterRoutesByAccess, generateBreadcrumbs, getPageTitle } from '../../config/routes';
+import { usePageTitle, useRouteChange } from '../../utils/route';
+import { designTokens } from '../../config/theme';
+import { useResponsiveLayout } from '../../hooks/useResponsive';
 
 interface ProLayoutConfig {
   title: string;
@@ -85,7 +85,6 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
       }}
       // Sider settings
       siderWidth={responsiveLayout.siderWidth}
-      collapsedWidth={responsiveLayout.collapsedWidth}
       // Header settings
       headerContentRender={() => null}
       // Menu settings

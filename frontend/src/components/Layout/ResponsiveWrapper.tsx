@@ -1,6 +1,6 @@
 import React from 'react';
 import { Row, Col } from 'antd';
-import { useResponsive } from '../hooks/useResponsive';
+import { useResponsive } from '../../hooks/useResponsive';
 
 interface ResponsiveWrapperProps {
   children: React.ReactNode;
@@ -36,9 +36,9 @@ export const ResponsiveWrapper: React.FC<ResponsiveWrapperProps> = ({
   const responsive = useResponsive();
 
   return (
-    <Row 
-      gutter={responsive.isMobile ? 8 : gutter} 
-      className={className} 
+    <Row
+      gutter={responsive.isMobile ? 8 : gutter}
+      className={className}
       style={style}
     >
       <Col xs={xs} sm={sm} md={md} lg={lg} xl={xl} xxl={xxl}>
@@ -96,13 +96,13 @@ export const ResponsiveGrid: React.FC<ResponsiveGridProps> = ({
   const colSpan = 24 / currentColumns;
 
   return (
-    <Row 
-      gutter={responsive.isMobile ? 8 : gutter} 
-      className={className} 
+    <Row
+      gutter={responsive.isMobile ? 8 : gutter}
+      className={className}
       style={style}
     >
       {React.Children.map(children, (child, index) => (
-        <Col 
+        <Col
           key={index}
           xs={24}
           sm={columns.sm ? 24 / columns.sm : 12}

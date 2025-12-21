@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import ThemeProvider from './components/ThemeProvider';
-import ProLayoutWrapper from './components/ProLayout';
-import RouteRenderer from './components/RouteRenderer';
-import { ErrorBoundary } from './components/ErrorBoundary';
-import GlobalErrorBoundary from './components/GlobalErrorBoundary';
+import ProLayoutWrapper from './components/Layout/ProLayout';
+import RouteRenderer from './components/Layout/RouteRenderer';
+import { ErrorBoundary } from './components/Feedback/ErrorBoundary';
+import GlobalErrorBoundary from './components/Feedback/GlobalErrorBoundary';
 import { useAuthStore } from './store/authStore';
 import { initializePerformanceOptimizations } from './utils/resourceOptimization';
 import Login from './pages/Login';

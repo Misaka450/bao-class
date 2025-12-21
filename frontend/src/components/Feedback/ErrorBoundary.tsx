@@ -1,7 +1,7 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react';
-import { ErrorHandler } from './ErrorHandler';
-import { DiagnosticLogger } from '../utils/diagnosticLogger';
-import { ErrorRecoveryManager, RecoveryOption } from '../utils/errorRecovery';
+import { ErrorHandler } from '../ErrorHandler';
+import { DiagnosticLogger } from '../../utils/diagnosticLogger';
+import { ErrorRecoveryManager, RecoveryOption } from '../../utils/errorRecovery';
 
 interface Props {
     children: ReactNode;
@@ -30,7 +30,7 @@ class ErrorBoundary extends Component<Props, State> {
     constructor(props: Props) {
         super(props);
         this.state = { hasError: false };
-        
+
         this.logger = DiagnosticLogger.getInstance();
         this.recoveryManager = ErrorRecoveryManager.getInstance({
             enableAutoRecovery: props.enableAutoRecovery ?? true,
@@ -62,7 +62,7 @@ class ErrorBoundary extends Component<Props, State> {
             componentStack: errorInfo.componentStack,
             errorBoundary: 'ErrorBoundary'
         }, error);
-        
+
         // 分析错误并获取恢复选项
         const recoveryOptions = this.recoveryManager.analyzeErrorAndProvideOptions(error, {
             componentStack: errorInfo.componentStack,
@@ -96,9 +96,9 @@ class ErrorBoundary extends Component<Props, State> {
     handleRetry = () => {
         this.logger.info('error_boundary', 'Manual retry initiated');
         this.recoveryManager.resetRecoveryState();
-        this.setState({ 
-            hasError: false, 
-            error: undefined, 
+        this.setState({
+            hasError: false,
+            error: undefined,
             errorInfo: undefined,
             recoveryOptions: undefined,
             isRecovering: false
@@ -107,7 +107,7 @@ class ErrorBoundary extends Component<Props, State> {
 
     handleRecoveryOption = async (option: RecoveryOption) => {
         this.logger.info('error_boundary', `Executing recovery option: ${option.title}`);
-        
+
         try {
             const success = await this.recoveryManager.executeRecovery(option);
             if (success) {
@@ -127,9 +127,9 @@ class ErrorBoundary extends Component<Props, State> {
             if (this.props.fallback) {
                 const FallbackComponent = this.props.fallback;
                 return (
-                    <FallbackComponent 
-                        error={this.state.error!} 
-                        errorInfo={this.state.errorInfo} 
+                    <FallbackComponent
+                        error={this.state.error!}
+                        errorInfo={this.state.errorInfo}
                     />
                 );
             }
@@ -189,7 +189,7 @@ class ErrorBoundary extends Component<Props, State> {
                         type="error"
                         size="large"
                     />
-                    
+
                     {/* 显示恢复选项 */}
                     {this.state.recoveryOptions && this.state.recoveryOptions.length > 0 && (
                         <div style={{

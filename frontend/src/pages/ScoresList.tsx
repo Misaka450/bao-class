@@ -9,7 +9,7 @@ import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
 import { useCourseList } from '../hooks/useCourseList';
 import type { StudentScoreItem } from '../types';
-import PageHeader from '../components/PageHeader';
+import { PageHeader } from '../components/Layout/PageHeader';
 
 interface Course {
     id: number;

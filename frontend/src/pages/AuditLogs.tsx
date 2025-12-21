@@ -2,7 +2,7 @@ import { Card, Tag } from 'antd';
 import { SafetyCertificateOutlined } from '@ant-design/icons';
 import type { ProColumns } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
-import PageHeader from '../components/PageHeader';
+import PageHeader from '../components/Layout/PageHeader';
 import api from '../services/api';
 
 interface AuditLog {

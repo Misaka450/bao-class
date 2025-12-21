@@ -9,8 +9,8 @@ import ClassAiReportCard from '../components/ClassAiReportCard';
 import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
 import { useClassTrend, useClassSubjectTrend, useGradeComparison } from '../hooks/useClassAnalysis';
-import PageHeader from '../components/PageHeader';
-import ChartWrapper from '../components/ChartWrapper';
+import { PageHeader } from '../components/Layout/PageHeader';
+import ChartWrapper from '../components/Charts/ChartWrapper';
 
 const { Title } = Typography;
 

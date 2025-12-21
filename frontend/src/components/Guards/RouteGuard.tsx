@@ -1,8 +1,8 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { Result, Button } from 'antd';
-import { useAuthStore } from '../store/authStore';
-import { hasRouteAccess, getRouteByPath } from '../config/routes';
+import { useAuthStore } from '../../store/authStore';
+import { hasRouteAccess, getRouteByPath } from '../../config/routes';
 
 interface RouteGuardProps {
   children: React.ReactNode;

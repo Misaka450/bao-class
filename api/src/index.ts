@@ -12,14 +12,8 @@ import courses from './routes/courses';
 import exams from './routes/exams';
 import scores from './routes/scores';
 import stats from './routes/stats';
-import profile from './routes/stats/profile';
-import classTrend from './routes/stats/class-trend';
-import classSubjectTrend from './routes/stats/class-subject-trend';
-import gradeComparison from './routes/stats/grade-comparison';
-
 import importRoute from './routes/import';
 import init from './routes/init';
-import debug from './routes/debug';
 import upload from './routes/upload';
 import analysis from './routes/analysis';
 import exportRoute from './routes/export';
@@ -78,10 +72,6 @@ app.route('/api/courses', courses);
 app.route('/api/exams', exams);
 app.route('/api/scores', scores);
 app.route('/api/stats', stats);
-app.route('/api/stats/profile', profile);
-app.route('/api/stats/class-trend', classTrend);
-app.route('/api/stats/class-subject-trend', classSubjectTrend);
-app.route('/api/stats/grade-comparison', gradeComparison);
 app.route('/api/analysis', analysis);
 
 app.route('/api/import', importRoute);
@@ -91,7 +81,6 @@ app.route('/api/logs', logs);
 app.route('/api/ai', ai);
 app.route('/api/users', users);
 app.route('/api/init', init);
-app.route('/api/debug', debug);
 
 // 全局错误处理
 app.onError(errorHandler);

@@ -4,7 +4,7 @@ import { ProTable, ModalForm, ProFormText, ProFormSelect } from '@ant-design/pro
 import { Button, Space, Tag, Popconfirm, message, Tooltip } from 'antd';
 import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import api from '../services/api';
-import PageHeader from '../components/PageHeader';
+import { PageHeader } from '../components/Layout/PageHeader';
 
 export default function Users() {
     const actionRef = useRef<ActionType>(null);

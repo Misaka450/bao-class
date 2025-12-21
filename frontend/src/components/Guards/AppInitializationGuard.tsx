@@ -4,10 +4,10 @@
  */
 
 import React, { ReactNode } from 'react';
-import { useModuleOrchestrator, useAppLoadingProgress } from '../hooks/useModuleOrchestrator';
-import { OrchestratorStatus, OrchestratorConfig } from '../utils/moduleOrchestrator';
+import { useModuleOrchestrator, useAppLoadingProgress } from '../../hooks/useModuleOrchestrator';
+import { OrchestratorStatus, OrchestratorConfig } from '../../utils/moduleOrchestrator';
 import { ContextValidationProvider, ContextValidationStatus } from './ContextValidationProvider';
-import { ContextMonitorConfig } from '../utils/contextValidator';
+import { ContextMonitorConfig } from '../../utils/contextValidator';
 
 interface AppInitializationGuardProps {
   children: ReactNode;
@@ -77,12 +77,12 @@ export const AppInitializationGuard: React.FC<AppInitializationGuardProps> = ({
           borderRadius: '50%',
           animation: 'spin 1s linear infinite'
         }} />
-        
+
         {/* 加载信息 */}
         <div style={{ marginTop: '24px', textAlign: 'center', maxWidth: '400px' }}>
           <h3 style={{ margin: '0 0 12px 0', color: '#333' }}>正在初始化应用</h3>
           <p style={{ margin: '0 0 16px 0', color: '#666' }}>{stage}</p>
-          
+
           {/* 进度条 */}
           {showProgress && (
             <div style={{
@@ -102,7 +102,7 @@ export const AppInitializationGuard: React.FC<AppInitializationGuardProps> = ({
               }} />
             </div>
           )}
-          
+
           {/* 详细状态 */}
           <div style={{ fontSize: '12px', color: '#999' }}>
             {state.reactReady ? '✓ React 已就绪' : '○ React 初始化中...'}
@@ -156,16 +156,16 @@ export const AppInitializationGuard: React.FC<AppInitializationGuardProps> = ({
             }}>⚠️</span>
             <h3 style={{ margin: 0, color: '#ff4d4f' }}>应用初始化失败</h3>
           </div>
-          
+
           <div>
             <p style={{ marginBottom: '16px' }}>
               <strong>错误信息：</strong>{error.message}
             </p>
-            
+
             {/* 初始化状态信息 */}
-            <div style={{ 
-              backgroundColor: '#f8f8f8', 
-              padding: '12px', 
+            <div style={{
+              backgroundColor: '#f8f8f8',
+              padding: '12px',
               borderRadius: '4px',
               marginBottom: '16px',
               fontSize: '14px'
@@ -184,10 +184,10 @@ export const AppInitializationGuard: React.FC<AppInitializationGuardProps> = ({
                 </>
               )}
             </div>
-            
+
             {/* 操作按钮 */}
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button 
+              <button
                 onClick={retryInitialization}
                 style={{
                   backgroundColor: '#1890ff',
@@ -201,8 +201,8 @@ export const AppInitializationGuard: React.FC<AppInitializationGuardProps> = ({
               >
                 重试初始化
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => window.location.reload()}
                 style={{
                   backgroundColor: '#f5f5f5',
@@ -216,8 +216,8 @@ export const AppInitializationGuard: React.FC<AppInitializationGuardProps> = ({
               >
                 刷新页面
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => {
                   console.log('详细状态:', state);
                   alert('详细状态信息已输出到控制台');

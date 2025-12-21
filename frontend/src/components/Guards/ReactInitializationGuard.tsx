@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, ReactNode } from 'react';
-import { ReactReadinessDetector, ReactValidationResult } from '../utils/reactGuard';
+import { ReactReadinessDetector, ReactValidationResult } from '../../utils/reactGuard';
 
 interface ReactInitializationGuardProps {
   children: ReactNode;
@@ -47,18 +47,18 @@ export const ReactInitializationGuard: React.FC<ReactInitializationGuardProps> =
    */
   const initializeReact = async () => {
     try {
-      setState(prev => ({ 
-        ...prev, 
-        isLoading: true, 
-        error: null 
+      setState(prev => ({
+        ...prev,
+        isLoading: true,
+        error: null
       }));
 
       // 等待 React 就绪
       await detector.waitForReact(timeout);
-      
+
       // 验证环境
       const validation = detector.validateReactEnvironment();
-      
+
       if (validation.isValid) {
         setState(prev => ({
           ...prev,
@@ -66,9 +66,9 @@ export const ReactInitializationGuard: React.FC<ReactInitializationGuardProps> =
           isLoading: false,
           validationResult: validation
         }));
-        
+
         onInitialized?.();
-        
+
         // 输出警告信息（如果有）
         if (validation.warnings.length > 0) {
           console.warn('React 初始化警告:', validation.warnings);
@@ -76,17 +76,17 @@ export const ReactInitializationGuard: React.FC<ReactInitializationGuardProps> =
       } else {
         throw new Error(`React 环境验证失败: ${validation.errors.join(', ')}`);
       }
-      
+
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      
+
       setState(prev => ({
         ...prev,
         isLoading: false,
         error: err,
         validationResult: detector.validateReactEnvironment()
       }));
-      
+
       onError?.(err);
       console.error('React 初始化失败:', err);
     }
@@ -100,10 +100,10 @@ export const ReactInitializationGuard: React.FC<ReactInitializationGuardProps> =
       ...prev,
       retryCount: prev.retryCount + 1
     }));
-    
+
     // 重置检测器状态
     detector.reset();
-    
+
     // 重新初始化
     initializeReact();
   };
@@ -184,10 +184,10 @@ export const ReactInitializationGuard: React.FC<ReactInitializationGuardProps> =
             }}>⚠️</span>
             <h3 style={{ margin: 0, color: '#ff4d4f' }}>应用初始化失败</h3>
           </div>
-          
+
           <div>
             <p><strong>错误信息：</strong>{state.error.message}</p>
-            
+
             {state.validationResult && (
               <>
                 {state.validationResult.errors.length > 0 && (
@@ -200,7 +200,7 @@ export const ReactInitializationGuard: React.FC<ReactInitializationGuardProps> =
                     </ul>
                   </div>
                 )}
-                
+
                 {state.validationResult.recommendations.length > 0 && (
                   <div style={{ marginTop: '12px' }}>
                     <strong>建议解决方案：</strong>
@@ -213,9 +213,9 @@ export const ReactInitializationGuard: React.FC<ReactInitializationGuardProps> =
                 )}
               </>
             )}
-            
+
             <div style={{ marginTop: '16px' }}>
-              <button 
+              <button
                 onClick={retryInitialization}
                 style={{
                   backgroundColor: '#1890ff',
@@ -229,8 +229,8 @@ export const ReactInitializationGuard: React.FC<ReactInitializationGuardProps> =
               >
                 重试 ({state.retryCount > 0 ? `第 ${state.retryCount + 1} 次` : '首次'})
               </button>
-              
-              <button 
+
+              <button
                 onClick={() => window.location.reload()}
                 style={{
                   backgroundColor: '#f5f5f5',

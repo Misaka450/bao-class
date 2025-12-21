@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import type { AlertStudent } from '../types';
 import { useClassList } from '../hooks/useClassList';
 import { useFocusGroup } from '../hooks/useFocusGroup';
-import PageHeader from '../components/PageHeader';
-import { SkeletonLoading } from '../components/Loading/SkeletonLoading';
+import { PageHeader } from '../components/Layout/PageHeader';
+import { SkeletonLoading } from '../components/Feedback/Loading/SkeletonLoading';
 
 const { Title } = Typography;
 
