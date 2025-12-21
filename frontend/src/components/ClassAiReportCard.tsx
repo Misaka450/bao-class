@@ -108,7 +108,14 @@ const ClassAiReportCard: React.FC<ClassAiReportCardProps> = ({ classId, examId }
                         <div dangerouslySetInnerHTML={{
                             __html: report
                                 .replace(/\n/g, '<br/>')
+                                // 处理Markdown标题符号（####, ###, ##, #），移除#但保留文字
+                                .replace(/^####\s+(.*?)$/gm, '<strong style="font-size:14px;display:block;margin-top:12px;">$1</strong>')
+                                .replace(/^###\s+(.*?)$/gm, '<strong style="font-size:15px;display:block;margin-top:14px;">$1</strong>')
+                                .replace(/^##\s+(.*?)$/gm, '<strong style="font-size:16px;display:block;margin-top:16px;">$1</strong>')
+                                .replace(/^#\s+(.*?)$/gm, '<strong style="font-size:18px;display:block;margin-top:18px;">$1</strong>')
+                                // 处理【】符号的章节标题
                                 .replace(/【(.*?)】/g, '<h4 style="color:#1890ff;margin-top:16px;">【$1】</h4>')
+                                // 处理**加粗
                                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                         }} />
                     </Typography>

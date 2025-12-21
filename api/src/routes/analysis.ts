@@ -294,7 +294,12 @@ ${dataStr}
 
 4. **字数要求**：总字数 400-500 字，确保内容充实完整
 
-5. **格式要求**：使用 Markdown 格式，加粗标题`
+5. **格式要求**：
+   - 只使用【】符号标记章节标题，如【整体学情分析】
+   - 不要使用任何Markdown格式符号（如 #, ##, ###, ####, **, -, *等）
+   - 使用普通文本，段落之间用空行分隔
+   - 重要词汇可以加书名号《》或引号「」`
+
 
         // 4. Call AI (ModelScope DeepSeek-V3.2)
         console.log('Calling AI model deepseek-ai/DeepSeek-V3.2')
@@ -448,7 +453,12 @@ ${dataStr}
 
 4. **字数要求**：总字数 400-500 字，确保内容充实完整
 
-5. **格式要求**：使用 Markdown 格式，加粗标题`
+5. **格式要求**：
+   - 只使用【】符号标记章节标题，如【整体学情分析】
+   - 不要使用任何Markdown格式符号（如 #, ##, ###, ####, **, -, *等）
+   - 使用普通文本，段落之间用空行分隔
+   - 重要词汇可以加书名号《》或引号「」`
+
 
         // 4. Call AI to generate new report
         console.log('Refreshing: Calling AI model deepseek-ai/DeepSeek-V3.2')
