@@ -34,6 +34,11 @@ export const classApi = {
     create: (data: Omit<Class, 'id'>) => post<Class>('/api/classes', data),
     update: (id: number, data: Partial<Class>) => put<Class>(`/api/classes/${id}`, data),
     delete: (id: number) => del(`/api/classes/${id}`),
+
+    // Subject Teachers
+    getTeachers: (id: number) => get<any[]>(`/api/classes/${id}/teachers`),
+    assignTeacher: (id: number, data: { course_id: number; teacher_id: number }) => post(`/api/classes/${id}/teachers`, data),
+    removeTeacher: (id: number, teacherId: number, courseId: number) => del(`/api/classes/${id}/teachers/${teacherId}/course/${courseId}`),
 };
 
 // ==================== 学生 API ====================

@@ -116,4 +116,93 @@ classes.delete('/:id', checkRole(['admin', 'teacher']), async (c) => {
     }
 })
 
+// --- Subject Teacher Management ---
+
+// Get subject teachers for a class
+classes.get('/:id/teachers', async (c) => {
+    const id = c.req.param('id')
+    const user = c.get('user')
+
+    // Auth check: Admin, Head Teacher, or the teacher themselves (though they might not need to see others)
+    // For simplicity, allow anyone with class access (including subject teachers) to see the list?
+    // Let's stick to Admin and Head Teacher for management purposes, but maybe Subject Teachers want to see colleagues.
+    // Safe default: Check class access.
+    if (!await checkClassAccess(c.env.DB, user, Number(id))) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
+
+    try {
+        const results = await c.env.DB.prepare(`
+            SELECT cct.id, cct.course_id, c.name as course_name, cct.teacher_id, u.name as teacher_name
+            FROM class_course_teachers cct
+            JOIN courses c ON cct.course_id = c.id
+            JOIN users u ON cct.teacher_id = u.id
+            WHERE cct.class_id = ?
+        `).bind(id).all()
+        return c.json(results.results)
+    } catch (error) {
+        return c.json({ error: 'Failed to fetch subject teachers' }, 500)
+    }
+})
+
+// Assign a subject teacher
+classes.post('/:id/teachers', async (c) => {
+    const id = Number(c.req.param('id'))
+    const { course_id, teacher_id } = await c.req.json()
+    const user = c.get('user')
+
+    // Only Admin or Head Teacher of this class can assign subject teachers
+    const isHeadTeacher = await c.env.DB.prepare('SELECT 1 FROM classes WHERE id = ? AND teacher_id = ?').bind(id, user.userId).first()
+    if (user.role !== 'admin' && !isHeadTeacher) {
+        return c.json({ error: 'Forbidden: Only Admin or Head Teacher can assign teachers' }, 403)
+    }
+
+    if (!course_id || !teacher_id) {
+        return c.json({ error: 'course_id and teacher_id are required' }, 400)
+    }
+
+    try {
+        await c.env.DB.prepare(
+            'INSERT INTO class_course_teachers (class_id, course_id, teacher_id) VALUES (?, ?, ?)'
+        ).bind(id, course_id, teacher_id).run()
+
+        await logAction(c.env.DB, user.userId, user.username, 'ASSIGN_TEACHER', 'class', id, { course_id, teacher_id })
+
+        return c.json({ message: 'Teacher assigned successfully' }, 201)
+    } catch (error: any) {
+        if (error.message && error.message.includes('UNIQUE constraint failed')) {
+            return c.json({ error: 'Teacher already assigned to this course' }, 409)
+        }
+        return c.json({ error: 'Failed to assign teacher' }, 500)
+    }
+})
+
+// Remove a subject teacher
+classes.delete('/:id/teachers/:teacherId/course/:courseId', async (c) => {
+    const classId = Number(c.req.param('id'))
+    const teacherId = Number(c.req.param('teacherId'))
+    const courseId = Number(c.req.param('courseId'))
+    const user = c.get('user')
+
+    // Only Admin or Head Teacher
+    const isHeadTeacher = await c.env.DB.prepare('SELECT 1 FROM classes WHERE id = ? AND teacher_id = ?').bind(classId, user.userId).first()
+    if (user.role !== 'admin' && !isHeadTeacher) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
+
+    try {
+        const { success } = await c.env.DB.prepare(
+            'DELETE FROM class_course_teachers WHERE class_id = ? AND teacher_id = ? AND course_id = ?'
+        ).bind(classId, teacherId, courseId).run()
+
+        if (success) {
+            await logAction(c.env.DB, user.userId, user.username, 'REMOVE_TEACHER', 'class', classId, { teacherId, courseId })
+        }
+
+        return success ? c.json({ message: 'Teacher removed' }) : c.json({ error: 'Failed to remove teacher' }, 404)
+    } catch (error) {
+        return c.json({ error: 'Failed to remove teacher' }, 500)
+    }
+})
+
 export default classes

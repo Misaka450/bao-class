@@ -391,8 +391,11 @@ analysis.post('/class/report/refresh', async (c) => {
     const { classId, examId } = await c.req.json()
     const user = c.get('user')
 
-    if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
-        return c.json({ error: 'Forbidden' }, 403)
+    // Only Admin or Head Teacher (Owner) can refresh the report
+    const isHeadTeacher = await c.env.DB.prepare('SELECT 1 FROM classes WHERE id = ? AND teacher_id = ?').bind(classId, user.userId).first()
+
+    if (user.role !== 'admin' && !isHeadTeacher) {
+        return c.json({ error: 'Forbidden: Only Admin or Head Teacher can regenerate reports' }, 403)
     }
 
     try {

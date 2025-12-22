@@ -11,6 +11,7 @@ export interface Class {
     id: number;
     name: string;
     grade: number;
+    teacher_id: number;
 }
 
 // 学生模型
