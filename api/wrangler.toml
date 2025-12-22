@@ -11,7 +11,7 @@ routes = [
 [vars]
 ENVIRONMENT = "production"
 # 注意：JWT_SECRET 应该通过 wrangler secret put JWT_SECRET 命令设置，而不是硬编码在这里
-DASHSCOPE_API_KEY = "ms-21ef793d-666f-4347-97f7-dd3f61d69dec" # ModelScope Token
+# DASHSCOPE_API_KEY 应该通过 wrangler secret put DASHSCOPE_API_KEY 命令设置
 
 # 可观察性配置
 [observability]

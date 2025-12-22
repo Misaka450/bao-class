@@ -13,7 +13,8 @@
         "@types/bcrypt": "^6.0.0",
         "bcrypt": "^6.0.0",
         "hono": "^4.6.10",
-        "xlsx": "^0.18.5"
+        "xlsx": "^0.18.5",
+        "zod": "^4.2.1"
     },
     "devDependencies": {
         "@cloudflare/workers-types": "^4.20241112.0",
