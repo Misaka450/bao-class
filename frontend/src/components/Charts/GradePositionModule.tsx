@@ -1,6 +1,7 @@
 import { Row, Col, Statistic, Empty } from 'antd';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { TrophyOutlined, RiseOutlined } from '@ant-design/icons';
+import ChartWrapper from './ChartWrapper';
 
 interface GradePositionModuleProps {
     gradeData: any;
@@ -34,19 +35,19 @@ export default function GradePositionModule({ gradeData, currentClassInfo, avera
                             />
                         </Col>
                     </Row>
-                    <div style={{ flex: 1, minHeight: 200 }}>
-                        <BarChart width={300} height={240} data={gradeData.classes} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                    <ChartWrapper height={240}>
+                        <BarChart data={gradeData.classes} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                             <XAxis type="number" hide />
-                            <YAxis dataKey="class_name" type="category" width={80} tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none' }} />
-                            <Bar dataKey="average_score" name="平均分" barSize={20} radius={[0, 4, 4, 0]} isAnimationActive={false}>
+                            <YAxis dataKey="class_name" type="category" width={80} tick={{ fontSize: 12, fill: '#64748b' }} tickLine={false} axisLine={false} />
+                            <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: 'var(--shadow-sm)' }} cursor={{ fill: 'transparent' }} />
+                            <Bar dataKey="average_score" name="平均分" barSize={20} radius={[0, 4, 4, 0]}>
                                 {gradeData.classes.map((entry: any, index: number) => (
                                     <Cell key={`cell-${index}`} fill={entry.class_id === gradeData.current_class.class_id ? 'var(--primary-color)' : '#e2e8f0'} />
                                 ))}
                             </Bar>
                         </BarChart>
-                    </div>
+                    </ChartWrapper>
                 </>
             ) : <Empty description="暂无年级数据" />}
         </div>

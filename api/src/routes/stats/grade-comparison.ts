@@ -7,9 +7,9 @@ type Bindings = {
 const gradeComparison = new Hono<{ Bindings: Bindings }>()
 
 // Get grade comparison data
-gradeComparison.get('/:classId', async (c) => {
+gradeComparison.get('/:classId/:examId?', async (c) => {
     const classId = c.req.param('classId')
-    const examId = c.req.query('examId')
+    const examId = c.req.param('examId') || c.req.query('examId')
 
     try {
         // Get class info
@@ -38,6 +38,10 @@ gradeComparison.get('/:classId', async (c) => {
             examInfo = await c.env.DB.prepare(
                 'SELECT id, name, exam_date FROM exams WHERE id = ?'
             ).bind(targetExamId).first()
+        }
+
+        if (!examInfo) {
+            return c.json({ error: 'Exam not found' }, 404)
         }
 
         // Get all classes in the same grade
@@ -121,7 +125,7 @@ gradeComparison.get('/:classId', async (c) => {
                 rank?: number
             }> = []
 
-            for (const cls of gradeClasses.results) {
+            for (const cls of (gradeClasses.results || []) as any[]) {
                 // Find the previous exam for this class
                 const classPrevExam = await c.env.DB.prepare(
                     'SELECT id FROM exams WHERE class_id = ? AND name = ? AND exam_date = ?'
