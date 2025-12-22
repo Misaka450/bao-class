@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Card, Row, Col, Typography, Table, Tag, message, Button, Empty, Modal, Input, List, Popconfirm } from 'antd';
-import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined, ClockCircleOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined, ClockCircleOutlined, EditOutlined, DeleteOutlined, BulbOutlined } from '@ant-design/icons';
+import { Card, Row, Col, Typography, Table, Tag, message, Button, Empty, Modal, Input, List, Popconfirm, Alert, Collapse, Space } from 'antd';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useStudentProfile } from '../hooks/useStudentProfile';
@@ -25,6 +25,7 @@ export default function StudentProfile() {
     const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
     const [editingCommentText, setEditingCommentText] = useState('');
     const [commentSource, setCommentSource] = useState<string>('');
+    const [thinkingContent, setThinkingContent] = useState('');
 
     const loadCommentHistory = async (studentId: number) => {
         setLoadingHistory(true);
@@ -46,25 +47,24 @@ export default function StudentProfile() {
         setGeneratingComment(true);
         setCommentSource('');
         setAiComment('');
+        setThinkingContent('');
 
         try {
-            const res = await api.ai.generateComment({
+            await api.ai.generateCommentStream({
                 student_id: data.student.id,
                 force_regenerate: forceRegenerate
+            }, {
+                onChunk: (chunk) => {
+                    setAiComment(prev => prev + chunk);
+                },
+                onThinking: (thinking) => {
+                    setThinkingContent(prev => prev + thinking);
+                }
             });
 
-            if (res.success) {
-                setAiComment(res.comment);
-                setCommentSource(res.cached ? `缓存 (${res.source === 'kv' ? 'KV' : '数据库'})` : 'AI 生成');
-                if (res.cached) {
-                    message.success('评语加载成功(来自缓存)');
-                } else {
-                    message.success('评语生成成功');
-                    await loadCommentHistory(data.student.id);
-                }
-            } else {
-                message.error('评语生成失败,请稍后重试');
-            }
+            message.success('评语生成成功');
+            setCommentSource('AI 实时生成');
+            await loadCommentHistory(data.student.id);
         } catch (error) {
             console.error('Generate comment error:', error);
             message.error('评语生成失败,请稍后重试');
@@ -324,38 +324,59 @@ export default function StudentProfile() {
                                         </Button>
                                     }
                                 >
-                                    {aiComment ? (
-                                        <>
-                                            <div style={{
-                                                background: 'rgba(240, 245, 255, 0.6)',
-                                                padding: '20px',
-                                                borderRadius: '12px',
-                                                border: '1px solid rgba(145, 202, 255, 0.5)',
-                                                marginBottom: '12px',
-                                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
-                                                position: 'relative',
-                                                overflow: 'hidden'
-                                            }}>
-                                                <div style={{
-                                                    position: 'absolute',
-                                                    top: 0,
-                                                    left: 0,
-                                                    width: '4px',
-                                                    height: '100%',
-                                                    background: 'linear-gradient(to bottom, #1890ff, #722ed1)'
-                                                }} />
-                                                <Paragraph style={{ marginBottom: 0, fontSize: '16px', lineHeight: '1.8', color: '#1e293b' }}>
-                                                    {aiComment}
-                                                </Paragraph>
-                                            </div>
-                                            {commentSource && (
-                                                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                    <Tag icon={<ClockCircleOutlined />} color="default" style={{ fontSize: '11px', opacity: 0.7, border: 'none', background: 'transparent' }}>
-                                                        来源：{commentSource}
-                                                    </Tag>
-                                                </div>
+                                    {aiComment || (generatingComment && thinkingContent) ? (
+                                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                                            {generatingComment && thinkingContent && (
+                                                <Alert
+                                                    message="AI 正在思考中..."
+                                                    description={
+                                                        <Collapse ghost defaultActiveKey={['1']}>
+                                                            <Collapse.Panel header="查看思考过程" key="1">
+                                                                <div style={{ color: '#8c8c8c', fontStyle: 'italic', whiteSpace: 'pre-wrap', fontSize: '13px' }}>
+                                                                    {thinkingContent}
+                                                                </div>
+                                                            </Collapse.Panel>
+                                                        </Collapse>
+                                                    }
+                                                    type="info"
+                                                    showIcon
+                                                    icon={<BulbOutlined />}
+                                                />
                                             )}
-                                        </>
+                                            {aiComment && (
+                                                <>
+                                                    <div style={{
+                                                        background: 'rgba(240, 245, 255, 0.6)',
+                                                        padding: '20px',
+                                                        borderRadius: '12px',
+                                                        border: '1px solid rgba(145, 202, 255, 0.5)',
+                                                        marginBottom: '12px',
+                                                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.02)',
+                                                        position: 'relative',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            top: 0,
+                                                            left: 0,
+                                                            width: '4px',
+                                                            height: '100%',
+                                                            background: 'linear-gradient(to bottom, #1890ff, #722ed1)'
+                                                        }} />
+                                                        <Paragraph style={{ marginBottom: 0, fontSize: '16px', lineHeight: '1.8', color: '#1e293b' }}>
+                                                            {aiComment}
+                                                        </Paragraph>
+                                                    </div>
+                                                    {commentSource && (
+                                                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                            <Tag icon={<ClockCircleOutlined />} color="default" style={{ fontSize: '11px', opacity: 0.7, border: 'none', background: 'transparent' }}>
+                                                                来源：{commentSource}
+                                                            </Tag>
+                                                        </div>
+                                                    )}
+                                                </>
+                                            )}
+                                        </Space>
                                     ) : (
                                         <Empty
                                             image={Empty.PRESENTED_IMAGE_SIMPLE}

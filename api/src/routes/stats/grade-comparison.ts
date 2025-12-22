@@ -8,8 +8,11 @@ const gradeComparison = new Hono<{ Bindings: Bindings }>()
 
 // Get grade comparison data
 gradeComparison.get('/:classId/:examId?', async (c) => {
-    const classId = c.req.param('classId')
-    const examId = c.req.param('examId') || c.req.query('examId')
+    const classIdParam = c.req.param('classId')
+    const examIdParam = c.req.param('examId') || c.req.query('examId')
+
+    const classId = parseInt(classIdParam)
+    const examId = examIdParam ? parseInt(examIdParam) : null
 
     try {
         // Get class info
@@ -19,7 +22,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
         }
 
         // Determine which exam to analyze
-        let targetExamId = examId
+        let targetExamId: number | null = examId
         let examInfo: any
 
         if (!targetExamId) {
@@ -32,7 +35,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
                 return c.json({ error: 'No exams found for this class' }, 404)
             }
 
-            targetExamId = latestExam.id.toString()
+            targetExamId = latestExam.id
             examInfo = latestExam
         } else {
             examInfo = await c.env.DB.prepare(
@@ -100,7 +103,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
         })
 
         // Find current class rank
-        const currentClassData = classesData.find(c => c.class_id.toString() === classId)
+        const currentClassData = classesData.find(c => c.class_id === classId)
 
         // Get previous exam rank change
         let rankChange = 0
@@ -163,7 +166,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
             })
 
             // Find previous rank for current class
-            const previousClassData = previousClassesData.find(c => c.class_id.toString() === classId)
+            const previousClassData = previousClassesData.find(c => c.class_id === classId)
             const previousRank = previousClassData?.rank || 0
             const currentRank = currentClassData?.rank || 0
 
@@ -178,7 +181,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
             },
             classes: classesData,
             current_class: {
-                class_id: parseInt(classId),
+                class_id: classId,
                 rank: currentClassData?.rank || 0,
                 rank_change: rankChange
             }

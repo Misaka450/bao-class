@@ -1,4 +1,4 @@
-import { get, post, put, del } from './request';
+import { get, post, put, del, requestStream } from './request';
 import type {
     User,
     Class,
@@ -136,7 +136,6 @@ export const statsApi = {
         get<GradeComparisonData>(`/api/stats/grade-comparison/${classId}/${examId}`),
 
     // 成绩列表
-    // 成绩列表
     getScoresList: (params: { classId?: string; examId?: string; examName?: string; courseId?: string }) => {
         const query = new URLSearchParams();
         if (params.classId) query.append('classId', params.classId);
@@ -160,6 +159,13 @@ export const analysisApi = {
 
     refreshClassAiReport: (classId: string, examId: number) =>
         post<{ success: boolean; message: string; report?: string; cached?: boolean; error?: string }>('/api/analysis/class/report/refresh', { classId, examId }),
+
+    refreshClassAiReportStream: (classId: string, examId: number, options: { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) =>
+        requestStream('/api/analysis/class/report/refresh/stream', {
+            method: 'POST',
+            body: { classId, examId },
+            ...options
+        }),
 };
 
 // ==================== 导入/导出 API ====================
@@ -216,6 +222,12 @@ export const aiApi = {
             cached?: boolean;
             source?: string;
         }>('/api/ai/generate-comment', data),
+    generateCommentStream: (data: { student_id: number; exam_ids?: number[]; force_regenerate?: boolean }, options: { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) =>
+        requestStream('/api/ai/generate-comment/stream', {
+            method: 'POST',
+            body: data,
+            ...options
+        }),
     getCommentHistory: (studentId: number) =>
         get<{
             success: boolean;

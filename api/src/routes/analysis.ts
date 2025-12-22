@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { streamText } from 'hono/streaming'
 import { authMiddleware } from '../middleware/auth'
 import { Env, JWTPayload } from '../types'
 import { AnalysisService } from '../services/analysis.service'
@@ -45,6 +46,67 @@ analysis.post('/class/report/refresh', async (c) => {
     const service = new AnalysisService(c.env)
     const result = await service.getClassReport(classId, examId, true)
     return c.json(result)
+})
+
+// Refresh AI Diagnostic Report (Streaming)
+analysis.post('/class/report/refresh/stream', async (c) => {
+    const { classId, examId } = refreshReportSchema.parse(await c.req.json())
+    const service = new AnalysisService(c.env)
+
+    // Get the raw stream from model
+    const stream = await service.generateClassReportStream(c, classId, examId)
+    if (!stream) {
+        return c.json({ error: 'Failed to start stream' }, 500)
+    }
+
+    return streamText(c, async (sse) => {
+        const reader = stream.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullContent = '';
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split('\n')
+                buffer = lines.pop() || ''
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
+
+                    const dataStr = trimmedLine.substring(5).trim();
+                    if (dataStr === '[DONE]') break;
+
+                    try {
+                        const parsed = JSON.parse(dataStr);
+                        const chunk = parsed.choices?.[0]?.delta;
+                        if (chunk) {
+                            if (chunk.reasoning_content) {
+                                await sse.write(JSON.stringify({ thinking: chunk.reasoning_content }) + '\n');
+                            }
+                            if (chunk.content) {
+                                fullContent += chunk.content;
+                                await sse.write(JSON.stringify({ content: chunk.content }) + '\n');
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore individual parse errors
+                    }
+                }
+            }
+
+            // 流结束后持久化
+            if (fullContent) {
+                c.executionCtx.waitUntil(service.persistReport(classId, examId, fullContent));
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    });
 })
 
 // Get class score distribution for exam

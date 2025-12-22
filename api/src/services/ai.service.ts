@@ -1,3 +1,4 @@
+import { Context } from 'hono';
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
 
@@ -9,7 +10,7 @@ export class AIService {
     }
 
     /**
-     * 生成学生评语
+     * 生成学生评语 (普通请求)
      */
     async generateStudentComment(studentId: number, forceRegenerate: boolean = false) {
         // 1. 缓存优先
@@ -36,7 +37,50 @@ export class AIService {
             }
         }
 
-        // 2. 并行获取数据
+        // 2. 准备 Prompt 及数据
+        const data = await this.prepareStudentCommentData(studentId);
+        const { systemPrompt, userPrompt, student, avgScore, trend, strongSubjects, weakSubjects } = data;
+
+        // 3. AI 调用
+        const comment = await this.callAIModelNonStreaming(systemPrompt, userPrompt);
+
+        // 4. 结果持久化
+        await this.persistComment(studentId, comment, {
+            avg_score: avgScore.toFixed(1),
+            trend,
+            strong_subjects: strongSubjects,
+            weak_subjects: weakSubjects,
+            model: 'deepseek-ai/DeepSeek-V3.2'
+        });
+
+        return {
+            success: true,
+            comment,
+            cached: false,
+            metadata: {
+                student_name: student.name,
+                avg_score: avgScore.toFixed(1),
+                trend,
+                strong_subjects: strongSubjects,
+                weak_subjects: weakSubjects
+            }
+        };
+    }
+
+    /**
+     * 生成学生评语 (流式请求)
+     */
+    async generateStudentCommentStream(c: Context, studentId: number) {
+        const data = await this.prepareStudentCommentData(studentId);
+        const { systemPrompt, userPrompt } = data;
+        const stream = await AIService.callStreaming(c, systemPrompt, userPrompt);
+        return { stream, data };
+    }
+
+    /**
+     * 准备评语生成所需的数据和 Prompt
+     */
+    private async prepareStudentCommentData(studentId: number) {
         const [student, scoreResult, subjectScores, allScoresResult, examHistory] = await Promise.all([
             this.env.DB.prepare(`
                 SELECT s.id, s.name, c.name as class_name
@@ -81,36 +125,15 @@ export class AIService {
 
         if (!student) throw new AppError('学生不存在', 404);
 
-        // 3. 数据分析逻辑
         const avgScore = scoreResult?.avg_score || 0;
         const { strongSubjects, weakSubjects } = this.processSubjectPerformance(subjectScores.results || []);
         const { trend, trendDescription } = this.analyzeScoreTrend(allScoresResult.results || []);
         const examHistoryText = this.formatExamHistory(examHistory.results || []);
 
-        // 4. AI 调度
-        const comment = await this.callAIModel(student.name, student.class_name, avgScore, trend, trendDescription, strongSubjects, weakSubjects, examHistoryText, forceRegenerate);
+        const systemPrompt = '你是一位经验丰富的班主任，擅长通过成绩数据了解学生的学习状态，并给出温情、客观且具有建设性的评语。';
+        const userPrompt = `学生姓名：${student.name}\n班级：${student.class_name}\n平均分：${avgScore.toFixed(1)}\n成绩趋势：${trendDescription}\n优势科目：${strongSubjects}\n薄弱科目：${weakSubjects}\n考试记录索引：\n${examHistoryText}\n\n请写一段 150-200 字的详细期末/阶段评语。要求：第一部分肯定进步与优势，第二部分指出不足并给出具体的建议，语言亲切自然。`;
 
-        // 5. 结果持久化
-        await this.persistComment(studentId, comment, {
-            avg_score: avgScore.toFixed(1),
-            trend,
-            strong_subjects: strongSubjects,
-            weak_subjects: weakSubjects,
-            model: 'deepseek-ai/DeepSeek-V3.2'
-        });
-
-        return {
-            success: true,
-            comment,
-            cached: false,
-            metadata: {
-                student_name: student.name,
-                avg_score: avgScore.toFixed(1),
-                trend,
-                strong_subjects: strongSubjects,
-                weak_subjects: weakSubjects
-            }
-        };
+        return { systemPrompt, userPrompt, student, avgScore, trend, strongSubjects, weakSubjects };
     }
 
     private processSubjectPerformance(results: any[]) {
@@ -152,12 +175,9 @@ export class AIService {
         return Object.entries(exams).map(([name, subs]) => `\n${name}: ${subs.join('; ')}`).join('');
     }
 
-    private async callAIModel(name: string, className: string, avgScore: number, trend: string, trendDesc: string, strong: string, weak: string, history: string, force: boolean) {
+    private async callAIModelNonStreaming(systemPrompt: string, userPrompt: string) {
         const apiKey = this.env.DASHSCOPE_API_KEY;
-        if (!apiKey) throw new Error('DASHSCOPE_API_KEY is missing');
-
-        const systemPrompt = `你是一位经验丰富、富有爱心的小学班主任，正在为学生撰写期末评语。要求：字数120-150，语气温和，一段话写完。`;
-        const userPrompt = `学生：${name}，班级：${className}，均分：${avgScore.toFixed(1)}，趋势：${trend}(${trendDesc})，强势：${strong}，薄弱：${weak}。历次记录：${history}。`;
+        if (!apiKey) throw new AppError('未配置 DASHSCOPE_API_KEY', 500);
 
         const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
             method: 'POST',
@@ -169,20 +189,59 @@ export class AIService {
             })
         });
 
-        if (!response.ok) throw new Error(`AI API Error: ${response.status}`);
-        const data: any = await response.json();
-        let content = data.choices?.[0]?.message?.content || '生成失败';
-        return content.trim().replace(/^```[\s\S]*?\n/, '').replace(/\n```$/, '');
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'unknown error' })) as any;
+            throw new AppError(error.message || 'AI 生成失败', response.status);
+        }
+
+        const data = await response.json() as any;
+        return data.choices?.[0]?.message?.content || '';
     }
 
-    private async persistComment(studentId: number, comment: string, metadata: any) {
-        try {
-            await this.env.KV.put(`ai_comment_${studentId}`, comment, { expirationTtl: 3600 });
-            await this.env.DB.prepare(`
-                INSERT INTO ai_comments (student_id, comment, metadata) VALUES (?, ?, ?)
-            `).bind(studentId, comment, JSON.stringify(metadata)).run();
-        } catch (e) {
-            console.warn('Persistence failed:', e);
+    /**
+     * 流式调用 AI (模型响应转发)
+     */
+    static async callStreaming(c: Context, systemPrompt: string, userPrompt: string) {
+        const apiKey = c.env.DASHSCOPE_API_KEY;
+        if (!apiKey) throw new AppError('未配置 DASHSCOPE_API_KEY', 500);
+
+        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'Accept': 'text/event-stream'
+            },
+            body: JSON.stringify({
+                model: 'deepseek-ai/DeepSeek-V3.2',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                stream: true,
+                enable_thinking: true
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ message: 'unknown error' })) as any;
+            throw new AppError(error.message || 'AI 流式生成失败', response.status);
         }
+
+        return response.body;
+    }
+
+    /**
+     * 持久化评语到本地数据库和 KV
+     */
+    public async persistComment(studentId: number, comment: string, metadata: any) {
+        // 保存到数据库
+        await this.env.DB.prepare(`
+            INSERT INTO ai_comments (student_id, comment, metadata)
+            VALUES (?, ?, ?)
+        `).bind(studentId, comment, JSON.stringify(metadata)).run();
+
+        // 写入 KV 缓存
+        await this.env.KV.put(`ai_comment_${studentId}`, comment, { expirationTtl: 86400 });
     }
 }

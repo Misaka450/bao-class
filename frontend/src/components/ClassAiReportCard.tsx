@@ -1,127 +1,103 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Card, Button, Spin, Typography, Empty, Space, Tag, Alert } from 'antd';
-import { RobotOutlined, ReloadOutlined, CheckCircleOutlined, InfoCircleOutlined } from '@ant-design/icons';
-import api from '../services/api';
+import React, { useState } from 'react';
+import { Card, Button, Typography, Skeleton, Empty, Space, message, Alert, Collapse } from 'antd';
+import { RobotOutlined, ReloadOutlined, BulbOutlined } from '@ant-design/icons';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { analysisApi } from '../services/api';
+import ReactMarkdown from 'react-markdown';
 
-const { Paragraph, Title } = Typography;
+const { Title } = Typography;
 
-interface ClassAiReportCardProps {
-    classId: string;
+interface Props {
+    classId: number;
     examId: number;
 }
 
-const ClassAiReportCard: React.FC<ClassAiReportCardProps> = ({ classId, examId }) => {
-    const [loading, setLoading] = useState(false);
-    const [report, setReport] = useState<string>('');
-    const [cached, setCached] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+const ClassAiReportCard: React.FC<Props> = ({ classId, examId }) => {
+    const queryClient = useQueryClient();
+    const [isStreaming, setIsStreaming] = useState(false);
+    const [streamContent, setStreamContent] = useState('');
+    const [thinkingContent, setThinkingContent] = useState('');
 
-    const fetchReport = useCallback(async (isRefresh = false) => {
-        if (!classId || !examId) return;
+    const { data, isLoading } = useQuery({
+        queryKey: ['classAiReport', classId, examId],
+        queryFn: () => analysisApi.getClassAiReport(String(classId), examId),
+        enabled: !!classId && !!examId,
+    });
 
-        setLoading(true);
-        setError(null);
-        try {
-            if (isRefresh) {
-                // When refreshing, call refresh endpoint which returns the new report directly
-                const response = await api.analysis.refreshClassAiReport(classId, examId);
-                if (response.success && response.report) {
-                    setReport(response.report);
-                    setCached(false);
-                } else {
-                    throw new Error(response.error || '刷新报告失败');
-                }
-            } else {
-                // Normal fetch from the GET endpoint
-                const response = await api.analysis.getClassAiReport(classId, examId);
-                setReport(response.report);
-                setCached(response.cached);
+    const refreshMutation = useMutation({
+        mutationFn: async () => {
+            setIsStreaming(true);
+            setStreamContent('');
+            setThinkingContent('');
+            try {
+                await analysisApi.refreshClassAiReportStream(String(classId), examId, {
+                    onChunk: (chunk) => {
+                        setStreamContent(prev => prev + chunk);
+                    },
+                    onThinking: (thinking) => {
+                        setThinkingContent(prev => prev + thinking);
+                    }
+                });
+                message.success('生成完成');
+                queryClient.invalidateQueries({ queryKey: ['classAiReport', classId, examId] });
+            } catch (error) {
+                console.error('Refresh report error:', error);
+                message.error('刷新报告失败');
+            } finally {
+                setIsStreaming(false);
             }
-        } catch (err: any) {
-            console.error('Failed to fetch AI report:', err);
-            setError(err.message || '获取分析报告失败，请稍后重试');
-        } finally {
-            setLoading(false);
         }
-    }, [classId, examId]);
+    });
 
-    useEffect(() => {
-        fetchReport();
-    }, [fetchReport]);
-
-    const renderAction = () => (
-        <Button
-            type="text"
-            size="small"
-            icon={<ReloadOutlined spin={loading} />}
-            onClick={() => fetchReport(true)}
-            disabled={loading}
-        >
-            重新诊断
-        </Button>
-    );
+    const displayContent = isStreaming ? streamContent : data?.report;
 
     return (
         <Card
             title={
                 <Space>
                     <RobotOutlined style={{ color: '#1890ff' }} />
-                    <span style={{ fontWeight: 600 }}>AI 智能学情诊断</span>
-                    {cached && <Tag color="default" icon={<CheckCircleOutlined />}>已缓存</Tag>}
+                    <Title level={5} style={{ margin: 0 }}>AI 智能诊断报告</Title>
                 </Space>
             }
-            extra={renderAction()}
-            className="chart-card"
-            style={{ height: '100%', minHeight: 400 }}
-            bodyStyle={{ padding: '20px 24px' }}
+            extra={
+                <Button
+                    type="link"
+                    icon={<ReloadOutlined />}
+                    loading={refreshMutation.isPending || isStreaming}
+                    onClick={() => refreshMutation.mutate()}
+                >
+                    重新生成
+                </Button>
+            }
+            style={{ marginBottom: 24 }}
         >
-            {loading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 300 }}>
-                    <Spin size="large" />
-                    <Paragraph style={{ marginTop: 16, color: '#666' }}>
-                        专家正在深度分析本次考试数据，请稍候...
-                    </Paragraph>
-                </div>
-            ) : error ? (
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={
-                        <Space direction="vertical">
-                            <span>{error}</span>
-                            <Button type="primary" size="small" onClick={() => fetchReport()}>重试</Button>
-                        </Space>
-                    }
-                />
-            ) : report ? (
-                <div style={{ overflowY: 'auto', maxHeight: 600 }}>
-                    {cached && (
+            {isLoading && !isStreaming ? (
+                <Skeleton active paragraph={{ rows: 6 }} />
+            ) : displayContent || thinkingContent ? (
+                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    {thinkingContent && (
                         <Alert
-                            message="此报告基于历史数据快照。如果成绩已更新，请点击右上方重新诊断。"
+                            message="AI 正在思考中..."
+                            description={
+                                <Collapse ghost defaultActiveKey={['1']}>
+                                    <Collapse.Panel header="查看思考过程" key="1">
+                                        <div style={{ color: '#8c8c8c', fontStyle: 'italic', whiteSpace: 'pre-wrap', fontSize: '13px' }}>
+                                            {thinkingContent}
+                                        </div>
+                                    </Collapse.Panel>
+                                </Collapse>
+                            }
                             type="info"
                             showIcon
-                            icon={<InfoCircleOutlined />}
-                            style={{ marginBottom: 16 }}
-                            closable
+                            icon={<BulbOutlined />}
                         />
                     )}
-                    <Typography>
-                        <div dangerouslySetInnerHTML={{
-                            __html: report
-                                .replace(/\n/g, '<br/>')
-                                // 处理Markdown标题符号（####, ###, ##, #），移除#但保留文字
-                                .replace(/^####\s+(.*?)$/gm, '<strong style="font-size:14px;display:block;margin-top:12px;">$1</strong>')
-                                .replace(/^###\s+(.*?)$/gm, '<strong style="font-size:15px;display:block;margin-top:14px;">$1</strong>')
-                                .replace(/^##\s+(.*?)$/gm, '<strong style="font-size:16px;display:block;margin-top:16px;">$1</strong>')
-                                .replace(/^#\s+(.*?)$/gm, '<strong style="font-size:18px;display:block;margin-top:18px;">$1</strong>')
-                                // 处理【】符号的章节标题
-                                .replace(/【(.*?)】/g, '<h4 style="color:#1890ff;margin-top:16px;">【$1】</h4>')
-                                // 处理**加粗
-                                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        }} />
-                    </Typography>
-                </div>
+                    <div className="markdown-body">
+                        <ReactMarkdown>{displayContent}</ReactMarkdown>
+                    </div>
+                </Space>
             ) : (
-                <Empty description="暂无分析数据" />
+                <Empty description="暂无报告，请点击重新生成" />
             )}
         </Card>
     );

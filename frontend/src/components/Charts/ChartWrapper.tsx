@@ -20,13 +20,21 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
     empty
 }) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
         const handleResize = () => {
             setIsMobile(window.innerWidth < 768);
         };
         window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+
+        // 确保在一帧之后渲染图表，给父容器留出布局时间
+        const timer = setTimeout(() => setIsReady(true), 50);
+
+        return () => {
+            window.removeEventListener('resize', handleResize);
+            clearTimeout(timer);
+        };
     }, []);
 
     const effectiveHeight = isMobile ? mobileHeight : height;
@@ -67,11 +75,14 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
             height: effectiveHeight,
             minHeight: effectiveMinHeight,
             width: '100%',
-            position: 'relative'
+            position: 'relative',
+            overflow: 'hidden' // 防止容器溢出干扰尺寸计算
         }}>
-            <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={1}>
-                {children || <div />}
-            </ResponsiveContainer>
+            {isReady && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
+                    {children || <div />}
+                </ResponsiveContainer>
+            )}
         </div>
     );
 };

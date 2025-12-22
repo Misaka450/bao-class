@@ -1,5 +1,7 @@
+import { Context } from 'hono';
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
+import { AIService } from './ai.service';
 
 export class AnalysisService {
     private env: Env;
@@ -162,24 +164,7 @@ export class AnalysisService {
             await this.env.DB.prepare(`DELETE FROM ai_class_reports WHERE class_id = ? AND exam_id = ?`).bind(classId, examId).run();
         }
 
-        const [classInfo, examInfo, stats] = await Promise.all([
-            this.env.DB.prepare('SELECT name FROM classes WHERE id = ?').bind(classId).first<any>(),
-            this.env.DB.prepare('SELECT name FROM exams WHERE id = ?').bind(examId).first<any>(),
-            this.env.DB.prepare(`
-                SELECT c.name as course_name, AVG(s.score) as avg_score, MAX(s.score) as max_score, MIN(s.score) as min_score,
-                       COUNT(CASE WHEN s.score >= 60 THEN 1 END) * 100.0 / COUNT(*) as pass_rate
-                FROM scores s JOIN courses c ON s.course_id = c.id JOIN students st ON s.student_id = st.id
-                WHERE st.class_id = ? AND s.exam_id = ? GROUP BY s.course_id
-            `).bind(classId, examId).all()
-        ]);
-
-        if (!stats.results?.length) throw new AppError('暂无考试数据', 404);
-
-        const dataStr = stats.results.map((r: any) =>
-            `- ${r.course_name}: 均分${Number(r.avg_score).toFixed(1)}, 最高${r.max_score}, 最低${r.min_score}, 及格率${Number(r.pass_rate).toFixed(1)}%`
-        ).join('\n');
-
-        const prompt = `你是一位教育专家。请分析 ${classInfo?.name} 在 ${examInfo?.name} 中的表现：\n${dataStr}\n要求：包含【整体分析】【优势】【薄弱】【建议】，400-500字。`;
+        const prompt = await this.prepareReportPrompt(classId, examId);
 
         const apiKey = this.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new Error('DASHSCOPE_API_KEY is missing');
@@ -199,13 +184,51 @@ export class AnalysisService {
         const report = data.choices?.[0]?.message?.content?.trim() || '生成报告失败';
 
         if (!report.includes('失败')) {
-            await this.env.DB.prepare(`
-                INSERT INTO ai_class_reports (class_id, exam_id, report_content) VALUES (?, ?, ?)
-                ON CONFLICT(class_id, exam_id) DO UPDATE SET report_content = excluded.report_content, updated_at = CURRENT_TIMESTAMP
-            `).bind(classId, examId, report).run();
+            await this.persistReport(classId, examId, report);
         }
 
         return { report, cached: false };
+    }
+
+    /**
+     * 持久化班级报告
+     */
+    public async persistReport(classId: number, examId: number, report: string) {
+        await this.env.DB.prepare(`
+            INSERT INTO ai_class_reports (class_id, exam_id, report_content) VALUES (?, ?, ?)
+            ON CONFLICT(class_id, exam_id) DO UPDATE SET report_content = excluded.report_content, updated_at = CURRENT_TIMESTAMP
+        `).bind(classId, examId, report).run();
+    }
+
+    /**
+     * 生成班级学情诊断报告 (流式)
+     */
+    async generateClassReportStream(c: Context, classId: number, examId: number) {
+        const prompt = await this.prepareReportPrompt(classId, examId);
+        const systemPrompt = '你是一位专业的教育数据分析专家，善于从海量考试数据中洞察教学问题，并给出高度专业、落地、且具有前瞻性的教学建议。请分析以下考试数据并生成报告。';
+
+        return AIService.callStreaming(c, systemPrompt, prompt);
+    }
+
+    private async prepareReportPrompt(classId: number, examId: number): Promise<string> {
+        const [classInfo, examInfo, stats] = await Promise.all([
+            this.env.DB.prepare('SELECT name FROM classes WHERE id = ?').bind(classId).first<any>(),
+            this.env.DB.prepare('SELECT name FROM exams WHERE id = ?').bind(examId).first<any>(),
+            this.env.DB.prepare(`
+                SELECT c.name as course_name, AVG(s.score) as avg_score, MAX(s.score) as max_score, MIN(s.score) as min_score,
+                       COUNT(CASE WHEN s.score >= 60 THEN 1 END) * 100.0 / COUNT(*) as pass_rate
+                FROM scores s JOIN courses c ON s.course_id = c.id JOIN students st ON s.student_id = st.id
+                WHERE st.class_id = ? AND s.exam_id = ? GROUP BY s.course_id
+            `).bind(classId, examId).all()
+        ]);
+
+        if (!stats.results?.length) throw new AppError('暂无考试数据', 404);
+
+        const dataStr = stats.results.map((r: any) =>
+            `- ${r.course_name}: 均分${Number(r.avg_score).toFixed(1)}, 最高${r.max_score}, 最低${r.min_score}, 及格率${Number(r.pass_rate).toFixed(1)}%`
+        ).join('\n');
+
+        return `你是一位教育专家。请分析 ${classInfo?.name} 在 ${examInfo?.name} 中的表现：\n${dataStr}\n要求：包含【整体分析】【优势】【薄弱】【建议】，400-500字。`;
     }
 
     /**

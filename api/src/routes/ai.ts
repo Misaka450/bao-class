@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { streamText } from 'hono/streaming'
 import { authMiddleware } from '../middleware/auth'
 import { checkClassAccess } from '../utils/auth'
 import { AppError } from '../utils/AppError'
@@ -34,6 +35,84 @@ ai.post('/generate-comment', async (c) => {
     const result = await aiService.generateStudentComment(student_id, force_regenerate)
 
     return c.json(result)
+})
+
+// Generate student comment (Streaming)
+ai.post('/generate-comment/stream', async (c) => {
+    const json = await c.req.json()
+    const validated = generateCommentSchema.parse(json)
+    const { student_id } = validated
+
+    const user = c.get('user')
+
+    // 基础校验
+    const studentInfo = await c.env.DB.prepare('SELECT class_id FROM students WHERE id = ?').bind(student_id).first<any>()
+    if (!studentInfo) throw new AppError('学生不存在', 404)
+    // 根据用户反馈，不强制越权隔离
+
+    const aiService = new AIService(c.env);
+    const { stream, data: commentMetadata } = await aiService.generateStudentCommentStream(c, student_id);
+    if (!stream) {
+        return c.json({ error: 'Failed to start stream' }, 500);
+    }
+
+    return streamText(c, async (sse) => {
+        const reader = stream.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let fullContent = '';
+
+        try {
+            while (true) {
+                const { done, value } = await reader.read()
+                if (done) break
+
+                buffer += decoder.decode(value, { stream: true })
+                const lines = buffer.split('\n')
+                buffer = lines.pop() || ''
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
+
+                    const dataStr = trimmedLine.substring(5).trim();
+                    if (dataStr === '[DONE]') break;
+
+                    try {
+                        const parsed = JSON.parse(dataStr);
+                        const chunk = parsed.choices?.[0]?.delta;
+                        if (chunk) {
+                            if (chunk.reasoning_content) {
+                                await sse.write(JSON.stringify({ thinking: chunk.reasoning_content }) + '\n');
+                            }
+                            if (chunk.content) {
+                                fullContent += chunk.content;
+                                await sse.write(JSON.stringify({ content: chunk.content }) + '\n');
+                            }
+                        }
+                    } catch (e) {
+                        // Ignore individual parse errors
+                    }
+                }
+            }
+
+            // 流结束后持久化
+            if (fullContent) {
+                const { avgScore, trend, strongSubjects, weakSubjects } = commentMetadata;
+                c.executionCtx.waitUntil(
+                    aiService.persistComment(student_id, fullContent, {
+                        avg_score: avgScore.toFixed(1),
+                        trend,
+                        strong_subjects: strongSubjects,
+                        weak_subjects: weakSubjects,
+                        model: 'deepseek-ai/DeepSeek-V3.2'
+                    })
+                );
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    });
 })
 
 // Get comment history for a student

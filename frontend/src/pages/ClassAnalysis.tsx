@@ -164,7 +164,7 @@ export default function ClassAnalysis() {
             )}
 
             <ClassAiReportCard
-                classId={selectedClassId}
+                classId={Number(selectedClassId)}
                 examId={selectedExamId ? Number(selectedExamId) : 0}
             />
         </Space>

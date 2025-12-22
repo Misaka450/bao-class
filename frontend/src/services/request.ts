@@ -146,6 +146,70 @@ export async function request<T = any>(
 }
 
 /**
+ * 流式请求处理
+ */
+export async function requestStream(
+    endpoint: string,
+    options: RequestOptions & { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }
+): Promise<void> {
+    const { method = 'POST', body, headers = {}, onChunk, onThinking } = options;
+    const token = useAuthStore.getState().token;
+
+    const config: RequestInit = {
+        method,
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            ...headers,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+    };
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw createRequestError(errorData.message || '流式请求失败', response.status);
+    }
+
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) throw new Error('无法读取响应流');
+
+    let buffer = '';
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // 处理 SSE 格式数据 (data: {...})
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || ''; // 最后一项可能不完整，保留到缓冲区
+
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
+
+            const dataStr = trimmedLine.replace('data:', '').trim();
+            if (dataStr === '[DONE]') break;
+
+            try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.thinking && onThinking) {
+                    onThinking(parsed.thinking);
+                } else if (parsed.content) {
+                    onChunk(parsed.content);
+                }
+            } catch (e) {
+                console.warn('解析流式数据块失败:', e);
+            }
+        }
+    }
+}
+
+/**
  * 根据状态码获取默认错误消息
  */
 function getStatusMessage(status: number): string {
