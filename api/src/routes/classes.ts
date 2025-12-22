@@ -23,16 +23,20 @@ classes.get('/', async (c) => {
     return c.json(results)
 })
 
-classes.post('/', checkRole('admin'), async (c) => {
+classes.post('/', checkRole(['admin', 'teacher']), async (c) => {
     const { name, grade, teacher_id } = await c.req.json()
     if (!name || !grade) return c.json({ error: 'Name and grade are required' }, 400)
 
+    const user = c.get('user')
+
+    // If user is not admin, they can only create class for themselves
+    const targetTeacherId = user.role === 'admin' ? (teacher_id || null) : user.userId
+
     const { success, meta } = await c.env.DB.prepare(
         'INSERT INTO classes (name, grade, teacher_id) VALUES (?, ?, ?)'
-    ).bind(name, grade, teacher_id || null).run()
+    ).bind(name, grade, targetTeacherId).run()
 
     if (success) {
-        const user = c.get('user')
         await logAction(c.env.DB, user.userId, user.username, 'CREATE_CLASS', 'class', meta.last_row_id, { name, grade })
     }
 
@@ -53,9 +57,12 @@ classes.put('/:id', async (c) => {
 
     const { name, grade, teacher_id } = await c.req.json()
 
+    // Non-admin cannot change the teacher_id
+    const targetTeacherId = user.role === 'admin' ? (teacher_id || null) : user.userId
+
     const { success } = await c.env.DB.prepare(
         'UPDATE classes SET name = ?, grade = ?, teacher_id = ? WHERE id = ?'
-    ).bind(name, grade, teacher_id || null, id).run()
+    ).bind(name, grade, targetTeacherId, id).run()
 
     if (success) {
         await logAction(c.env.DB, user.userId, user.username, 'UPDATE_CLASS', 'class', id, { name, grade })
@@ -64,8 +71,17 @@ classes.put('/:id', async (c) => {
     return success ? c.json({ message: 'Class updated' }) : c.json({ error: 'Failed to update class' }, 500)
 })
 
-classes.delete('/:id', checkRole('admin'), async (c) => {
+classes.delete('/:id', checkRole(['admin', 'teacher']), async (c) => {
     const id = c.req.param('id')
+    const user = c.get('user')
+
+    // Check ownership if not admin
+    if (user.role !== 'admin') {
+        const cls = await c.env.DB.prepare('SELECT teacher_id FROM classes WHERE id = ?').bind(id).first<Class>()
+        if (!cls || cls.teacher_id !== user.userId) {
+            return c.json({ error: 'Forbidden: You can only delete your own classes' }, 403)
+        }
+    }
 
     try {
         // 1. Delete all scores for students in this class
@@ -90,7 +106,6 @@ classes.delete('/:id', checkRole('admin'), async (c) => {
         const { success } = await c.env.DB.prepare('DELETE FROM classes WHERE id = ?').bind(id).run()
 
         if (success) {
-            const user = c.get('user')
             await logAction(c.env.DB, user.userId, user.username, 'DELETE_CLASS', 'class', Number(id), { id })
         }
 

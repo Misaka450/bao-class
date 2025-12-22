@@ -52,7 +52,7 @@ importRoute.get('/template/students', async (c) => {
 })
 
 // Bulk import students from Excel (Optimized)
-importRoute.post('/students', checkRole('admin'), async (c) => {
+importRoute.post('/students', checkRole(['admin', 'teacher']), async (c) => {
     try {
         const formData = await c.req.formData()
         const file = formData.get('file') as File
@@ -78,10 +78,20 @@ importRoute.post('/students', checkRole('admin'), async (c) => {
             return c.json({ error: '文件内容为空' }, 400)
         }
 
+        const user = c.get('user')
         const errors: string[] = []
 
         // Step 1: Preload all classes into a Map
-        const classesResult = await c.env.DB.prepare('SELECT id, name FROM classes').all()
+        // If not admin, only load classes owned by this teacher
+        let classesQuery = 'SELECT id, name FROM classes'
+        let classesParams: any[] = []
+
+        if (user.role !== 'admin') {
+            classesQuery += ' WHERE teacher_id = ?'
+            classesParams = [user.userId]
+        }
+
+        const classesResult = await c.env.DB.prepare(classesQuery).bind(...classesParams).all()
         const classMap = new Map<string, number>()
         classesResult.results.forEach((row: any) => {
             classMap.set(row.name, row.id)
@@ -98,7 +108,11 @@ importRoute.post('/students', checkRole('admin'), async (c) => {
             if (!row['姓名'] || !row['班级']) continue
             const classId = classMap.get(row['班级'])
             if (!classId) {
-                errors.push(`第 ${i + 2} 行: 班级 "${row['班级']}" 不存在`)
+                if (user.role !== 'admin') {
+                    errors.push(`第 ${i + 2} 行: 班级 "${row['班级']}" 不存在或无权操作`)
+                } else {
+                    errors.push(`第 ${i + 2} 行: 班级 "${row['班级']}" 不存在`)
+                }
                 continue
             }
             const studentId = `S${String(baseCount + validStudents.length + 1).padStart(3, '0')} `

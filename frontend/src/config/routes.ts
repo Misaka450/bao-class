@@ -139,7 +139,7 @@ const routes: RouteConfig[] = [
         name: '数据导入',
         icon: React.createElement(ImportOutlined),
         component: Import,
-        access: ['admin'],
+        access: ['admin', 'head_teacher', 'teacher'],
         title: '数据导入 - 班级管理系统',
         description: '批量导入学生和成绩数据',
       },
