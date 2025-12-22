@@ -184,8 +184,7 @@ export class AIService {
             headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 model: 'deepseek-ai/DeepSeek-V3.2',
-                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-                enable_thinking: true
+                messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }]
             })
         });
 
@@ -218,8 +217,7 @@ export class AIService {
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
                 ],
-                stream: true,
-                enable_thinking: true
+                stream: true
             })
         });
 

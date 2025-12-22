@@ -18,7 +18,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
         // Get class info
         const classInfo = await c.env.DB.prepare('SELECT name, grade FROM classes WHERE id = ?').bind(classId).first<{ name: string, grade: number }>()
         if (!classInfo) {
-            return c.json({ error: 'Class not found' }, 404)
+            return c.json({ error: `Class not found: ${classId}` }, 404)
         }
 
         // Determine which exam to analyze
@@ -32,7 +32,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
             ).bind(classId).first<{ id: number, name: string, exam_date: string }>()
 
             if (!latestExam) {
-                return c.json({ error: 'No exams found for this class' }, 404)
+                return c.json({ error: `No exams found for class: ${classId}` }, 404)
             }
 
             targetExamId = latestExam.id
@@ -44,7 +44,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
         }
 
         if (!examInfo) {
-            return c.json({ error: 'Exam not found' }, 404)
+            return c.json({ error: `Exam not found: ${targetExamId}` }, 404)
         }
 
         // Get all classes in the same grade
