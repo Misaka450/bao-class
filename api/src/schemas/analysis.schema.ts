@@ -14,8 +14,8 @@ export const reportParamsSchema = z.object({
 });
 
 export const refreshReportSchema = z.object({
-    classId: z.number(),
-    examId: z.number()
+    classId: z.coerce.number(),
+    examId: z.coerce.number()
 });
 
 export const distributionParamsSchema = z.object({

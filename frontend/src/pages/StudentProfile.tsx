@@ -11,6 +11,7 @@ import StatisticsRow from '../components/StatisticsRow';
 import { SkeletonLoading } from '../components/Feedback/Loading/SkeletonLoading';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
 import ClassAiReportCard from '../components/ClassAiReportCard';
+import ReactMarkdown from 'react-markdown';
 
 export default function StudentProfile() {
     const { Title, Text, Paragraph } = Typography;
@@ -55,9 +56,11 @@ export default function StudentProfile() {
                 force_regenerate: forceRegenerate
             }, {
                 onChunk: (chunk) => {
+                    console.log('[StudentProfile] Received chunk:', chunk);
                     setAiComment(prev => prev + chunk);
                 },
                 onThinking: (thinking) => {
+                    console.log('[StudentProfile] Received thinking:', thinking);
                     setThinkingContent(prev => prev + thinking);
                 }
             });
@@ -363,9 +366,9 @@ export default function StudentProfile() {
                                                             height: '100%',
                                                             background: 'linear-gradient(to bottom, #1890ff, #722ed1)'
                                                         }} />
-                                                        <Paragraph style={{ marginBottom: 0, fontSize: '16px', lineHeight: '1.8', color: '#1e293b' }}>
-                                                            {aiComment}
-                                                        </Paragraph>
+                                                        <div className="markdown-body" style={{ fontSize: '16px', lineHeight: '1.8', color: '#1e293b' }}>
+                                                            <ReactMarkdown>{aiComment}</ReactMarkdown>
+                                                        </div>
                                                     </div>
                                                     {commentSource && (
                                                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

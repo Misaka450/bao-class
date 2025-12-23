@@ -193,7 +193,10 @@ export async function requestStream(
             if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
 
             const dataStr = trimmedLine.replace('data:', '').trim();
-            if (dataStr === '[DONE]') break;
+            if (dataStr === '[DONE]') {
+                console.log('[requestStream] Stream finished');
+                break;
+            }
 
             try {
                 const parsed = JSON.parse(dataStr);
@@ -203,7 +206,7 @@ export async function requestStream(
                     onChunk(parsed.content);
                 }
             } catch (e) {
-                console.warn('解析流式数据块失败:', e);
+                console.error('[requestStream] JSON parse failed for data:', dataStr, e);
             }
         }
     }

@@ -30,7 +30,7 @@ const ClassAiReportCard: React.FC<Props> = ({ classId, examId }) => {
             setStreamContent('');
             setThinkingContent('');
             try {
-                await analysisApi.refreshClassAiReportStream(String(classId), examId, {
+                await analysisApi.refreshClassAiReportStream(classId, examId, {
                     onChunk: (chunk) => {
                         setStreamContent(prev => prev + chunk);
                     },
