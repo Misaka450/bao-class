@@ -83,11 +83,11 @@ ai.post('/generate-comment/stream', async (c) => {
                         const chunk = parsed.choices?.[0]?.delta;
                         if (chunk) {
                             if (chunk.reasoning_content) {
-                                await sse.write(JSON.stringify({ thinking: chunk.reasoning_content }) + '\n');
+                                await sse.write(`data: ${JSON.stringify({ thinking: chunk.reasoning_content })}\n`);
                             }
                             if (chunk.content) {
                                 fullContent += chunk.content;
-                                await sse.write(JSON.stringify({ content: chunk.content }) + '\n');
+                                await sse.write(`data: ${JSON.stringify({ content: chunk.content })}\n`);
                             }
                         }
                     } catch (e) {
@@ -95,6 +95,9 @@ ai.post('/generate-comment/stream', async (c) => {
                     }
                 }
             }
+
+            // 发送结束标志
+            await sse.write('data: [DONE]\n');
 
             // 流结束后持久化
             if (fullContent) {

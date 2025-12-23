@@ -50,63 +50,78 @@ analysis.post('/class/report/refresh', async (c) => {
 
 // Refresh AI Diagnostic Report (Streaming)
 analysis.post('/class/report/refresh/stream', async (c) => {
-    const { classId, examId } = refreshReportSchema.parse(await c.req.json())
-    const service = new AnalysisService(c.env)
+    try {
+        const body = await c.req.json();
+        const { classId, examId } = refreshReportSchema.parse(body);
+        const service = new AnalysisService(c.env);
 
-    // Get the raw stream from model
-    const stream = await service.generateClassReportStream(c, classId, examId)
-    if (!stream) {
-        return c.json({ error: 'Failed to start stream' }, 500)
-    }
+        console.log(`[API] Start class report stream: classId=${classId}, examId=${examId}`);
 
-    return streamText(c, async (sse) => {
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        let fullContent = '';
+        // Get the raw stream from model
+        const stream = await service.generateClassReportStream(c, classId, examId);
+        if (!stream) {
+            console.error(`[API] AI Stream failed to start: classId=${classId}, examId=${examId}`);
+            return c.json({ error: 'Failed to start AI stream. Model may be busy.' }, 500);
+        }
 
-        try {
-            while (true) {
-                const { done, value } = await reader.read()
-                if (done) break
+        return streamText(c, async (sse) => {
+            const reader = stream.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let fullContent = '';
 
-                buffer += decoder.decode(value, { stream: true })
-                const lines = buffer.split('\n')
-                buffer = lines.pop() || ''
+            try {
+                while (true) {
+                    const { done, value } = await reader.read()
+                    if (done) break
 
-                for (const line of lines) {
-                    const trimmedLine = line.trim();
-                    if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
+                    buffer += decoder.decode(value, { stream: true })
+                    const lines = buffer.split('\n')
+                    buffer = lines.pop() || ''
 
-                    const dataStr = trimmedLine.substring(5).trim();
-                    if (dataStr === '[DONE]') break;
+                    for (const line of lines) {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
 
-                    try {
-                        const parsed = JSON.parse(dataStr);
-                        const chunk = parsed.choices?.[0]?.delta;
-                        if (chunk) {
-                            if (chunk.reasoning_content) {
-                                await sse.write(JSON.stringify({ thinking: chunk.reasoning_content }) + '\n');
+                        const dataStr = trimmedLine.substring(5).trim();
+                        if (dataStr === '[DONE]') break;
+
+                        try {
+                            const parsed = JSON.parse(dataStr);
+                            const chunk = parsed.choices?.[0]?.delta;
+                            if (chunk) {
+                                if (chunk.reasoning_content) {
+                                    await sse.write(`data: ${JSON.stringify({ thinking: chunk.reasoning_content })}\n`);
+                                }
+                                if (chunk.content) {
+                                    fullContent += chunk.content;
+                                    await sse.write(`data: ${JSON.stringify({ content: chunk.content })}\n`);
+                                }
                             }
-                            if (chunk.content) {
-                                fullContent += chunk.content;
-                                await sse.write(JSON.stringify({ content: chunk.content }) + '\n');
-                            }
+                        } catch (e) {
+                            // Ignore individual parse errors
                         }
-                    } catch (e) {
-                        // Ignore individual parse errors
                     }
                 }
-            }
 
-            // 流结束后持久化
-            if (fullContent) {
-                c.executionCtx.waitUntil(service.persistReport(classId, examId, fullContent));
+                // 流结束后持久化
+                if (fullContent) {
+                    c.executionCtx.waitUntil(service.persistReport(classId, examId, fullContent));
+                }
+            } finally {
+                reader.releaseLock();
             }
-        } finally {
-            reader.releaseLock();
-        }
-    });
+        });
+    } catch (error) {
+        console.error('[API] Class report stream error:', error);
+        const statusCode = (error as any).statusCode || (error as any).status || 500;
+        return c.json({
+            success: false,
+            message: error instanceof Error ? error.message : 'Internal Server Error',
+            error: error instanceof Error ? error.message : 'Internal Server Error',
+            details: error instanceof Error ? error.stack : undefined
+        }, statusCode as any);
+    }
 })
 
 // Get class score distribution for exam

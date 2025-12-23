@@ -15,6 +15,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
     const examId = examIdParam ? parseInt(examIdParam) : null
 
     try {
+        console.log(`[API] Grade comparison request: classId=${classId}, examId=${examId}`);
         // Get class info
         const classInfo = await c.env.DB.prepare('SELECT name, grade FROM classes WHERE id = ?').bind(classId).first<{ name: string, grade: number }>()
         if (!classInfo) {
