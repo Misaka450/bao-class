@@ -47,6 +47,7 @@ auth.post('/login', async (c) => {
     const payload: JWTPayload = {
       userId: user.id as number,
       username: user.username as string,
+      name: user.name as string,
       role: user.role as any,
     };
 
@@ -96,6 +97,7 @@ auth.get('/me', authMiddleware, async (c) => {
     const payload: JWTPayload = {
       userId: userData.id as number,
       username: userData.username as string,
+      name: userData.name as string,
       role: userData.role as any,
     };
     const authorizedClassIds = await getAuthorizedClassIds(c.env.DB, payload);

@@ -64,6 +64,7 @@ export interface Score {
 export interface JWTPayload {
   userId: number;
   username: string;
+  name: string;
   role: UserRole;
 }
 

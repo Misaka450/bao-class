@@ -206,15 +206,20 @@ export class AnalysisService {
     /**
      * 生成班级学情诊断报告 (流式)
      */
-    async generateClassReportStream(c: Context, classId: number, examId: number) {
-        const { systemPrompt, userPrompt } = await this.prepareEnhancedReportPrompt(classId, examId);
+    async generateClassReportStream(c: Context, classId: number, examId: number, reporterName: string = '系统') {
+        const { systemPrompt, userPrompt } = await this.prepareEnhancedReportPrompt(classId, examId, reporterName);
         return AIService.callStreaming(c, systemPrompt, userPrompt);
     }
 
     /**
      * 增强版报告数据准备 - 多维度数据采集
      */
-    private async prepareEnhancedReportPrompt(classId: number, examId: number): Promise<{ systemPrompt: string; userPrompt: string }> {
+    private async prepareEnhancedReportPrompt(classId: number, examId: number, reporterName: string = '系统'): Promise<{ systemPrompt: string; userPrompt: string }> {
+        // 获取北京时间 (UTC+8)
+        const now = new Date();
+        const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
+        const reportDate = beijingTime.toISOString().split('T')[0]; // YYYY-MM-DD
+        const reportTime = beijingTime.toISOString().split('T')[1].substring(0, 5); // HH:MM
         // 1. 基础信息和当前考试数据
         const [classInfo, examInfo, stats, studentCount] = await Promise.all([
             this.env.DB.prepare('SELECT name, grade FROM classes WHERE id = ?').bind(classId).first<any>(),
@@ -356,6 +361,10 @@ export class AnalysisService {
 - 考试：${examInfo?.name || '未知'}
 - 考试日期：${examInfo?.exam_date || '未知'}
 - 学生人数：${studentCount?.count || '未知'}
+
+## 报告信息
+- 生成时间：${reportDate} ${reportTime}（北京时间）
+- 报告人：${reporterName}
 
 ## 本次考试成绩
 ${currentStatsStr}

@@ -53,12 +53,14 @@ analysis.post('/class/report/refresh/stream', async (c) => {
     try {
         const body = await c.req.json();
         const { classId, examId } = refreshReportSchema.parse(body);
+        const user = c.get('user');
+        const reporterName = user?.name || '系统';
         const service = new AnalysisService(c.env);
 
-        console.log(`[API] Start class report stream: classId=${classId}, examId=${examId}`);
+        console.log(`[API] Start class report stream: classId=${classId}, examId=${examId}, reporter=${reporterName}`);
 
         // Get the raw stream from model
-        const stream = await service.generateClassReportStream(c, classId, examId);
+        const stream = await service.generateClassReportStream(c, classId, examId, reporterName);
         if (!stream) {
             console.error(`[API] AI Stream failed to start: classId=${classId}, examId=${examId}`);
             return c.json({ error: 'Failed to start AI stream. Model may be busy.' }, 500);
