@@ -42,7 +42,7 @@ const SimpleDistributionChart: React.FC<Props> = ({ data, loading, title = "æˆç
             title={<span style={{ fontWeight: 600, fontSize: '16px' }}>{title}</span>}
             bodyStyle={{ padding: '24px', height: 360 }}
         >
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
                 <BarChart
                     data={data}
                     margin={{ top: 10, right: 30, left: 0, bottom: 20 }}

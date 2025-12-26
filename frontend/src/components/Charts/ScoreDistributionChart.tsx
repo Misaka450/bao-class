@@ -26,7 +26,7 @@ const ScoreDistributionChart: React.FC<Props> = ({ data, loading }) => {
 
     return (
         <ChartWrapper height={400}>
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
                 <BarChart
                     data={data}
                     margin={{
