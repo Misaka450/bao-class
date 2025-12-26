@@ -1,16 +1,9 @@
-// Re-export types with explicit naming to avoid conflicts
+// 前端类型定义入口文件
+// 从共享类型包引入所有基础类型
 export * from '@bao-class/types';
 
-// Pro template specific types
+// Pro template 专用类型
 export * from './pro';
 
-// Local types (only export if they don't conflict with @bao-class/types)
-export type { ApiResponse as LocalApiResponse } from './api';
-export type {
-  Class,
-  Course,
-  Exam,
-  Score,
-  Student,
-  User
-} from './models';
+// 前端专用类型（不与共享包冲突的部分）
+export type { ExamQuality, FocusGroupResult, StudentAlert } from './models';

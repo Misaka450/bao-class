@@ -1,37 +1,50 @@
-// 公共类型定义
+// 公共类型定义 - 统一的类型系统
+
+// ==================== 用户角色类型 ====================
+
+export type UserRole = 'admin' | 'head_teacher' | 'teacher' | 'student' | 'parent';
 
 // ==================== 基础实体类型 ====================
 
 export interface User {
     id: number;
     username: string;
-    role: 'admin' | 'head_teacher' | 'teacher' | 'student' | 'parent';
+    role: UserRole;
     name: string;
+    created_at?: string;
 }
 
 export interface Class {
     id: number;
     name: string;
-    grade?: string;
+    grade: number;
+    teacher_id?: number | null;
+    created_at?: string;
 }
 
 export interface Student {
     id: number;
     name: string;
     student_id: string;
+    student_number?: string; // 别名，与 student_id 相同
     class_id: number;
     class_name?: string;
+    gender?: 'male' | 'female';
+    average_score?: number;
+    created_at?: string;
 }
 
 export interface Course {
     id: number;
     name: string;
-    grade?: string;
+    grade: number;
+    created_at?: string;
 }
 
 export interface ExamCourse {
     course_id: number;
     course_name: string;
+    full_score?: number;
 }
 
 export interface Exam {
@@ -40,7 +53,9 @@ export interface Exam {
     exam_date: string;
     class_id: number;
     class_name?: string;
+    description?: string;
     courses?: ExamCourse[];
+    created_at?: string;
 }
 
 export interface Score {
@@ -49,6 +64,26 @@ export interface Score {
     exam_id: number;
     course_id: number;
     score: number;
+    student_name?: string;
+    exam_name?: string;
+    course_name?: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+// ==================== API 响应类型 ====================
+
+export interface ApiResponse<T = unknown> {
+    success: boolean;
+    data?: T;
+    message?: string;
+}
+
+export interface ApiError {
+    success: false;
+    code: string;
+    message: string;
+    details?: Record<string, string[]>;
 }
 
 // ==================== 统计数据类型 ====================
@@ -63,7 +98,7 @@ export interface Stats {
 export interface Distribution {
     range: string;
     count: number;
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export interface TopStudent {
@@ -222,4 +257,30 @@ export interface StudentScoreItem {
     class_name: string;
     scores: { [key: string]: number };
     total: number;
+}
+
+// ==================== 审计日志类型 ====================
+
+export interface AuditLog {
+    id: number;
+    user_id: number;
+    username: string;
+    action: string;
+    entity_type?: string;
+    entity_id?: number;
+    details?: string;
+    created_at: string;
+}
+
+// ==================== 班级统计类型 ====================
+
+export interface ClassStatistics {
+    average: number;
+    highest: number;
+    lowest: number;
+    passRate: number;
+    distribution: {
+        range: string;
+        count: number;
+    }[];
 }
