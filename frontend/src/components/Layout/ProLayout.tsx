@@ -85,7 +85,8 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
       }}
       // Sider settings
       siderWidth={responsiveLayout.siderWidth}
-      // Header settings
+      // @ts-ignore - ProLayout 实际支持此属性
+      collapsedWidth={48}
       headerContentRender={() => null}
       // Menu settings
       menuProps={{
