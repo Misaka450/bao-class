@@ -1,15 +1,15 @@
 import { useEffect } from 'react';
 import NProgress from 'nprogress';
-import { useLocation, useNavigation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import 'nprogress/nprogress.css';
 import { theme } from 'antd';
 
 NProgress.configure({
-    showSpinner: false,
-    minimum: 0.1,
-    speed: 200,
-    easing: 'ease',
-    trickleSpeed: 200
+  showSpinner: false,
+  minimum: 0.1,
+  speed: 200,
+  easing: 'ease',
+  trickleSpeed: 200
 });
 
 /**
@@ -17,29 +17,28 @@ NProgress.configure({
  * 监听页面导航状态，控制 NProgress 显示
  */
 export function RouteProgressBar() {
-    const location = useLocation();
-    const navigation = useNavigation(); // 如果使用的是 Data Router (createBrowserRouter)
-    const { token } = theme.useToken();
+  const location = useLocation();
+  const { token } = theme.useToken();
 
-    // 监听路由变化
-    useEffect(() => {
-        NProgress.start();
+  // 监听路由变化
+  useEffect(() => {
+    NProgress.start();
 
-        // 短暂延迟后结束，给一点视觉反馈
-        const timer = setTimeout(() => {
-            NProgress.done();
-        }, 200);
+    // 短暂延迟后结束，给一点视觉反馈
+    const timer = setTimeout(() => {
+      NProgress.done();
+    }, 200);
 
-        return () => {
-            clearTimeout(timer);
-            NProgress.done();
-        };
-    }, [location.pathname, location.search]);
+    return () => {
+      clearTimeout(timer);
+      NProgress.done();
+    };
+  }, [location.pathname, location.search]);
 
-    // 更新进度条颜色以匹配主题
-    useEffect(() => {
-        const style = document.createElement('style');
-        style.innerHTML = `
+  // 更新进度条颜色以匹配主题
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.innerHTML = `
       #nprogress .bar {
         background: ${token.colorPrimary} !important;
         height: 3px !important;
@@ -52,11 +51,11 @@ export function RouteProgressBar() {
         border-left-color: ${token.colorPrimary} !important;
       }
     `;
-        document.head.appendChild(style);
-        return () => {
-            document.head.removeChild(style);
-        };
-    }, [token.colorPrimary]);
+    document.head.appendChild(style);
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, [token.colorPrimary]);
 
-    return null;
+  return null;
 }
