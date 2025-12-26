@@ -1,4 +1,4 @@
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Tooltip } from 'recharts';
 import ChartWrapper from './ChartWrapper';
 
 interface SubjectRadarChartProps {
@@ -24,6 +24,7 @@ export default function SubjectRadarChart({ data, height = 300 }: SubjectRadarCh
                         fill="var(--primary-color)"
                         fillOpacity={0.5}
                     />
+                    <Tooltip cursor={{ stroke: 'var(--primary-color)', strokeWidth: 1 }} />
                 </RadarChart>
             </ChartWrapper>
         </div>

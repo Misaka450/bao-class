@@ -40,6 +40,7 @@ const ScoreDistributionChart: React.FC<Props> = ({ data, loading }) => {
                     <XAxis dataKey="subject" />
                     <YAxis />
                     <Tooltip
+                        cursor={{ fill: 'rgba(0,0,0,0.05)' }}
                         formatter={(value: number, name: string) => {
                             const map: Record<string, string> = {
                                 fail: '不及格 (<60)',

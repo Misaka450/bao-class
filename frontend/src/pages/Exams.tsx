@@ -7,10 +7,12 @@ import dayjs from 'dayjs';
 import type { Exam, Course, Class } from '../types';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import useMobileTable from '../hooks/useMobileTable';
 
 export default function Exams() {
     const actionRef = useRef<ActionType>(null);
     const { user } = useAuthStore();
+    const { tableProps } = useMobileTable<Exam>();
     const canDelete = user?.role === 'admin' || user?.role === 'head_teacher';
     const [classes, setClasses] = useState<Class[]>([]);
     const [courses, setCourses] = useState<Course[]>([]);
@@ -170,11 +172,13 @@ export default function Exams() {
     return (
         <div>
             <ProTable<Exam>
+                {...tableProps}
                 headerTitle="考试管理"
                 actionRef={actionRef}
                 rowKey="id"
                 search={{
                     labelWidth: 'auto',
+                    ...tableProps.search,
                 }}
                 toolBarRender={() => [
                     <Button

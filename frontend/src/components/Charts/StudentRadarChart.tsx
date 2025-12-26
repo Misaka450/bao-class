@@ -23,7 +23,7 @@ const StudentRadarChart: React.FC<Props> = ({ data }) => {
                             fillOpacity={0.6}
                             animationDuration={1500}
                         />
-                        <Tooltip />
+                        <Tooltip cursor={{ stroke: 'var(--primary-color)', strokeWidth: 1 }} />
                         <Legend />
                     </RadarChart>
                 </ResponsiveContainer>

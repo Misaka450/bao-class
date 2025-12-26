@@ -10,6 +10,7 @@ import { useExamList } from '../hooks/useExamList';
 import { useCourseList } from '../hooks/useCourseList';
 import type { StudentScoreItem } from '../types';
 import { PageHeader } from '../components/Layout/PageHeader';
+import useMobileTable from '../hooks/useMobileTable';
 
 interface Course {
     id: number;
@@ -20,6 +21,8 @@ export default function ScoresList() {
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [selectedExamName, setSelectedExamName] = useState<string>('');
     const [selectedCourseId, setSelectedCourseId] = useState<string>('');
+
+    const { tableProps } = useMobileTable<StudentScoreItem>();
 
     const { data: classes = [] } = useClassList();
     const { data: exams = [] } = useExamList();
@@ -239,15 +242,17 @@ export default function ScoresList() {
             </Card>
 
             <ProTable<StudentScoreItem>
+                {...tableProps}
                 columns={columns}
                 dataSource={scoresData}
                 rowKey="student_id"
                 loading={loading}
                 search={false}
                 size="small"
-                scroll={{ x: 'max-content', y: 'calc(100vh - 260px)' }}
+                scroll={tableProps.scroll || { x: 'max-content', y: 'calc(100vh - 260px)' }}
                 cardProps={{
-                    bodyStyle: { padding: 0 }
+                    bodyStyle: { padding: 0 },
+                    ...tableProps.cardProps
                 }}
                 pagination={{
                     pageSize: 20,

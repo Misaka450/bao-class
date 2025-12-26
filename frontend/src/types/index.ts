@@ -6,11 +6,11 @@ export * from './pro';
 
 // Local types (only export if they don't conflict with @bao-class/types)
 export type { ApiResponse as LocalApiResponse } from './api';
-export type { 
-  Class as LocalClass,
-  Course as LocalCourse,
-  Exam as LocalExam,
-  Score as LocalScore,
-  Student as LocalStudent,
-  User as LocalUser
+export type {
+  Class,
+  Course,
+  Exam,
+  Score,
+  Student,
+  User
 } from './models';

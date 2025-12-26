@@ -6,9 +6,11 @@ import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import type { Class } from '../types';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import useMobileTable from '../hooks/useMobileTable';
 
 export default function Classes() {
     const { user } = useAuthStore();
+    const { tableProps } = useMobileTable<Class>();
     const isAdmin = user?.role === 'admin';
     const actionRef = useRef<ActionType>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -188,11 +190,13 @@ export default function Classes() {
     return (
         <div>
             <ProTable<Class>
+                {...tableProps}
                 headerTitle="班级管理"
                 actionRef={actionRef}
                 rowKey="id"
                 search={{
                     labelWidth: 'auto',
+                    ...tableProps.search,
                 }}
                 toolBarRender={() => isAdmin ? [
                     <Button

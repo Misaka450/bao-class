@@ -5,6 +5,7 @@ import routes, { RouteConfig, flattenRoutes } from '../../config/routes';
 import RouteGuard from '../Guards/RouteGuard';
 import { SkeletonLoading } from '../Feedback/Loading/SkeletonLoading';
 import { LazyLoadErrorBoundary } from '../Feedback/LazyLoadErrorBoundary';
+import { ErrorBoundary } from '../Feedback/ErrorBoundary';
 
 /**
  * Render a single route with proper guards
@@ -38,19 +39,21 @@ const RouteRenderer: React.FC = () => {
   return (
     <LazyLoadErrorBoundary>
       <React.Suspense fallback={<SkeletonLoading type="page" />}>
-        <Routes>
-          {allRoutes.map(route => renderRoute(route))}
-          {/* Catch-all route for 404 */}
-          <Route
-            path="*"
-            element={
-              <div style={{ textAlign: 'center', padding: '50px' }}>
-                <h2>页面未找到</h2>
-                <p>您访问的页面不存在</p>
-              </div>
-            }
-          />
-        </Routes>
+        <ErrorBoundary>
+          <Routes>
+            {allRoutes.map(route => renderRoute(route))}
+            {/* Catch-all route for 404 */}
+            <Route
+              path="*"
+              element={
+                <div style={{ textAlign: 'center', padding: '50px' }}>
+                  <h2>页面未找到</h2>
+                  <p>您访问的页面不存在</p>
+                </div>
+              }
+            />
+          </Routes>
+        </ErrorBoundary>
       </React.Suspense>
     </LazyLoadErrorBoundary>
   );

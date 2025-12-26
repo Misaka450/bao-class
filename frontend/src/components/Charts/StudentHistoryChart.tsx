@@ -157,6 +157,7 @@ const StudentHistoryChart: React.FC<Props> = ({ data }) => {
                             <YAxis yAxisId="left" label={{ value: '总分', angle: -90, position: 'insideLeft' }} />
                             <YAxis yAxisId="right" orientation="right" reversed label={{ value: '排名', angle: 90, position: 'insideRight' }} allowDecimals={false} />
                             <Tooltip
+                                cursor={{ stroke: '#1890ff', strokeWidth: 1, strokeDasharray: '5 5' }}
                                 content={({ active, payload }) => {
                                     if (active && payload && payload.length) {
                                         const data = payload[0].payload;

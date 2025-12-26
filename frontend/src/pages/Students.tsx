@@ -7,10 +7,12 @@ import type { ProColumns, ActionType } from '@ant-design/pro-components';
 import type { Student, Class } from '../types';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
+import useMobileTable from '../hooks/useMobileTable';
 
 export default function Students() {
     const navigate = useNavigate();
     const { user } = useAuthStore();
+    const { tableProps } = useMobileTable<Student>();
     const canDelete = user?.role === 'admin' || user?.role === 'head_teacher';
     const actionRef = useRef<ActionType>(null);
     const [classes, setClasses] = useState<Class[]>([]);
@@ -152,11 +154,13 @@ export default function Students() {
     return (
         <div>
             <ProTable<Student>
+                {...tableProps}
                 headerTitle="学生管理"
                 actionRef={actionRef}
                 rowKey="id"
                 search={{
                     labelWidth: 'auto',
+                    ...tableProps.search,
                 }}
                 toolBarRender={() => [
                     <Button

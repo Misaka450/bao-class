@@ -26,7 +26,10 @@ export default function ScoreTrendChart({ data, height = 320, title }: ScoreTren
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                     <XAxis dataKey="exam_name" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                     <YAxis domain={[0, 'auto']} axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                    <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }} />
+                    <Tooltip
+                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: 'var(--shadow-lg)' }}
+                        cursor={{ stroke: 'var(--primary-color)', strokeWidth: 1, strokeDasharray: '5 5' }}
+                    />
                     <Legend verticalAlign="top" height={36} />
                     <Line
                         type="monotone"

@@ -2,7 +2,7 @@
 export interface User {
     id: number;
     username: string;
-    role: 'admin' | 'teacher' | 'student' | 'parent';
+    role: 'admin' | 'teacher' | 'student' | 'parent' | 'head_teacher';
     name: string;
 }
 
@@ -11,7 +11,7 @@ export interface Class {
     id: number;
     name: string;
     grade: number;
-    teacher_id: number;
+    teacher_id?: number;
 }
 
 // 学生模型

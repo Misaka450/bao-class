@@ -8,9 +8,12 @@ import { useAuthStore } from './store/authStore';
 import { initializePerformanceOptimizations } from './utils/resourceOptimization';
 import Login from './pages/Login';
 
+import { RouteProgressBar } from './components/Feedback/RouteProgressBar';
+
 function App() {
   return (
     <GlobalErrorBoundary>
+      <RouteProgressBar />
       <AppContent />
     </GlobalErrorBoundary>
   );
