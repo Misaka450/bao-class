@@ -79,23 +79,14 @@ export class TextbookService {
      */
     private async extractTableOfContents(pdfBuffer: ArrayBuffer): Promise<ChapterInfo[]> {
         try {
-            // 1. 使用 unpdf 提取 PDF 文本
-            const { getDocumentProxy } = await import('unpdf');
-            const pdf = await getDocumentProxy(new Uint8Array(pdfBuffer));
+            // 1. 使用 unpdf 提取 PDF 文本 (Cloudflare 官方推荐方式)
+            const { extractText, getDocumentProxy } = await import('unpdf');
+            const document = await getDocumentProxy(new Uint8Array(pdfBuffer));
 
-            // 提取前 10 页文本（通常包含目录）
-            let fullText = '';
-            const maxPages = Math.min(pdf.numPages, 10);
+            // 提取全部文本，合并页面
+            const { text: fullText } = await extractText(document, { mergePages: true });
 
-            for (let i = 1; i <= maxPages; i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                const pageText = textContent.items
-                    .map((item: any) => item.str)
-                    .join(' ');
-                fullText += `\n--- 第${i}页 ---\n${pageText}`;
-            }
-
+            console.log('Extracted PDF text length:', fullText.length);
             console.log('Extracted PDF text (first 2000 chars):', fullText.slice(0, 2000));
 
             // 2. 使用 DeepSeek 分析目录结构
