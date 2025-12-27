@@ -75,56 +75,88 @@ export class TextbookService {
     }
 
     /**
-     * 使用 AI 提取教材目录结构
+     * 使用 pdf.js 提取 PDF 文本，再用 DeepSeek 分析目录结构
      */
     private async extractTableOfContents(pdfBuffer: ArrayBuffer): Promise<ChapterInfo[]> {
-        // 调用 DashScope API 进行 OCR
-        const apiKey = this.env.DASHSCOPE_API_KEY;
-        if (!apiKey) {
-            throw new AppError('DASHSCOPE_API_KEY not configured', 500);
-        }
-
-        const base64 = btoa(String.fromCharCode(...new Uint8Array(pdfBuffer.slice(0, 100000))));
-
-        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'Qwen/Qwen3-VL-8B-Instruct',
-                messages: [{
-                    role: 'user',
-                    content: [
-                        { type: 'image_url', image_url: { url: `data:application/pdf;base64,${base64}` } },
-                        {
-                            type: 'text', text: `请分析这本教材的目录页，提取所有单元和课时信息。
-返回JSON格式: [{"unit": "第一单元 xxx", "lesson": "第1课 xxx", "startPage": 1, "endPage": 15}, ...]
-如果无法识别目录，返回空数组 []` }
-                    ]
-                }]
-            })
-        });
-
-        if (!response.ok) {
-            console.error('AI API error:', await response.text());
-            // 如果无法识别目录，返回整本书作为一个章节
-            return [{ unit: '全书', startPage: 1, endPage: 999 }];
-        }
-
-        const data: any = await response.json();
-        const content = data.choices?.[0]?.message?.content || '[]';
-
         try {
+            // 1. 使用 unpdf 提取 PDF 文本
+            const { getDocumentProxy } = await import('unpdf');
+            const pdf = await getDocumentProxy(new Uint8Array(pdfBuffer));
+
+            // 提取前 10 页文本（通常包含目录）
+            let fullText = '';
+            const maxPages = Math.min(pdf.numPages, 10);
+
+            for (let i = 1; i <= maxPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items
+                    .map((item: any) => item.str)
+                    .join(' ');
+                fullText += `\n--- 第${i}页 ---\n${pageText}`;
+            }
+
+            console.log('Extracted PDF text (first 2000 chars):', fullText.slice(0, 2000));
+
+            // 2. 使用 DeepSeek 分析目录结构
+            const apiKey = this.env.DASHSCOPE_API_KEY;
+            if (!apiKey) {
+                throw new AppError('DASHSCOPE_API_KEY not configured', 500);
+            }
+
+            const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-ai/DeepSeek-V3.2',
+                    messages: [{
+                        role: 'system',
+                        content: '你是一个教材目录分析专家。请从教材文本中提取单元和课时结构。'
+                    }, {
+                        role: 'user',
+                        content: `请分析以下教材文本，提取目录结构。
+
+教材内容:
+${fullText.slice(0, 8000)}
+
+请返回JSON数组格式，每个元素包含:
+- unit: 单元名称 (如 "第一单元 位置")
+- lesson: 课时名称 (可选，如 "第1课 上下前后")
+- startPage: 起始页码 (数字)
+- endPage: 结束页码 (数字)
+
+只返回JSON数组，不要其他文字。示例:
+[{"unit": "第一单元 位置", "lesson": "第1课 上下前后", "startPage": 1, "endPage": 8}]`
+                    }]
+                })
+            });
+
+            if (!response.ok) {
+                console.error('DeepSeek API error:', await response.text());
+                return [{ unit: '全书', startPage: 1, endPage: 999 }];
+            }
+
+            const data: any = await response.json();
+            const content = data.choices?.[0]?.message?.content || '[]';
+
+            console.log('DeepSeek TOC response:', content);
+
+            // 解析 JSON
             const jsonMatch = content.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
+                const chapters = JSON.parse(jsonMatch[0]);
+                if (chapters.length > 0) {
+                    return chapters;
+                }
             }
-        } catch (e) {
-            console.error('Failed to parse TOC JSON:', e);
+        } catch (error) {
+            console.error('PDF extraction error:', error);
         }
 
+        // 如果无法识别目录，返回整本书作为一个章节
         return [{ unit: '全书', startPage: 1, endPage: 999 }];
     }
 
