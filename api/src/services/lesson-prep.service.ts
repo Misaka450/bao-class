@@ -11,16 +11,12 @@ interface ClassPerformance {
 }
 
 interface LessonPlanContext {
-    catalogId: number;
-    unitName: string;
-    lessonName?: string;
     subject: string;
     grade: number;
     volume: number;
+    topic: string;
     classId?: number;
     classPerformance?: ClassPerformance;
-    textbookContent?: string;
-    customTopic?: string;
 }
 
 export class LessonPrepService {
@@ -31,42 +27,9 @@ export class LessonPrepService {
     }
 
     /**
-     * 从 Vectorize 检索相关教材内容
-     */
-    async retrieveTextbookContent(
-        subject: string,
-        grade: number,
-        volume: number,
-        query: string
-    ): Promise<string[]> {
-        // 生成查询向量
-        const queryEmbedding = await this.env.AI.run('@cf/baai/bge-m3', {
-            text: [query]
-        }) as { data: number[][] };
-
-        // 在 Vectorize 中搜索
-        const results = await this.env.VECTORIZE.query(queryEmbedding.data[0], {
-            topK: 5,
-            filter: {
-                subject: { $eq: subject },
-                grade: { $eq: String(grade) },
-                volume: { $eq: String(volume) }
-            },
-            returnMetadata: 'all'
-        });
-
-        // 提取相关内容
-        return results.matches.map(match => {
-            const meta = match.metadata as Record<string, string>;
-            return `${meta.unit || ''} ${meta.lesson || ''}`;
-        });
-    }
-
-    /**
      * 获取班级学情数据
      */
     async getClassPerformance(classId: number): Promise<ClassPerformance | null> {
-        // 获取最近一次考试的统计数据
         const stats = await this.env.DB.prepare(`
       SELECT 
         c.name as subject,
@@ -106,39 +69,7 @@ export class LessonPrepService {
     }
 
     /**
-     * 生成教案（非流式）
-     */
-    async generateLessonPlan(context: LessonPlanContext): Promise<string> {
-        const { systemPrompt, userPrompt } = this.buildPrompts(context);
-
-        const apiKey = this.env.DASHSCOPE_API_KEY;
-        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
-
-        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ]
-            })
-        });
-
-        if (!response.ok) {
-            throw new AppError(`AI API error: ${response.status}`, 500);
-        }
-
-        const data: any = await response.json();
-        return data.choices?.[0]?.message?.content || '生成失败';
-    }
-
-    /**
-     * 生成教案（流式）
+     * 生成教案（流式）- 纯 LLM 方式
      */
     async generateLessonPlanStream(c: Context, context: LessonPlanContext): Promise<Response> {
         const { systemPrompt, userPrompt } = this.buildPrompts(context);
@@ -182,43 +113,61 @@ export class LessonPrepService {
         const subjectNames: Record<string, string> = {
             math: '数学',
             chinese: '语文',
-            english: '英语',
-            custom: '小学'
+            english: '英语'
         };
 
-        const systemPrompt = `你是一位经验丰富的小学${subjectNames[context.subject] || ''}教师，擅长根据学生实际情况设计个性化教案。
-请生成规范的教学设计。
+        const gradeNames = ['', '一', '二', '三', '四', '五', '六'];
+        const volumeNames = ['', '上', '下'];
+
+        const subjectName = subjectNames[context.subject] || context.subject;
+        const gradeName = gradeNames[context.grade] || context.grade;
+        const volumeName = volumeNames[context.volume] || '';
+
+        const systemPrompt = `你是一位经验丰富的小学${subjectName}教师，拥有丰富的教学经验和专业知识。
+你熟悉人教版、北师大版、苏教版等主流小学教材内容。
+请根据教学内容和班级情况，设计详细、专业的教学方案。
 
 教案格式要求：
-1. 教学目标（知识与技能、过程与方法、情感态度）
-2. 教学重难点
-3. 教学准备
-4. 教学过程（导入、新授、练习、小结）
-5. 板书设计
-6. 课后作业
-7. 教学反思（留空）`;
+# 教学设计
 
-        let userPrompt: string;
+## 一、教学目标
+### 知识与技能
+### 过程与方法  
+### 情感态度与价值观
 
-        // 如果是自定义主题
-        if (context.customTopic) {
-            userPrompt = `## 备课主题\n${context.customTopic}`;
-        } else {
-            userPrompt = `## 教学内容
-- 年级：${context.grade}年级
-- 册次：${context.volume === 1 ? '上册' : '下册'}
-- 单元：${context.unitName}
-${context.lessonName ? `- 课时：${context.lessonName}` : ''}`;
-        }
+## 二、教学重难点
+### 教学重点
+### 教学难点
 
-        if (context.textbookContent) {
-            userPrompt += `\n\n## 教材参考\n${context.textbookContent}`;
-        }
+## 三、教学准备
+(教师准备、学生准备、教学资源)
+
+## 四、教学过程
+### 1. 导入新课（约5分钟）
+### 2. 新知探究（约20分钟）
+### 3. 巩固练习（约10分钟）
+### 4. 课堂小结（约5分钟）
+
+## 五、板书设计
+
+## 六、作业布置
+
+## 七、教学反思
+(留空供教师课后填写)`;
+
+        let userPrompt = `请为以下教学内容设计一份完整的教案：
+
+**基本信息**
+- 科目：${subjectName}
+- 年级：${gradeName}年级${volumeName}册
+- 教学内容：${context.topic}`;
 
         if (context.classPerformance) {
             const perf = context.classPerformance;
-            userPrompt += `\n\n## 班级学情
-- 班级均分：${perf.avgScore.toFixed(1)}
+            userPrompt += `
+
+**班级学情分析**
+- 班级均分：${perf.avgScore.toFixed(1)}分
 - 及格率：${perf.passRate.toFixed(1)}%
 - 优秀率：${perf.excellentRate.toFixed(1)}%`;
 
@@ -229,10 +178,10 @@ ${context.lessonName ? `- 课时：${context.lessonName}` : ''}`;
                 userPrompt += `\n- 优势科目：${perf.strongSubjects.join('、')}`;
             }
 
-            userPrompt += `\n\n请根据以上学情，适当调整教学难度和练习设计。`;
+            userPrompt += `\n\n请根据以上学情，适当调整教学难度、练习设计和教学策略，让教案更具针对性。`;
         }
 
-        userPrompt += `\n\n请生成完整的教学设计（约800-1000字）。`;
+        userPrompt += `\n\n请生成一份完整、专业的教学设计，约1000-1500字。`;
 
         return { systemPrompt, userPrompt };
     }
@@ -242,15 +191,17 @@ ${context.lessonName ? `- 课时：${context.lessonName}` : ''}`;
      */
     async saveLessonPlan(
         userId: number,
-        catalogId: number,
         title: string,
         content: string,
+        subject: string,
+        grade: number,
+        volume: number,
         classId?: number
     ): Promise<number> {
         const result = await this.env.DB.prepare(`
-      INSERT INTO lesson_plans (user_id, catalog_id, class_id, title, content, is_draft)
-      VALUES (?, ?, ?, ?, ?, 0)
-    `).bind(userId, catalogId, classId || null, title, content).run();
+      INSERT INTO lesson_plans (user_id, title, content, subject, grade, volume, class_id, is_draft)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+    `).bind(userId, title, content, subject, grade, volume, classId || null).run();
 
         return result.meta.last_row_id as number;
     }
@@ -260,11 +211,9 @@ ${context.lessonName ? `- 课时：${context.lessonName}` : ''}`;
      */
     async getUserLessonPlans(userId: number): Promise<any[]> {
         const result = await this.env.DB.prepare(`
-      SELECT lp.*, tc.subject, tc.grade, tc.volume, tc.unit_name
-      FROM lesson_plans lp
-      JOIN textbook_catalog tc ON lp.catalog_id = tc.id
-      WHERE lp.user_id = ?
-      ORDER BY lp.updated_at DESC
+      SELECT * FROM lesson_plans 
+      WHERE user_id = ?
+      ORDER BY updated_at DESC
     `).bind(userId).all();
 
         return result.results || [];

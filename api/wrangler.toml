@@ -3,11 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2024-01-01"
 account_id = "02cefa4c2401a3f9c36ef7c6dbf5ce39"
 
-# CPU 时间限制 (付费版最高 300000ms = 5分钟)
-# 用于支持 PDF 解析等耗时操作
-[limits]
-cpu_ms = 60000
-
 # 添加自定义域名路由配置
 routes = [
   { pattern = "api.980823.xyz/*", zone_name = "980823.xyz" },
@@ -53,13 +48,3 @@ bucket_name = "class"
 # AI 绑定配置
 [ai]
 binding = "AI"
-
-# 教材存储桶配置
-[[r2_buckets]]
-binding = "TEXTBOOKS"
-bucket_name = "pep-textbooks"
-
-# Vectorize 向量数据库
-[[vectorize]]
-binding = "VECTORIZE"
-index_name = "textbook-index"

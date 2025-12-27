@@ -12,112 +12,31 @@ lessonPrep.use('*', authMiddleware);
  * 生成教案（流式）
  * POST /api/lesson-prep/generate/stream
  * 
- * Body: { catalogId?, classId?, customTopic? }
+ * Body: { subject, grade, volume, topic, classId? }
  */
 lessonPrep.post('/generate/stream', async (c) => {
-    const { catalogId, classId, customTopic } = await c.req.json();
+    const { subject, grade, volume, topic, classId } = await c.req.json();
 
-    if (!catalogId && !customTopic) {
-        return c.json({ error: '请选择章节或输入备课主题' }, 400);
+    if (!subject || !grade || !volume || !topic) {
+        return c.json({ error: '请填写科目、年级、册次和教学内容' }, 400);
     }
 
     const service = new LessonPrepService(c.env);
+
+    // 获取班级学情（如果提供了 classId）
     let classPerformance;
     if (classId) {
         classPerformance = await service.getClassPerformance(classId);
     }
 
-    // 如果有 catalogId，从数据库获取教材信息
-    if (catalogId) {
-        const catalog = await c.env.DB.prepare(`
-            SELECT * FROM textbook_catalog WHERE id = ?
-        `).bind(catalogId).first<any>();
-
-        if (!catalog) {
-            return c.json({ error: '教材目录不存在' }, 404);
-        }
-
-        const textbookContent = await service.retrieveTextbookContent(
-            catalog.subject,
-            catalog.grade,
-            catalog.volume,
-            `${catalog.unit_name} ${catalog.lesson_name || ''}`
-        );
-
-        return service.generateLessonPlanStream(c, {
-            catalogId,
-            unitName: catalog.unit_name,
-            lessonName: catalog.lesson_name,
-            subject: catalog.subject,
-            grade: catalog.grade,
-            volume: catalog.volume,
-            classId,
-            classPerformance: classPerformance || undefined,
-            textbookContent: textbookContent.join('\n')
-        });
-    }
-
-    // 如果只有 customTopic，用自定义主题生成
+    // 流式生成教案
     return service.generateLessonPlanStream(c, {
-        catalogId: 0,
-        unitName: customTopic,
-        subject: 'custom',
-        grade: 0,
-        volume: 0,
+        subject,
+        grade: parseInt(grade),
+        volume: parseInt(volume),
+        topic,
         classId,
-        classPerformance: classPerformance || undefined,
-        customTopic
-    });
-});
-
-/**
- * 生成教案（非流式）
- * POST /api/lesson-prep/generate
- */
-lessonPrep.post('/generate', async (c) => {
-    const { catalogId, classId } = await c.req.json();
-
-    if (!catalogId) {
-        return c.json({ error: '缺少 catalogId' }, 400);
-    }
-
-    const catalog = await c.env.DB.prepare(`
-    SELECT * FROM textbook_catalog WHERE id = ?
-  `).bind(catalogId).first<any>();
-
-    if (!catalog) {
-        return c.json({ error: '教材目录不存在' }, 404);
-    }
-
-    const service = new LessonPrepService(c.env);
-
-    let classPerformance;
-    if (classId) {
-        classPerformance = await service.getClassPerformance(classId);
-    }
-
-    const textbookContent = await service.retrieveTextbookContent(
-        catalog.subject,
-        catalog.grade,
-        catalog.volume,
-        `${catalog.unit_name} ${catalog.lesson_name || ''}`
-    );
-
-    const content = await service.generateLessonPlan({
-        catalogId,
-        unitName: catalog.unit_name,
-        lessonName: catalog.lesson_name,
-        subject: catalog.subject,
-        grade: catalog.grade,
-        volume: catalog.volume,
-        classId,
-        classPerformance: classPerformance || undefined,
-        textbookContent: textbookContent.join('\n')
-    });
-
-    return c.json({
-        success: true,
-        content
+        classPerformance: classPerformance || undefined
     });
 });
 
@@ -127,14 +46,22 @@ lessonPrep.post('/generate', async (c) => {
  */
 lessonPrep.post('/save', async (c) => {
     const user = c.get('user');
-    const { catalogId, title, content, classId } = await c.req.json();
+    const { title, content, subject, grade, volume, classId } = await c.req.json();
 
-    if (!catalogId || !title || !content) {
+    if (!title || !content) {
         return c.json({ error: '缺少必要参数' }, 400);
     }
 
     const service = new LessonPrepService(c.env);
-    const id = await service.saveLessonPlan(user.userId, catalogId, title, content, classId);
+    const id = await service.saveLessonPlan(
+        user.userId,
+        title,
+        content,
+        subject || 'custom',
+        grade || 0,
+        volume || 0,
+        classId
+    );
 
     return c.json({
         success: true,
@@ -167,10 +94,7 @@ lessonPrep.get('/plans/:id', async (c) => {
     const user = c.get('user');
 
     const plan = await c.env.DB.prepare(`
-    SELECT lp.*, tc.subject, tc.grade, tc.volume, tc.unit_name, tc.lesson_name
-    FROM lesson_plans lp
-    JOIN textbook_catalog tc ON lp.catalog_id = tc.id
-    WHERE lp.id = ? AND lp.user_id = ?
+    SELECT * FROM lesson_plans WHERE id = ? AND user_id = ?
   `).bind(id, user.userId).first();
 
     if (!plan) {

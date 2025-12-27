@@ -20,7 +20,6 @@ import exportRoute from './routes/export';
 import logs from './routes/logs';
 import ai from './routes/ai';
 import users from './routes/users';
-import textbooks from './routes/textbooks';
 import lessonPrep from './routes/lesson-prep';
 
 const app = new Hono<{ Bindings: Env }>();
@@ -82,7 +81,6 @@ app.route('/api/export', exportRoute);
 app.route('/api/logs', logs);
 app.route('/api/ai', ai);
 app.route('/api/users', users);
-app.route('/api/textbooks', textbooks);
 app.route('/api/lesson-prep', lessonPrep);
 app.route('/api/init', init);
 

@@ -53,7 +53,6 @@ const ClassAnalysis = React.lazy(() => import('../pages/ClassAnalysis'));
 const ManagementAlerts = React.lazy(() => import('../pages/ManagementAlerts'));
 const AuditLogs = React.lazy(() => import('../pages/AuditLogs'));
 const Users = React.lazy(() => import('../pages/Users'));
-const Textbooks = React.lazy(() => import('../pages/Textbooks'));
 const LessonPrep = React.lazy(() => import('../pages/LessonPrep'));
 const MyLessonPlans = React.lazy(() => import('../pages/MyLessonPlans'));
 
@@ -224,15 +223,6 @@ const routes: RouteConfig[] = [
     icon: React.createElement(RobotOutlined),
     access: ['admin', 'head_teacher', 'teacher'],
     children: [
-      {
-        path: '/lesson-prep/textbooks',
-        name: '教材管理',
-        icon: React.createElement(BookOutlined),
-        component: Textbooks,
-        access: ['admin', 'head_teacher', 'teacher'],
-        title: '教材管理 - 班级管理系统',
-        description: '上传和管理人教版教材',
-      },
       {
         path: '/lesson-prep/generate',
         name: '生成教案',

@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
-import { Card, Select, Button, Spin, Typography, message, Empty, Space, Input, Cascader } from 'antd';
+import { useState } from 'react';
+import { Card, Select, Button, Spin, Typography, message, Empty, Space, Input } from 'antd';
 import { RobotOutlined, SaveOutlined, BookOutlined } from '@ant-design/icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
-import { textbookApi, lessonPrepApi, classApi } from '../services/api';
+import { lessonPrepApi, classApi } from '../services/api';
+import { API_BASE_URL } from '../config';
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -29,44 +30,22 @@ const volumeOptions = [
 ];
 
 export default function LessonPrep() {
-    const [subject, setSubject] = useState<string | null>(null);
-    const [grade, setGrade] = useState<number | null>(null);
-    const [volume, setVolume] = useState<number | null>(null);
-    const [selectedUnit, setSelectedUnit] = useState<number | null>(null);
-    const [customTopic, setCustomTopic] = useState<string>('');
+    const [subject, setSubject] = useState<string>('chinese');
+    const [grade, setGrade] = useState<number>(3);
+    const [volume, setVolume] = useState<number>(1);
+    const [topic, setTopic] = useState<string>('');
     const [selectedClass, setSelectedClass] = useState<number | null>(null);
     const [generatedContent, setGeneratedContent] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
-
-    const { data: catalog } = useQuery({
-        queryKey: ['textbook-catalog'],
-        queryFn: () => textbookApi.getCatalog()
-    });
 
     const { data: classes } = useQuery({
         queryKey: ['classes'],
         queryFn: () => classApi.list()
     });
 
-    // 根据筛选条件过滤章节
-    const filteredBook = useMemo(() => {
-        if (!catalog || !subject || !grade || !volume) return null;
-        return catalog.find((b: any) =>
-            b.subject === subject && b.grade === grade && b.volume === volume
-        );
-    }, [catalog, subject, grade, volume]);
-
-    const unitOptions = useMemo(() => {
-        if (!filteredBook) return [];
-        return filteredBook.chapters?.map((ch: any) => ({
-            value: ch.id,
-            label: ch.unitName + (ch.lessonName ? ` - ${ch.lessonName}` : '')
-        })) || [];
-    }, [filteredBook]);
-
     const handleGenerate = async () => {
-        if (!selectedUnit && !customTopic) {
-            message.warning('请选择章节或输入备课主题');
+        if (!topic.trim()) {
+            message.warning('请输入教学内容/主题');
             return;
         }
 
@@ -74,16 +53,19 @@ export default function LessonPrep() {
         setGeneratedContent('');
 
         try {
-            const response = await fetch('/api/lesson-prep/generate/stream', {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${API_BASE_URL}/api/lesson-prep/generate/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({
-                    catalogId: selectedUnit,
-                    classId: selectedClass,
-                    customTopic: customTopic || undefined
+                    subject,
+                    grade,
+                    volume,
+                    topic,
+                    classId: selectedClass
                 })
             });
 
@@ -100,8 +82,10 @@ export default function LessonPrep() {
                 const lines = chunk.split('\n');
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
+                        const dataStr = line.slice(6).trim();
+                        if (dataStr === '[DONE]') continue;
                         try {
-                            const data = JSON.parse(line.slice(6));
+                            const data = JSON.parse(dataStr);
                             if (data.choices?.[0]?.delta?.content) {
                                 setGeneratedContent(prev => prev + data.choices[0].delta.content);
                             }
@@ -110,7 +94,7 @@ export default function LessonPrep() {
                 }
             }
         } catch {
-            message.error('教案生成失败');
+            message.error('教案生成失败，请重试');
         } finally {
             setIsGenerating(false);
         }
@@ -118,12 +102,17 @@ export default function LessonPrep() {
 
     const saveMutation = useMutation({
         mutationFn: () => {
-            const title = customTopic || unitOptions.find((u: any) => u.value === selectedUnit)?.label || '教案';
+            const subjectName = subjectOptions.find(s => s.value === subject)?.label || subject;
+            const gradeName = gradeOptions.find(g => g.value === grade)?.label || `${grade}年级`;
+            const title = `${subjectName} ${gradeName} - ${topic}`;
+
             return lessonPrepApi.save({
-                catalogId: selectedUnit || 0,
-                classId: selectedClass || undefined,
                 title,
-                content: generatedContent
+                content: generatedContent,
+                subject,
+                grade,
+                volume,
+                classId: selectedClass || undefined
             });
         },
         onSuccess: () => message.success('教案保存成功'),
@@ -133,85 +122,65 @@ export default function LessonPrep() {
     return (
         <div style={{ padding: 24 }}>
             <Title level={3}><RobotOutlined /> AI 智能备课</Title>
-            <Paragraph type="secondary">选择教材章节或输入备课主题，AI 将生成个性化教案</Paragraph>
+            <Paragraph type="secondary">
+                输入教学内容，AI 将根据人教版教材和您选择的班级学情生成个性化教案
+            </Paragraph>
 
-            <Card title="选择备课内容" style={{ marginBottom: 24 }}>
+            <Card title="填写教学信息" style={{ marginBottom: 24 }}>
                 <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                    {/* 级联筛选 */}
                     <Space wrap size="middle">
                         <div>
                             <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>科目</Text>
                             <Select
-                                placeholder="选择科目"
                                 style={{ width: 120 }}
                                 options={subjectOptions}
                                 value={subject}
-                                onChange={(v) => { setSubject(v); setGrade(null); setVolume(null); setSelectedUnit(null); }}
+                                onChange={setSubject}
                             />
                         </div>
                         <div>
                             <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>年级</Text>
                             <Select
-                                placeholder="选择年级"
                                 style={{ width: 120 }}
                                 options={gradeOptions}
                                 value={grade}
-                                onChange={(v) => { setGrade(v); setVolume(null); setSelectedUnit(null); }}
-                                disabled={!subject}
+                                onChange={setGrade}
                             />
                         </div>
                         <div>
                             <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>册次</Text>
                             <Select
-                                placeholder="上/下册"
                                 style={{ width: 100 }}
                                 options={volumeOptions}
                                 value={volume}
-                                onChange={(v) => { setVolume(v); setSelectedUnit(null); }}
-                                disabled={!grade}
+                                onChange={setVolume}
                             />
                         </div>
                         <div>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>章节</Text>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
+                                选择班级 <Text type="secondary">(可选，结合学情)</Text>
+                            </Text>
                             <Select
-                                placeholder="选择章节"
-                                style={{ width: 200 }}
-                                options={unitOptions}
-                                value={selectedUnit}
-                                onChange={setSelectedUnit}
-                                disabled={!volume || unitOptions.length === 0}
-                                showSearch
-                                optionFilterProp="label"
+                                placeholder="选择班级"
+                                style={{ width: 150 }}
+                                options={classes?.map((c: any) => ({ value: c.id, label: c.name }))}
+                                value={selectedClass}
+                                onChange={setSelectedClass}
+                                allowClear
                             />
                         </div>
                     </Space>
 
-                    {/* 自定义主题输入 */}
                     <div>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
-                            或输入自定义备课主题 <Text type="secondary">(可选)</Text>
+                            教学内容/主题 <Text type="danger">*</Text>
                         </Text>
                         <TextArea
-                            placeholder="例如：三年级数学 - 两位数乘法的教学设计"
+                            placeholder="例如：两位数乘一位数、分数的初步认识、古诗《静夜思》、Unit 3 My Friends..."
                             rows={2}
-                            value={customTopic}
-                            onChange={e => setCustomTopic(e.target.value)}
-                            style={{ maxWidth: 500 }}
-                        />
-                    </div>
-
-                    {/* 班级选择 */}
-                    <div>
-                        <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
-                            选择班级 <Text type="secondary">(可选，用于结合学情)</Text>
-                        </Text>
-                        <Select
-                            placeholder="选择班级"
-                            style={{ width: 200 }}
-                            options={classes?.map((c: any) => ({ value: c.id, label: c.name }))}
-                            value={selectedClass}
-                            onChange={setSelectedClass}
-                            allowClear
+                            value={topic}
+                            onChange={e => setTopic(e.target.value)}
+                            style={{ maxWidth: 600 }}
                         />
                     </div>
 
@@ -220,10 +189,10 @@ export default function LessonPrep() {
                         icon={<RobotOutlined />}
                         onClick={handleGenerate}
                         loading={isGenerating}
-                        disabled={!selectedUnit && !customTopic}
+                        disabled={!topic.trim()}
                         size="large"
                     >
-                        {isGenerating ? '生成中...' : '生成教案'}
+                        {isGenerating ? 'AI 生成中...' : '生成教案'}
                     </Button>
                 </Space>
             </Card>
@@ -231,7 +200,12 @@ export default function LessonPrep() {
             <Card
                 title={<><BookOutlined /> 教案预览</>}
                 extra={generatedContent && (
-                    <Button icon={<SaveOutlined />} onClick={() => saveMutation.mutate()} loading={saveMutation.isPending}>
+                    <Button
+                        icon={<SaveOutlined />}
+                        onClick={() => saveMutation.mutate()}
+                        loading={saveMutation.isPending}
+                        type="primary"
+                    >
                         保存教案
                     </Button>
                 )}
@@ -239,14 +213,14 @@ export default function LessonPrep() {
                 {isGenerating ? (
                     <div style={{ textAlign: 'center', padding: 40 }}>
                         <Spin size="large" />
-                        <p style={{ marginTop: 16 }}>AI 正在生成教案...</p>
+                        <p style={{ marginTop: 16, color: '#666' }}>AI 正在根据人教版教材生成教案...</p>
                     </div>
                 ) : generatedContent ? (
                     <div className="markdown-content" style={{ padding: 16 }}>
                         <ReactMarkdown>{generatedContent}</ReactMarkdown>
                     </div>
                 ) : (
-                    <Empty description="选择章节或输入主题后点击生成教案" />
+                    <Empty description="填写教学信息后点击生成教案" />
                 )}
             </Card>
         </div>
