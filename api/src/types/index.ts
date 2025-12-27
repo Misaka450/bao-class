@@ -26,6 +26,11 @@ export interface Env {
   R2: R2Bucket;
   AI: Ai;
   ASSET_BUCKET?: R2Bucket;
+  // 教材存储
+  TEXTBOOKS: R2Bucket;
+  // 向量数据库
+  VECTORIZE: VectorizeIndex;
+  // Secrets
   JWT_SECRET: string;
   ENVIRONMENT?: string;
   DASHSCOPE_API_KEY?: string;

@@ -48,3 +48,13 @@ bucket_name = "class"
 # AI 绑定配置
 [ai]
 binding = "AI"
+
+# 教材存储桶配置
+[[r2_buckets]]
+binding = "TEXTBOOKS"
+bucket_name = "pep-textbooks"
+
+# Vectorize 向量数据库
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "textbook-index"

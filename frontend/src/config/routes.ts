@@ -11,6 +11,7 @@ import {
   FileTextOutlined,
   BarChartOutlined,
   AlertOutlined,
+  RobotOutlined,
 } from '@ant-design/icons';
 
 /**
@@ -52,6 +53,9 @@ const ClassAnalysis = React.lazy(() => import('../pages/ClassAnalysis'));
 const ManagementAlerts = React.lazy(() => import('../pages/ManagementAlerts'));
 const AuditLogs = React.lazy(() => import('../pages/AuditLogs'));
 const Users = React.lazy(() => import('../pages/Users'));
+const Textbooks = React.lazy(() => import('../pages/Textbooks'));
+const LessonPrep = React.lazy(() => import('../pages/LessonPrep'));
+const MyLessonPlans = React.lazy(() => import('../pages/MyLessonPlans'));
 
 /**
  * Main route configuration
@@ -213,6 +217,41 @@ const routes: RouteConfig[] = [
     access: ['admin'],
     title: '用户管理 - 班级管理系统',
     description: '维护系统登录账号和权限分配',
+  },
+  {
+    path: '/lesson-prep',
+    name: 'AI 智能备课',
+    icon: React.createElement(RobotOutlined),
+    access: ['admin', 'head_teacher', 'teacher'],
+    children: [
+      {
+        path: '/lesson-prep/textbooks',
+        name: '教材管理',
+        icon: React.createElement(BookOutlined),
+        component: Textbooks,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: '教材管理 - 班级管理系统',
+        description: '上传和管理人教版教材',
+      },
+      {
+        path: '/lesson-prep/generate',
+        name: '生成教案',
+        icon: React.createElement(RobotOutlined),
+        component: LessonPrep,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: 'AI 智能备课 - 班级管理系统',
+        description: 'AI 生成个性化教案',
+      },
+      {
+        path: '/lesson-prep/my-plans',
+        name: '我的教案',
+        icon: React.createElement(FileTextOutlined),
+        component: MyLessonPlans,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: '我的教案 - 班级管理系统',
+        description: '查看和管理已保存的教案',
+      },
+    ],
   },
 ];
 

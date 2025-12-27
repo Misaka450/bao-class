@@ -255,6 +255,39 @@ export const userApi = {
     delete: (id: number) => del(`/api/users/${id}`),
 };
 
+// ==================== 教材管理 API ====================
+export const textbookApi = {
+    getCatalog: (params?: { subject?: string; grade?: string }) => {
+        const query = new URLSearchParams();
+        if (params?.subject) query.append('subject', params.subject);
+        if (params?.grade) query.append('grade', params.grade);
+        return get<any[]>(`/api/textbooks/catalog?${query.toString()}`);
+    },
+    upload: (file: File, subject: string, grade: string, volume: string) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('subject', subject);
+        formData.append('grade', grade);
+        formData.append('volume', volume);
+        return post('/api/textbooks/upload', formData);
+    },
+    getStatus: (subject: string, grade: string, volume: string) =>
+        get<any>(`/api/textbooks/status/${subject}/${grade}/${volume}`),
+};
+
+// ==================== 备课 API ====================
+export const lessonPrepApi = {
+    generate: (data: { catalogId: number; classId?: number }) =>
+        post<{ success: boolean; content: string }>('/api/lesson-prep/generate', data),
+    save: (data: { catalogId: number; classId?: number; title: string; content: string }) =>
+        post<{ success: boolean; id: number }>('/api/lesson-prep/save', data),
+    getMyPlans: () => get<any[]>('/api/lesson-prep/my-plans'),
+    getPlan: (id: number) => get<any>(`/api/lesson-prep/plans/${id}`),
+    updatePlan: (id: number, data: { title: string; content: string }) =>
+        put(`/api/lesson-prep/plans/${id}`, data),
+    deletePlan: (id: number) => del(`/api/lesson-prep/plans/${id}`),
+};
+
 // ==================== 默认导出 ====================
 
 const api = {
@@ -271,6 +304,9 @@ const api = {
     logs: logsApi,
     ai: aiApi,
     user: userApi,
+    textbook: textbookApi,
+    lessonPrep: lessonPrepApi,
 };
 
 export default api;
+
