@@ -35,15 +35,15 @@ export default function MyLessonPlans() {
 
     const subjectNames: Record<string, string> = { math: '数学', chinese: '语文', english: '英语' };
 
-    const filteredPlans = plans?.filter((p: any) => p.title?.includes(searchText) || p.unit_name?.includes(searchText));
+    const filteredPlans = plans?.filter((p: any) => p.title?.includes(searchText));
 
     const columns = [
         { title: '教案标题', dataIndex: 'title', key: 'title', ellipsis: true },
         {
-            title: '教材章节',
+            title: '适用教材',
             key: 'chapter',
             render: (_: any, record: any) => (
-                <span>{subjectNames[record.subject] || record.subject} {record.grade}年级{record.volume === 1 ? '上' : '下'}册 - {record.unit_name}</span>
+                <span>{subjectNames[record.subject] || record.subject} {record.grade}年级{record.volume === 1 ? '上' : '下'}册</span>
             )
         },
         { title: '创建时间', dataIndex: 'created_at', render: (t: string) => new Date(t).toLocaleDateString() },
