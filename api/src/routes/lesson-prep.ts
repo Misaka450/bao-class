@@ -12,51 +12,61 @@ lessonPrep.use('*', authMiddleware);
  * 生成教案（流式）
  * POST /api/lesson-prep/generate/stream
  * 
- * Body: { catalogId, classId? }
+ * Body: { catalogId?, classId?, customTopic? }
  */
 lessonPrep.post('/generate/stream', async (c) => {
-    const { catalogId, classId } = await c.req.json();
+    const { catalogId, classId, customTopic } = await c.req.json();
 
-    if (!catalogId) {
-        return c.json({ error: '缺少 catalogId' }, 400);
-    }
-
-    // 获取教材目录信息
-    const catalog = await c.env.DB.prepare(`
-    SELECT * FROM textbook_catalog WHERE id = ?
-  `).bind(catalogId).first<any>();
-
-    if (!catalog) {
-        return c.json({ error: '教材目录不存在' }, 404);
+    if (!catalogId && !customTopic) {
+        return c.json({ error: '请选择章节或输入备课主题' }, 400);
     }
 
     const service = new LessonPrepService(c.env);
-
-    // 获取班级学情（如果提供了 classId）
     let classPerformance;
     if (classId) {
         classPerformance = await service.getClassPerformance(classId);
     }
 
-    // 检索相关教材内容
-    const textbookContent = await service.retrieveTextbookContent(
-        catalog.subject,
-        catalog.grade,
-        catalog.volume,
-        `${catalog.unit_name} ${catalog.lesson_name || ''}`
-    );
+    // 如果有 catalogId，从数据库获取教材信息
+    if (catalogId) {
+        const catalog = await c.env.DB.prepare(`
+            SELECT * FROM textbook_catalog WHERE id = ?
+        `).bind(catalogId).first<any>();
 
-    // 流式生成教案
+        if (!catalog) {
+            return c.json({ error: '教材目录不存在' }, 404);
+        }
+
+        const textbookContent = await service.retrieveTextbookContent(
+            catalog.subject,
+            catalog.grade,
+            catalog.volume,
+            `${catalog.unit_name} ${catalog.lesson_name || ''}`
+        );
+
+        return service.generateLessonPlanStream(c, {
+            catalogId,
+            unitName: catalog.unit_name,
+            lessonName: catalog.lesson_name,
+            subject: catalog.subject,
+            grade: catalog.grade,
+            volume: catalog.volume,
+            classId,
+            classPerformance: classPerformance || undefined,
+            textbookContent: textbookContent.join('\n')
+        });
+    }
+
+    // 如果只有 customTopic，用自定义主题生成
     return service.generateLessonPlanStream(c, {
-        catalogId,
-        unitName: catalog.unit_name,
-        lessonName: catalog.lesson_name,
-        subject: catalog.subject,
-        grade: catalog.grade,
-        volume: catalog.volume,
+        catalogId: 0,
+        unitName: customTopic,
+        subject: 'custom',
+        grade: 0,
+        volume: 0,
         classId,
         classPerformance: classPerformance || undefined,
-        textbookContent: textbookContent.join('\n')
+        customTopic
     });
 });
 

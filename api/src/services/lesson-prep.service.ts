@@ -20,6 +20,7 @@ interface LessonPlanContext {
     classId?: number;
     classPerformance?: ClassPerformance;
     textbookContent?: string;
+    customTopic?: string;
 }
 
 export class LessonPrepService {
@@ -181,11 +182,12 @@ export class LessonPrepService {
         const subjectNames: Record<string, string> = {
             math: '数学',
             chinese: '语文',
-            english: '英语'
+            english: '英语',
+            custom: '小学'
         };
 
-        const systemPrompt = `你是一位经验丰富的小学${subjectNames[context.subject] || context.subject}教师，擅长根据学生实际情况设计个性化教案。
-请根据人教版教材内容和班级学情，生成规范的教学设计。
+        const systemPrompt = `你是一位经验丰富的小学${subjectNames[context.subject] || ''}教师，擅长根据学生实际情况设计个性化教案。
+请生成规范的教学设计。
 
 教案格式要求：
 1. 教学目标（知识与技能、过程与方法、情感态度）
@@ -196,11 +198,18 @@ export class LessonPrepService {
 6. 课后作业
 7. 教学反思（留空）`;
 
-        let userPrompt = `## 教学内容
+        let userPrompt: string;
+
+        // 如果是自定义主题
+        if (context.customTopic) {
+            userPrompt = `## 备课主题\n${context.customTopic}`;
+        } else {
+            userPrompt = `## 教学内容
 - 年级：${context.grade}年级
 - 册次：${context.volume === 1 ? '上册' : '下册'}
 - 单元：${context.unitName}
 ${context.lessonName ? `- 课时：${context.lessonName}` : ''}`;
+        }
 
         if (context.textbookContent) {
             userPrompt += `\n\n## 教材参考\n${context.textbookContent}`;
