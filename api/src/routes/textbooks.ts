@@ -166,4 +166,53 @@ textbooks.get('/preview/:subject/:grade/:volume', async (c) => {
     });
 });
 
+/**
+ * 调试: 测试 PDF 文本提取
+ * GET /api/textbooks/debug/:subject/:grade/:volume
+ */
+textbooks.get('/debug/:subject/:grade/:volume', async (c) => {
+    const { subject, grade, volume } = c.req.param();
+    const r2Key = `pep/${subject}/grade${grade}/vol${volume}.pdf`;
+
+    try {
+        // 1. 从 R2 获取 PDF
+        const object = await c.env.TEXTBOOKS.get(r2Key);
+        if (!object) {
+            return c.json({ error: 'PDF not found in R2', r2Key }, 404);
+        }
+
+        const pdfBuffer = await object.arrayBuffer();
+        console.log('PDF buffer size:', pdfBuffer.byteLength);
+
+        // 2. 测试 unpdf
+        const { extractText, getDocumentProxy } = await import('unpdf');
+        console.log('unpdf imported successfully');
+
+        const document = await getDocumentProxy(new Uint8Array(pdfBuffer));
+        console.log('PDF document loaded, pages:', document.numPages);
+
+        const { totalPages, text } = await extractText(document, { mergePages: true });
+        console.log('Text extracted, length:', text.length);
+
+        // 3. 返回诊断信息
+        return c.json({
+            success: true,
+            r2Key,
+            pdfSize: pdfBuffer.byteLength,
+            totalPages,
+            textLength: text.length,
+            textPreview: text.slice(0, 3000),
+            textEnd: text.slice(-500)
+        });
+    } catch (error: any) {
+        console.error('Debug error:', error);
+        return c.json({
+            success: false,
+            error: error.message,
+            stack: error.stack,
+            r2Key
+        }, 500);
+    }
+});
+
 export default textbooks;
