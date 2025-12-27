@@ -3,6 +3,7 @@ import { Card, Upload, Select, Button, Table, Tag, message, Space, Typography, n
 import { UploadOutlined, BookOutlined, CheckCircleOutlined, LoadingOutlined, SyncOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { textbookApi } from '../services/api';
+import { API_BASE_URL } from '../config';
 
 const { Title } = Typography;
 const { Dragger } = Upload;
@@ -159,7 +160,7 @@ export default function Textbooks() {
             title: '操作',
             key: 'action',
             render: (_: any, record: any) => (
-                <Button type="link" href={`/api/textbooks/preview/${record.subject}/${record.grade}/${record.volume}`} target="_blank">
+                <Button type="link" href={`${API_BASE_URL}/api/textbooks/preview/${record.subject}/${record.grade}/${record.volume}`} target="_blank">
                     预览
                 </Button>
             )
