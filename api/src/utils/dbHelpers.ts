@@ -1,42 +1,24 @@
 import { D1Database } from '@cloudflare/workers-types'
 
 /**
- * 获取班级最新考试ID（带内存缓存）
- * 避免在同一请求周期内重复查询
+ * 获取班级最新考试ID
+ * 注意：Cloudflare Workers 是无状态的，每次请求都是独立的实例
+ * 因此不使用模块级缓存，直接查询数据库
  */
-const latestExamCache = new Map<string, { id: string; timestamp: number }>()
-const CACHE_TTL = 60000 // 1分钟缓存
-
 export async function getLatestExamId(db: D1Database, classId: string): Promise<string | null> {
-    const cacheKey = `latest_exam_${classId}`
-    const cached = latestExamCache.get(cacheKey)
-
-    // 检查缓存是否有效
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.id
-    }
-
     const result = await db.prepare(`
         SELECT id FROM exams 
         WHERE class_id = ?
         ORDER BY exam_date DESC LIMIT 1
     `).bind(classId).first<{ id: string }>()
 
-    if (result?.id) {
-        latestExamCache.set(cacheKey, { id: result.id, timestamp: Date.now() })
-        return result.id
-    }
-
-    return null
+    return result?.id || null
 }
 
 /**
- * 清除班级最新考试缓存（当有新考试添加时调用）
+ * 清除班级最新考试缓存（保留接口兼容性，但实际无操作）
+ * @deprecated Workers 无状态环境下缓存无效，此函数保留仅为兼容性
  */
-export function clearLatestExamCache(classId?: string): void {
-    if (classId) {
-        latestExamCache.delete(`latest_exam_${classId}`)
-    } else {
-        latestExamCache.clear()
-    }
+export function clearLatestExamCache(_classId?: string): void {
+    // Workers 无状态，无需清理
 }

@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
-import { checkAndIncrementQuota } from '../utils/aiQuota';
+import { LLMClient } from '../utils/llmClient';
 
 interface ClassPerformance {
     avgScore: number;
@@ -334,45 +334,7 @@ ${feedback}
     }
 
     private async callLLM(system: string, user: string, stream: boolean): Promise<Response | string> {
-        // 每次调用模型时检查并增加额度
-        await checkAndIncrementQuota(this.env);
-
-        const apiKey = this.env.DASHSCOPE_API_KEY;
-        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
-
-        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
-                messages: [
-                    { role: 'system', content: system },
-                    { role: 'user', content: user }
-                ],
-                stream
-            })
-        });
-
-        if (!response.ok) {
-            throw new AppError(`AI API error: ${response.status}`, 500);
-        }
-
-        if (stream) {
-            if (!response.body) throw new AppError('Empty AI response body', 500);
-            return new Response(response.body, {
-                headers: {
-                    'Content-Type': 'text/event-stream',
-                    'Cache-Control': 'no-cache',
-                    'Connection': 'keep-alive'
-                }
-            });
-        }
-
-        const data: any = await response.json();
-        return data.choices?.[0]?.message?.content || '';
+        return LLMClient.call(this.env, { system, user, stream });
     }
 
     /**

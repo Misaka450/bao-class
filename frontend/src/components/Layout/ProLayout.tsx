@@ -1,12 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogoutOutlined, UserOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { ProLayout, PageContainer } from '@ant-design/pro-layout';
 import { Dropdown, Avatar, Progress } from 'antd';
 import type { MenuProps } from 'antd';
 import { useAuthStore } from '../../store/authStore';
-import routes, { filterRoutesByAccess, generateBreadcrumbs, getPageTitle } from '../../config/routes';
-import { usePageTitle, useRouteChange } from '../../utils/route';
+import routes, { filterRoutesByAccess, generateBreadcrumbs } from '../../config/routes';
 import { designTokens } from '../../config/theme';
 import { useResponsiveLayout } from '../../hooks/useResponsive';
 import { aiApi } from '../../services/api';
@@ -49,15 +48,21 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
   // Generate breadcrumbs for current path
   const breadcrumbs = generateBreadcrumbs(pathname);
 
-  // 获取 AI 用量的公共方法
-  const fetchAiUsage = () => {
+  // 获取 AI 用量的公共方法（带防抖）
+  const lastFetchTime = useRef(0);
+  const fetchAiUsage = useCallback(() => {
+    const now = Date.now();
+    // 防抖：1秒内不重复请求
+    if (now - lastFetchTime.current < 1000) return;
+    lastFetchTime.current = now;
+
     aiApi.getUsage().then(res => {
       if (res.success && res.data) {
         setAiUsage(res.data);
         localStorage.setItem('ai_usage_cache', JSON.stringify(res.data));
       }
     }).catch(() => { });
-  };
+  }, []);
 
   // 1. 初始化加载
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
-import { checkAndIncrementQuota } from '../utils/aiQuota';
+import { LLMClient } from '../utils/llmClient';
 
 export class AIChatService {
     private env: Env;
@@ -40,14 +40,31 @@ ${schemaInfo}
 }
 `;
 
-        const sqlResponse = await this.callLLM(systemPrompt, `用户问题：${query}\n请只返回 JSON。`, false);
+        const sqlResponse = await LLMClient.call(this.env, {
+            system: systemPrompt,
+            user: `用户问题：${query}\n请只返回 JSON。`,
+            stream: false
+        }) as string;
+
         let sqlData: { sql: string };
         try {
-            const jsonMatch = (sqlResponse as string).match(/\{[\s\S]*\}/);
+            const jsonMatch = sqlResponse.match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Failed to parse AI SQL response');
             sqlData = JSON.parse(jsonMatch[0]);
         } catch (e) {
             throw new Error(`无法理解该查询请求。AI返回：${sqlResponse}`);
+        }
+
+        // 安全验证：确保只执行 SELECT 语句
+        const sqlUpper = sqlData.sql.trim().toUpperCase();
+        const forbiddenKeywords = ['DROP', 'DELETE', 'UPDATE', 'INSERT', 'ALTER', 'TRUNCATE', 'CREATE', 'REPLACE', 'GRANT', 'REVOKE'];
+        if (!sqlUpper.startsWith('SELECT')) {
+            throw new AppError('只允许执行查询操作', 400);
+        }
+        for (const keyword of forbiddenKeywords) {
+            if (sqlUpper.includes(keyword)) {
+                throw new AppError(`不允许的操作: ${keyword}`, 400);
+            }
         }
 
         const dbResult = await this.env.DB.prepare(sqlData.sql).all();
@@ -70,52 +87,15 @@ ${schemaInfo}
             dataInfo = `查询失败或无权查询。错误信息：${e.message}`;
         }
 
-        // 3. 构造总结提示词并返回流
-        const summaryPrompt = `针对用户问题：“${query}”
+        // 2. 构造总结提示词并返回流
+        const summaryPrompt = `针对用户问题："${query}"
 ${dataInfo}
 请根据以上数据给出一个友好、简洁且专业的回答。如果数据为空，请如实告知。如果是趋势分析，请给出你的洞察。`;
 
-        return this.callLLM("你是一位资深的班主任助教。", summaryPrompt, true) as Promise<Response>;
-    }
-
-    private async callLLM(system: string, user: string, stream: boolean): Promise<string | Response> {
-        // 每次调用模型时检查并增加额度
-        await checkAndIncrementQuota(this.env);
-
-        const apiKey = this.env.DASHSCOPE_API_KEY;
-        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
-
-        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
-                messages: [
-                    { role: 'system', content: system },
-                    { role: 'user', content: user }
-                ],
-                stream
-            })
-        });
-
-        if (!response.ok) {
-            throw new AppError(`AI API error: ${response.status}`, 500);
-        }
-
-        if (stream) {
-            return new Response(response.body, {
-                headers: {
-                    'Content-Type': 'text/event-stream',
-                    'Cache-Control': 'no-cache',
-                    'Connection': 'keep-alive'
-                }
-            });
-        }
-
-        const data: any = await response.json();
-        return data.choices?.[0]?.message?.content || '';
+        return LLMClient.call(this.env, {
+            system: "你是一位资深的班主任助教。",
+            user: summaryPrompt,
+            stream: true
+        }) as Promise<Response>;
     }
 }
