@@ -58,7 +58,7 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
 
   // ProLayout 配置 - 使用响应式设置
   const layoutConfig: ProLayoutConfig = {
-    title: '成绩管理系统',
+    title: '智慧班级助手',
     layout: responsiveLayout.layout as 'side' | 'top' | 'mix',
     theme: 'light',
     userInfo: {
