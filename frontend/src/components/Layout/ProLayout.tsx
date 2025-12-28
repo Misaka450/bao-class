@@ -28,7 +28,10 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
   const { user, logout } = useAuthStore();
   const [pathname, setPathname] = useState(location.pathname);
   const [collapsed, setCollapsed] = useState(false);
-  const [aiUsage, setAiUsage] = useState<{ used: number; total: number; remaining: number } | null>(null);
+  const [aiUsage, setAiUsage] = useState<{ used: number; total: number; remaining: number } | null>(() => {
+    const cached = localStorage.getItem('ai_usage_cache');
+    return cached ? JSON.parse(cached) : null;
+  });
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Get responsive layout settings
@@ -46,16 +49,32 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
   // Generate breadcrumbs for current path
   const breadcrumbs = generateBreadcrumbs(pathname);
 
-  // 跟踪 Dropdown 展开状态，展开时加载 AI 用量
+  // 获取 AI 用量的公共方法
+  const fetchAiUsage = () => {
+    aiApi.getUsage().then(res => {
+      if (res.success && res.data) {
+        setAiUsage(res.data);
+        localStorage.setItem('ai_usage_cache', JSON.stringify(res.data));
+      }
+    }).catch(() => { });
+  };
+
+  // 1. 初始化加载
+  useEffect(() => {
+    fetchAiUsage();
+  }, []);
+
+  // 2. 监听自定义更新事件 (用于 AI 对话后自动刷新)
+  useEffect(() => {
+    const handleUpdate = () => fetchAiUsage();
+    window.addEventListener('ai-usage-update', handleUpdate);
+    return () => window.removeEventListener('ai-usage-update', handleUpdate);
+  }, []);
+
+  // 3. 跟踪 Dropdown 展开状态，展开时也刷新一下确保最新
   useEffect(() => {
     if (dropdownOpen) {
-      aiApi.getUsage().then(res => {
-        if (res.success && res.data) {
-          setAiUsage(res.data);
-        }
-      }).catch(() => {
-        // 忽略错误
-      });
+      fetchAiUsage();
     }
   }, [dropdownOpen]);
 

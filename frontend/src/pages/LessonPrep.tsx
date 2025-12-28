@@ -99,6 +99,8 @@ export default function LessonPrep() {
             message.error('教案生成失败，请重试');
         } finally {
             setIsGenerating(false);
+            // 触发额度刷新事件
+            window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
 
@@ -163,6 +165,8 @@ export default function LessonPrep() {
             setGeneratedContent(previousContent); // 恢复原内容
         } finally {
             setIsRefining(false);
+            // 触发额度刷新事件
+            window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
 

@@ -87,6 +87,8 @@ const ClassAiReportCard: React.FC<Props> = ({ classId, examId }) => {
                 message.error('刷新报告失败');
             } finally {
                 setIsStreaming(false);
+                // 触发额度刷新事件
+                window.dispatchEvent(new CustomEvent('ai-usage-update'));
             }
         }
     });

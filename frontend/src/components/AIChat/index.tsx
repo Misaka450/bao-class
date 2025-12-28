@@ -74,6 +74,8 @@ const AIChat: React.FC = () => {
             }]);
         } finally {
             setLoading(false);
+            // 触发额度刷新事件
+            window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
 

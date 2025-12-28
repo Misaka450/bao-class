@@ -94,6 +94,8 @@ export default function HomeworkGenerator() {
             message.error('作业生成失败，请重试');
         } finally {
             setIsGenerating(false);
+            // 触发额度刷新事件
+            window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
 
@@ -156,6 +158,8 @@ export default function HomeworkGenerator() {
             setGeneratedContent(previousContent);
         } finally {
             setIsRefining(false);
+            // 触发额度刷新事件
+            window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
 

@@ -73,6 +73,8 @@ export default function StudentProfile() {
             message.error('评语生成失败,请稍后重试');
         } finally {
             setGeneratingComment(false);
+            // 触发额度刷新事件
+            window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
 
