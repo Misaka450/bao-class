@@ -380,6 +380,32 @@ h6 {
     color: var(--text-secondary) !important;
 }
 
+/* Collapsed Menu Overrides */
+.ant-menu-inline-collapsed .ant-menu-item {
+    margin: 4px auto !important;
+    width: 48px !important;
+    padding: 0 !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.ant-menu-inline-collapsed .ant-menu-submenu-title {
+    margin: 4px auto !important;
+    width: 48px !important;
+    padding: 0 !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.ant-menu-inline-collapsed .ant-menu-item .anticon,
+.ant-menu-inline-collapsed .ant-menu-submenu-title .anticon {
+    min-width: 14px;
+    margin: 0 !important;
+    font-size: 18px;
+}
+
 .ant-menu-submenu-title:hover {
     color: var(--primary-color) !important;
     background: rgba(108, 93, 211, 0.04) !important;
