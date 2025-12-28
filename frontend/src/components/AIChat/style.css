@@ -5,6 +5,11 @@
     z-index: 1000;
 }
 
+.ai-chat-popover .ant-popover-inner {
+    padding: 0 !important;
+    border-radius: 16px !important;
+}
+
 .ai-chat-btn {
     width: 56px !important;
     height: 56px !important;
@@ -31,12 +36,18 @@
     border: none !important;
 }
 
+.ai-chat-card .ant-card-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .ai-chat-messages {
     flex: 1;
     padding: 16px;
     overflow-y: auto;
     background: #f8f9fa;
-    height: 380px;
 }
 
 .message-item {
@@ -88,6 +99,7 @@
     padding: 16px;
     border-top: 1px solid #efefef;
     background: white;
+    flex-shrink: 0;
 }
 
 .loading-dots:after {
