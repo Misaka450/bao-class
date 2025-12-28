@@ -181,6 +181,7 @@ export default function Users() {
                     name="name"
                     label="姓名"
                     placeholder="请输入真实姓名"
+                    fieldProps={{ id: 'modal_name' }}
                     rules={[{ required: true, message: '必填' }]}
                 />
                 <ProFormText
@@ -188,6 +189,7 @@ export default function Users() {
                     label="用户名"
                     placeholder="起个登录名"
                     disabled={!!currentRow}
+                    fieldProps={{ id: 'modal_username' }}
                     rules={[{ required: true, message: '必填' }]}
                 />
                 <ProFormText.Password
@@ -195,6 +197,7 @@ export default function Users() {
                     label={currentRow ? '重置密码' : '初始密码'}
                     placeholder={currentRow ? '留空不修改' : '请输入密码'}
                     fieldProps={{
+                        id: 'modal_password',
                         prefix: <KeyOutlined />,
                     }}
                     rules={[{ required: !currentRow, message: '必填' }]}
@@ -202,6 +205,7 @@ export default function Users() {
                 <ProFormSelect
                     name="role"
                     label="角色"
+                    fieldProps={{ id: 'modal_role' }}
                     options={[
                         { label: '管理员', value: 'admin' },
                         { label: '班主任', value: 'head_teacher' },

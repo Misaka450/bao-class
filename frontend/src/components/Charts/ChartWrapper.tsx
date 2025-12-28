@@ -79,7 +79,13 @@ export const ChartWrapper: React.FC<ChartWrapperProps> = ({
             overflow: 'hidden' // 防止容器溢出干扰尺寸计算
         }}>
             {isReady && (
-                <ResponsiveContainer width="100%" height="100%" minWidth={0} debounce={50}>
+                <ResponsiveContainer
+                    width="100%"
+                    height="100%"
+                    minWidth={1}
+                    minHeight={1}
+                    debounce={100}
+                >
                     {children || <div />}
                 </ResponsiveContainer>
             )}
