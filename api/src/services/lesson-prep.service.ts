@@ -187,6 +187,76 @@ export class LessonPrepService {
     }
 
     /**
+     * 根据反馈优化教案（流式）
+     */
+    async refineLessonPlanStream(
+        c: Context,
+        originalContent: string,
+        feedback: string,
+        context: LessonPlanContext
+    ): Promise<Response> {
+        const subjectNames: Record<string, string> = {
+            math: '数学',
+            chinese: '语文',
+            english: '英语'
+        };
+
+        const gradeNames = ['', '一', '二', '三', '四', '五', '六'];
+        const subjectName = subjectNames[context.subject] || context.subject;
+        const gradeName = gradeNames[context.grade] || context.grade;
+
+        const systemPrompt = `你是一位经验丰富的小学${subjectName}教师。
+你的任务是根据老师的反馈意见，对已有教案进行调整和优化。
+请保持教案的整体结构，但根据反馈进行针对性修改。`;
+
+        const userPrompt = `请根据以下反馈优化教案：
+
+**原教案内容**：
+${originalContent}
+
+**老师的修改意见**：
+${feedback}
+
+**教学信息**：
+- 科目：${subjectName}
+- 年级：${gradeName}年级
+- 主题：${context.topic}
+
+请根据以上反馈，输出调整后的完整教案。保持原有格式结构，针对反馈意见进行改进。`;
+
+        const apiKey = this.env.DASHSCOPE_API_KEY;
+        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
+
+        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'deepseek-ai/DeepSeek-V3.2',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                stream: true
+            })
+        });
+
+        if (!response.ok || !response.body) {
+            throw new AppError(`AI API error: ${response.status}`, 500);
+        }
+
+        return new Response(response.body, {
+            headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
+            }
+        });
+    }
+
+    /**
      * 保存教案
      */
     async saveLessonPlan(

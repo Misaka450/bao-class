@@ -41,6 +41,29 @@ lessonPrep.post('/generate/stream', async (c) => {
 });
 
 /**
+ * 根据反馈优化教案（流式）
+ * POST /api/lesson-prep/refine/stream
+ * 
+ * Body: { originalContent, feedback, subject, grade, volume, topic }
+ */
+lessonPrep.post('/refine/stream', async (c) => {
+    const { originalContent, feedback, subject, grade, volume, topic } = await c.req.json();
+
+    if (!originalContent || !feedback) {
+        return c.json({ error: '请提供原教案内容和修改意见' }, 400);
+    }
+
+    const service = new LessonPrepService(c.env);
+
+    return service.refineLessonPlanStream(c, originalContent, feedback, {
+        subject: subject || 'custom',
+        grade: parseInt(grade) || 0,
+        volume: parseInt(volume) || 0,
+        topic: topic || ''
+    });
+});
+
+/**
  * 保存教案
  * POST /api/lesson-prep/save
  */
