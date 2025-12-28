@@ -168,4 +168,114 @@ lessonPrep.delete('/plans/:id', async (c) => {
     });
 });
 
+// ===================== 作业相关路由 =====================
+
+/**
+ * 生成作业题（流式）
+ * POST /api/lesson-prep/homework/stream
+ */
+lessonPrep.post('/homework/stream', async (c) => {
+    const { subject, grade, topic, difficulty, count } = await c.req.json();
+
+    if (!subject || !grade || !topic) {
+        return c.json({ error: '请填写科目、年级和知识点' }, 400);
+    }
+
+    const service = new LessonPrepService(c.env);
+
+    return service.generateHomeworkStream(
+        c,
+        subject,
+        parseInt(grade),
+        topic,
+        difficulty || 'basic',
+        parseInt(count) || 5
+    );
+});
+
+/**
+ * 根据反馈优化作业（流式）
+ * POST /api/lesson-prep/homework/refine/stream
+ */
+lessonPrep.post('/homework/refine/stream', async (c) => {
+    const { originalContent, feedback, subject, grade, topic } = await c.req.json();
+
+    if (!originalContent || !feedback) {
+        return c.json({ error: '请提供原作业内容和修改意见' }, 400);
+    }
+
+    const service = new LessonPrepService(c.env);
+
+    return service.refineHomeworkStream(
+        c,
+        originalContent,
+        feedback,
+        subject || 'custom',
+        parseInt(grade) || 0,
+        topic || ''
+    );
+});
+
+/**
+ * 保存作业
+ * POST /api/lesson-prep/homework/save
+ */
+lessonPrep.post('/homework/save', async (c) => {
+    const user = c.get('user');
+    const { title, content, subject, grade, topic, difficulty } = await c.req.json();
+
+    if (!title || !content) {
+        return c.json({ error: '缺少必要参数' }, 400);
+    }
+
+    const service = new LessonPrepService(c.env);
+    const id = await service.saveHomework(
+        user.userId,
+        title,
+        content,
+        subject || 'custom',
+        grade || 0,
+        topic || '',
+        difficulty || 'basic'
+    );
+
+    return c.json({
+        success: true,
+        id,
+        message: '作业保存成功'
+    });
+});
+
+/**
+ * 获取我的作业列表
+ * GET /api/lesson-prep/homework/list
+ */
+lessonPrep.get('/homework/list', async (c) => {
+    const user = c.get('user');
+    const service = new LessonPrepService(c.env);
+    const homework = await service.getUserHomework(user.userId);
+
+    return c.json({
+        success: true,
+        data: homework
+    });
+});
+
+/**
+ * 删除作业
+ * DELETE /api/lesson-prep/homework/:id
+ */
+lessonPrep.delete('/homework/:id', async (c) => {
+    const id = c.req.param('id');
+    const user = c.get('user');
+
+    const service = new LessonPrepService(c.env);
+    await service.deleteHomework(user.userId, parseInt(id));
+
+    return c.json({
+        success: true,
+        message: '作业删除成功'
+    });
+});
+
 export default lessonPrep;

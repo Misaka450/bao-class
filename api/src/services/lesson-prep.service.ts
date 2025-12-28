@@ -288,4 +288,206 @@ ${feedback}
 
         return result.results || [];
     }
+
+    // ===================== 作业生成相关 =====================
+
+    /**
+     * 生成作业题（流式）
+     */
+    async generateHomeworkStream(
+        c: Context,
+        subject: string,
+        grade: number,
+        topic: string,
+        difficulty: string,
+        count: number
+    ): Promise<Response> {
+        const subjectNames: Record<string, string> = {
+            math: '数学',
+            chinese: '语文',
+            english: '英语'
+        };
+
+        const difficultyNames: Record<string, string> = {
+            basic: '基础题',
+            advanced: '提高题',
+            challenge: '拓展题'
+        };
+
+        const gradeNames = ['', '一', '二', '三', '四', '五', '六'];
+        const subjectName = subjectNames[subject] || subject;
+        const gradeName = gradeNames[grade] || grade;
+        const difficultyName = difficultyNames[difficulty] || '综合';
+
+        const systemPrompt = `你是一位经验丰富的小学${subjectName}教师，擅长设计练习题。
+请根据教学内容设计高质量的练习题，题目要：
+1. 紧扣知识点，难度适中
+2. 题型多样（选择、填空、判断、应用题等）
+3. 每道题要有完整的答案和解析`;
+
+        const userPrompt = `请为以下内容设计${count}道${difficultyName}：
+
+**教学信息**
+- 科目：${subjectName}
+- 年级：${gradeName}年级
+- 知识点：${topic}
+- 难度：${difficultyName}
+
+**输出格式**
+# ${subjectName} ${difficultyName}
+
+## 第1题
+**题目**：...
+**答案**：...
+**解析**：...
+
+## 第2题
+...
+
+请确保题目清晰、答案准确、解析详尽。`;
+
+        const apiKey = this.env.DASHSCOPE_API_KEY;
+        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
+
+        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'deepseek-ai/DeepSeek-V3.2',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                stream: true
+            })
+        });
+
+        if (!response.ok || !response.body) {
+            throw new AppError(`AI API error: ${response.status}`, 500);
+        }
+
+        return new Response(response.body, {
+            headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
+            }
+        });
+    }
+
+    /**
+     * 根据反馈优化作业（流式）
+     */
+    async refineHomeworkStream(
+        c: Context,
+        originalContent: string,
+        feedback: string,
+        subject: string,
+        grade: number,
+        topic: string
+    ): Promise<Response> {
+        const subjectNames: Record<string, string> = {
+            math: '数学',
+            chinese: '语文',
+            english: '英语'
+        };
+
+        const gradeNames = ['', '一', '二', '三', '四', '五', '六'];
+        const subjectName = subjectNames[subject] || subject;
+        const gradeName = gradeNames[grade] || grade;
+
+        const systemPrompt = `你是一位经验丰富的小学${subjectName}教师。
+请根据老师的反馈意见，对已有作业题进行调整和优化。`;
+
+        const userPrompt = `请根据以下反馈优化作业题：
+
+**原作业题**：
+${originalContent}
+
+**老师的修改意见**：
+${feedback}
+
+**教学信息**：
+- 科目：${subjectName}
+- 年级：${gradeName}年级
+- 知识点：${topic}
+
+请根据反馈进行调整，输出完整的作业题（含答案和解析）。`;
+
+        const apiKey = this.env.DASHSCOPE_API_KEY;
+        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
+
+        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'deepseek-ai/DeepSeek-V3.2',
+                messages: [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userPrompt }
+                ],
+                stream: true
+            })
+        });
+
+        if (!response.ok || !response.body) {
+            throw new AppError(`AI API error: ${response.status}`, 500);
+        }
+
+        return new Response(response.body, {
+            headers: {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive'
+            }
+        });
+    }
+
+    /**
+     * 保存作业
+     */
+    async saveHomework(
+        userId: number,
+        title: string,
+        content: string,
+        subject: string,
+        grade: number,
+        topic: string,
+        difficulty: string
+    ): Promise<number> {
+        const result = await this.env.DB.prepare(`
+      INSERT INTO homework (user_id, title, content, subject, grade, topic, difficulty)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(userId, title, content, subject, grade, topic, difficulty).run();
+
+        return result.meta.last_row_id as number;
+    }
+
+    /**
+     * 获取用户的作业列表
+     */
+    async getUserHomework(userId: number): Promise<any[]> {
+        const result = await this.env.DB.prepare(`
+      SELECT * FROM homework 
+      WHERE user_id = ?
+      ORDER BY created_at DESC
+    `).bind(userId).all();
+
+        return result.results || [];
+    }
+
+    /**
+     * 删除作业
+     */
+    async deleteHomework(userId: number, homeworkId: number): Promise<void> {
+        await this.env.DB.prepare(`
+      DELETE FROM homework WHERE id = ? AND user_id = ?
+    `).bind(homeworkId, userId).run();
+    }
 }

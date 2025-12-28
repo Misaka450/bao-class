@@ -55,6 +55,8 @@ const AuditLogs = React.lazy(() => import('../pages/AuditLogs'));
 const Users = React.lazy(() => import('../pages/Users'));
 const LessonPrep = React.lazy(() => import('../pages/LessonPrep'));
 const MyLessonPlans = React.lazy(() => import('../pages/MyLessonPlans'));
+const HomeworkGenerator = React.lazy(() => import('../pages/HomeworkGenerator'));
+const MyHomework = React.lazy(() => import('../pages/MyHomework'));
 
 /**
  * Main route configuration
@@ -240,6 +242,24 @@ const routes: RouteConfig[] = [
         access: ['admin', 'head_teacher', 'teacher'],
         title: '我的教案 - 班级管理系统',
         description: '查看和管理已保存的教案',
+      },
+      {
+        path: '/lesson-prep/homework',
+        name: '作业生成',
+        icon: React.createElement(FileTextOutlined),
+        component: HomeworkGenerator,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: '作业生成 - 班级管理系统',
+        description: 'AI 生成分层练习题',
+      },
+      {
+        path: '/lesson-prep/my-homework',
+        name: '我的作业',
+        icon: React.createElement(FileTextOutlined),
+        component: MyHomework,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: '我的作业 - 班级管理系统',
+        description: '查看和管理已保存的作业',
       },
     ],
   },
