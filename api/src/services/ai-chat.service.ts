@@ -10,13 +10,10 @@ export class AIChatService {
     }
 
     /**
-     * 实现自然语言转 SQL 并执行查询
+     * 实现自然语言转 SQL 并执行查询 (非流式接口，内部使用)
      */
-    async chat(query: string, userId: number, role: string): Promise<string> {
-        // 1. 检查额度
-        await checkAndIncrementQuota(this.env);
-
-        // 2. 构造 Schema 描述
+    async executeSqlFromQuery(query: string): Promise<{ results: any[], sql: string }> {
+        // 构造 Schema 描述
         const schemaInfo = `
 表结构说明：
 1. classes (班级): id, name, grade
@@ -27,56 +24,64 @@ export class AIChatService {
 6. scores (成绩): student_id, exam_id, course_id, score
 
 查询范围限制：
-- 如果你是老师，你只能查询你自己班级的数据（本系统中简化演示，允许查询所有，但 AI 应保持专业态度）。
+- 请生成一条只读 SQL (只能是 SELECT)。
+- 禁止任何 UPDATE, DELETE, DROP, INSERT 操作。
 `;
 
         const systemPrompt = `你是一位专业的智慧班级数据分析师。
-你的任务是将用户的自然语言问题转换为 SQL 语句，并在执行后对结果进行解释。
+你的任务是将用户的自然语言问题转换为 SQL 语句。
 
 ${schemaInfo}
 
-工作流程：
-1. 识别用户意图。如果是查询数据，生成一条只读 SQL (只能是 SELECT)。
-2. 约束：禁止任何 UPDATE, DELETE, DROP, INSERT 操作。
-3. 请严格按照以下 JSON 格式输出第一步的思考（注意：这只是你的心路历程，最终回答要包含文字）：
+请严格按以下 JSON 格式输出：
 {
   "sql": "生成的SQL语句",
-  "explanation": "你打算如何查询"
+  "explanation": "你的查询逻辑简述"
 }
-
-当前日期：${new Date().toLocaleDateString()}
 `;
 
-        // 第一步：生成 SQL
-        const sqlResponse = await this.callLLM(systemPrompt, `用户问题：${query}\n请只返回 JSON。`);
+        const sqlResponse = await this.callLLM(systemPrompt, `用户问题：${query}\n请只返回 JSON。`, false);
         let sqlData: { sql: string };
         try {
-            // 提取 JSON
-            const jsonMatch = sqlResponse.match(/\{[\s\S]*\}/);
+            const jsonMatch = (sqlResponse as string).match(/\{[\s\S]*\}/);
             if (!jsonMatch) throw new Error('Failed to parse AI SQL response');
             sqlData = JSON.parse(jsonMatch[0]);
         } catch (e) {
-            return `抱歉，我无法理解这个查询请求。错误：${sqlResponse}`;
+            throw new Error(`无法理解该查询请求。AI返回：${sqlResponse}`);
         }
 
-        // 第二步：执行 SQL
-        let queryResults: any[] = [];
-        try {
-            const dbResult = await this.env.DB.prepare(sqlData.sql).all();
-            queryResults = dbResult.results || [];
-        } catch (e: any) {
-            return `生成了 SQL 但执行失败：${e.message}\nSQL内容：${sqlData.sql}`;
-        }
-
-        // 第三步：总结结果
-        const summaryPrompt = `针对用户问题：“${query}”
-查询结果数据：${JSON.stringify(queryResults)}
-请根据数据给出一个友好、简洁且专业的回答。如果数据为空，请如实告知。如果是趋势分析，请给出你的洞察。`;
-
-        return await this.callLLM("你是一位资深的班主任助教。", summaryPrompt);
+        const dbResult = await this.env.DB.prepare(sqlData.sql).all();
+        return {
+            results: dbResult.results || [],
+            sql: sqlData.sql
+        };
     }
 
-    private async callLLM(system: string, user: string): Promise<string> {
+    /**
+     * AI 对话流式接口
+     */
+    async chatStream(query: string): Promise<Response> {
+        // 1. 检查额度
+        await checkAndIncrementQuota(this.env);
+
+        // 2. 获取数据 (非流式)
+        let dataInfo = "";
+        try {
+            const { results, sql } = await this.executeSqlFromQuery(query);
+            dataInfo = `查询结果：${JSON.stringify(results)}`;
+        } catch (e: any) {
+            dataInfo = `查询失败或无权查询。错误信息：${e.message}`;
+        }
+
+        // 3. 构造总结提示词并返回流
+        const summaryPrompt = `针对用户问题：“${query}”
+${dataInfo}
+请根据以上数据给出一个友好、简洁且专业的回答。如果数据为空，请如实告知。如果是趋势分析，请给出你的洞察。`;
+
+        return this.callLLM("你是一位资深的班主任助教。", summaryPrompt, true) as Promise<Response>;
+    }
+
+    private async callLLM(system: string, user: string, stream: boolean): Promise<string | Response> {
         const apiKey = this.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
 
@@ -92,12 +97,22 @@ ${schemaInfo}
                     { role: 'system', content: system },
                     { role: 'user', content: user }
                 ],
-                stream: false
+                stream
             })
         });
 
         if (!response.ok) {
             throw new AppError(`AI API error: ${response.status}`, 500);
+        }
+
+        if (stream) {
+            return new Response(response.body, {
+                headers: {
+                    'Content-Type': 'text/event-stream',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive'
+                }
+            });
         }
 
         const data: any = await response.json();

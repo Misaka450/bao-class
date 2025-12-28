@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Button, Input, List, Avatar, Card, Space, Popover, Badge } from 'antd';
 import { MessageOutlined, SendOutlined, RobotOutlined, UserOutlined, CloseOutlined } from '@ant-design/icons';
 import { aiApi } from '../../services/api';
+import { useResponsive } from '../../hooks/useResponsive';
 import './style.css';
 
 interface Message {
@@ -18,6 +19,7 @@ const AIChat: React.FC = () => {
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const responsive = useResponsive();
 
     // 自动滚动到底部
     useEffect(() => {
@@ -39,17 +41,31 @@ const AIChat: React.FC = () => {
         setInputValue('');
         setLoading(true);
 
+        // 添加一个空的 AI 消息占位
+        setMessages(prev => [...prev, {
+            role: 'ai',
+            content: '',
+            time: new Date().toLocaleTimeString()
+        }]);
+
+        let fullContent = '';
+
         try {
-            const res = await aiApi.chatQuery(userMsg.content);
-            if (res.success && res.data) {
-                setMessages(prev => [...prev, {
-                    role: 'ai',
-                    content: res.data.answer,
-                    time: new Date().toLocaleTimeString()
-                }]);
-            } else {
-                throw new Error('请求失败');
-            }
+            await aiApi.chatQueryStream(userMsg.content, {
+                onChunk: (chunk) => {
+                    fullContent += chunk;
+                    setMessages(prev => {
+                        const last = prev[prev.length - 1];
+                        if (last && last.role === 'ai') {
+                            return [
+                                ...prev.slice(0, -1),
+                                { ...last, content: fullContent }
+                            ];
+                        }
+                        return prev;
+                    });
+                }
+            });
         } catch (error) {
             setMessages(prev => [...prev, {
                 role: 'ai',
@@ -63,7 +79,7 @@ const AIChat: React.FC = () => {
 
     const content = (
         <Card
-            className="ai-chat-card"
+            className={`ai-chat-card ${responsive.isMobile ? 'mobile' : ''}`}
             title={
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span><RobotOutlined /> AI 助教</span>
