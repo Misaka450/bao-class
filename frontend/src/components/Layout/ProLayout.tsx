@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { LogoutOutlined, UserOutlined } from '@ant-design/icons';
+import { LogoutOutlined, UserOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { ProLayout, PageContainer } from '@ant-design/pro-layout';
-import { Dropdown, Avatar } from 'antd';
+import { Dropdown, Avatar, Progress } from 'antd';
 import type { MenuProps } from 'antd';
 import { useAuthStore } from '../../store/authStore';
 import routes, { filterRoutesByAccess, generateBreadcrumbs, getPageTitle } from '../../config/routes';
 import { usePageTitle, useRouteChange } from '../../utils/route';
 import { designTokens } from '../../config/theme';
 import { useResponsiveLayout } from '../../hooks/useResponsive';
+import { aiApi } from '../../services/api';
 
 interface ProLayoutConfig {
   title: string;
@@ -27,6 +28,8 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
   const { user, logout } = useAuthStore();
   const [pathname, setPathname] = useState(location.pathname);
   const [collapsed, setCollapsed] = useState(false);
+  const [aiUsage, setAiUsage] = useState<{ used: number; total: number; remaining: number } | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   // Get responsive layout settings
   const responsiveLayout = useResponsiveLayout();
@@ -43,8 +46,48 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
   // Generate breadcrumbs for current path
   const breadcrumbs = generateBreadcrumbs(pathname);
 
+  // 跟踪 Dropdown 展开状态，展开时加载 AI 用量
+  useEffect(() => {
+    if (dropdownOpen) {
+      aiApi.getUsage().then(res => {
+        if (res.success && res.data) {
+          setAiUsage(res.data);
+        }
+      }).catch(() => {
+        // 忽略错误
+      });
+    }
+  }, [dropdownOpen]);
+
   // 用户下拉菜单配置
   const userMenuItems: MenuProps['items'] = [
+    {
+      key: 'ai-usage',
+      icon: <ThunderboltOutlined style={{ color: aiUsage && aiUsage.remaining < 50 ? '#ff4757' : '#6C5DD3' }} />,
+      label: (
+        <div style={{ minWidth: 180 }}>
+          <div style={{ marginBottom: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+            今日 AI 额度
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Progress
+              percent={aiUsage ? (aiUsage.used / aiUsage.total) * 100 : 0}
+              size="small"
+              strokeColor={aiUsage && aiUsage.remaining < 50 ? '#ff4757' : '#6C5DD3'}
+              showInfo={false}
+              style={{ flex: 1 }}
+            />
+            <span style={{ fontSize: 12, fontWeight: 600 }}>
+              {aiUsage ? `${aiUsage.used}/${aiUsage.total}` : '加载中...'}
+            </span>
+          </div>
+        </div>
+      ),
+      disabled: true,
+    },
+    {
+      type: 'divider',
+    },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
@@ -110,7 +153,12 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
         src: layoutConfig.userInfo.avatar,
         title: layoutConfig.userInfo.name,
         render: (_, avatarChildren) => (
-          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight" arrow>
+          <Dropdown
+            menu={{ items: userMenuItems }}
+            placement="bottomRight"
+            arrow
+            onOpenChange={(open) => setDropdownOpen(open)}
+          >
             <div className="header-user-info" style={{
               display: 'flex',
               alignItems: 'center',

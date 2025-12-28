@@ -6,6 +6,7 @@ import { AppError } from '../utils/AppError'
 import { Env, JWTPayload } from '../types'
 import { AIService } from '../services/ai.service'
 import { generateCommentSchema } from '../schemas/ai.schema'
+import { getAIUsage, checkAndIncrementQuota } from '../utils/aiQuota'
 
 type Variables = {
     user: JWTPayload
@@ -49,6 +50,9 @@ ai.post('/generate-comment/stream', async (c) => {
     const studentInfo = await c.env.DB.prepare('SELECT class_id FROM students WHERE id = ?').bind(student_id).first<any>()
     if (!studentInfo) throw new AppError('学生不存在', 404)
     // 根据用户反馈，不强制越权隔离
+
+    // 检查并增加 AI 额度
+    await checkAndIncrementQuota(c.env);
 
     const aiService = new AIService(c.env);
     const { stream, data: commentMetadata } = await aiService.generateStudentCommentStream(c, student_id);
@@ -187,6 +191,18 @@ ai.delete('/comments/:id', async (c) => {
 
     await c.env.DB.prepare('DELETE FROM ai_comments WHERE id = ?').bind(id).run()
     return c.json({ success: true })
+})
+
+/**
+ * 获取 AI 用量统计
+ * GET /api/ai/usage
+ */
+ai.get('/usage', async (c) => {
+    const usage = await getAIUsage(c.env);
+    return c.json({
+        success: true,
+        data: usage
+    });
 })
 
 export default ai

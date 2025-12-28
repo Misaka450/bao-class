@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
+import { checkAndIncrementQuota } from '../utils/aiQuota';
 
 interface ClassPerformance {
     avgScore: number;
@@ -72,6 +73,9 @@ export class LessonPrepService {
      * 生成教案（流式）- 纯 LLM 方式
      */
     async generateLessonPlanStream(c: Context, context: LessonPlanContext): Promise<Response> {
+        // 检查并增加 AI 额度
+        await checkAndIncrementQuota(this.env);
+
         const { systemPrompt, userPrompt } = this.buildPrompts(context);
 
         const apiKey = this.env.DASHSCOPE_API_KEY;
@@ -224,6 +228,9 @@ ${feedback}
 
 请根据以上反馈，输出调整后的完整教案。保持原有格式结构，针对反馈意见进行改进。`;
 
+        // 检查并增加 AI 额度
+        await checkAndIncrementQuota(this.env);
+
         const apiKey = this.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
 
@@ -346,6 +353,9 @@ ${feedback}
 
 请确保题目清晰、答案准确、解析详尽。`;
 
+        // 检查并增加 AI 额度
+        await checkAndIncrementQuota(this.env);
+
         const apiKey = this.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
 
@@ -416,6 +426,9 @@ ${feedback}
 - 知识点：${topic}
 
 请根据反馈进行调整，输出完整的作业题（含答案和解析）。`;
+
+        // 检查并增加 AI 额度
+        await checkAndIncrementQuota(this.env);
 
         const apiKey = this.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
