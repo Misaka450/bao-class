@@ -154,14 +154,9 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
               path: item.path,
               title: item.name,
             })),
-            itemRender: (route, params, routes, paths) => {
-              const last = routes.indexOf(route) === routes.length - 1;
-              return last ? (
-                <span>{route.title}</span>
-              ) : (
-                <Link to={route.path || '/'}>{route.title}</Link>
-              );
-            },
+            itemRender: (route) => (
+              <span>{route.title}</span>
+            ),
           },
           title: false,
           style: {
