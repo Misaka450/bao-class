@@ -145,13 +145,30 @@ const routes: RouteConfig[] = [
   },
   // 学生管理
   {
-    path: '/students',
+    path: '/student-manage',
     name: '学生管理',
     icon: React.createElement(UserOutlined),
-    component: Students,
     access: ['admin', 'head_teacher', 'teacher'],
-    title: '学生管理 - 智慧班级助手',
-    description: '管理学生基本信息和档案',
+    children: [
+      {
+        path: '/students',
+        name: '学生列表',
+        icon: React.createElement(TeamOutlined),
+        component: Students,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: '学生管理 - 智慧班级助手',
+        description: '管理学生基本信息和档案',
+      },
+      {
+        path: '/scores-list',
+        name: '成绩清单',
+        icon: React.createElement(TableOutlined),
+        component: ScoresList,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: '成绩清单 - 智慧班级助手',
+        description: '查看和管理学生成绩记录',
+      },
+    ],
   },
   {
     path: '/student-profile/:id',
@@ -198,16 +215,7 @@ const routes: RouteConfig[] = [
       },
     ],
   },
-  // 成绩清单
-  {
-    path: '/scores-list',
-    name: '成绩清单',
-    icon: React.createElement(TableOutlined),
-    component: ScoresList,
-    access: ['admin', 'head_teacher', 'teacher'],
-    title: '成绩清单 - 智慧班级助手',
-    description: '查看和管理学生成绩记录',
-  },
+
   {
     path: '/pro-scores-list',
     name: 'Pro成绩清单',
