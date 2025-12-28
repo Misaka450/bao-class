@@ -7,7 +7,7 @@ import GlobalErrorBoundary from './components/Feedback/GlobalErrorBoundary';
 import { useAuthStore } from './store/authStore';
 import { initializePerformanceOptimizations } from './utils/resourceOptimization';
 import Login from './pages/Login';
-
+import AIChat from './components/AIChat';
 import { RouteProgressBar } from './components/Feedback/RouteProgressBar';
 
 function App() {
@@ -50,6 +50,7 @@ function AppContent() {
       <ThemeProvider>
         <ProLayoutWrapper>
           <RouteRenderer />
+          <AIChat />
         </ProLayoutWrapper>
       </ThemeProvider>
     </ErrorBoundary>

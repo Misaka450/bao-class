@@ -247,6 +247,8 @@ export const aiApi = {
         del(`/api/ai/comments/${id}`),
     getUsage: () =>
         get<{ success: boolean; data: { used: number; total: number; remaining: number } }>('/api/ai/usage'),
+    chatQuery: (query: string) =>
+        post<{ success: boolean; data: { answer: string } }>('/api/ai/chat/query', { query }),
 };
 
 // ==================== 用户管理 API ====================

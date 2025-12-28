@@ -21,6 +21,7 @@ import logs from './routes/logs';
 import ai from './routes/ai';
 import users from './routes/users';
 import lessonPrep from './routes/lesson-prep';
+import aiChat from './routes/ai-chat';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -82,6 +83,7 @@ app.route('/api/logs', logs);
 app.route('/api/ai', ai);
 app.route('/api/users', users);
 app.route('/api/lesson-prep', lessonPrep);
+app.route('/api/ai/chat', aiChat);
 app.route('/api/init', init);
 
 // 全局错误处理
