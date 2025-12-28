@@ -61,10 +61,7 @@ ${schemaInfo}
      * AI 对话流式接口
      */
     async chatStream(query: string): Promise<Response> {
-        // 1. 检查额度
-        await checkAndIncrementQuota(this.env);
-
-        // 2. 获取数据 (非流式)
+        // 1. 获取数据 (非流式)
         let dataInfo = "";
         try {
             const { results, sql } = await this.executeSqlFromQuery(query);
@@ -82,6 +79,9 @@ ${dataInfo}
     }
 
     private async callLLM(system: string, user: string, stream: boolean): Promise<string | Response> {
+        // 每次调用模型时检查并增加额度
+        await checkAndIncrementQuota(this.env);
+
         const apiKey = this.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
 

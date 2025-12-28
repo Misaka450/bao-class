@@ -73,41 +73,8 @@ export class LessonPrepService {
      * 生成教案（流式）- 纯 LLM 方式
      */
     async generateLessonPlanStream(c: Context, context: LessonPlanContext): Promise<Response> {
-        // 检查并增加 AI 额度
-        await checkAndIncrementQuota(this.env);
-
         const { systemPrompt, userPrompt } = this.buildPrompts(context);
-
-        const apiKey = this.env.DASHSCOPE_API_KEY;
-        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
-
-        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                stream: true
-            })
-        });
-
-        if (!response.ok || !response.body) {
-            throw new AppError(`AI API error: ${response.status}`, 500);
-        }
-
-        return new Response(response.body, {
-            headers: {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-            }
-        });
+        return this.callLLM(systemPrompt, userPrompt, true) as Promise<Response>;
     }
 
     /**
@@ -228,39 +195,7 @@ ${feedback}
 
 请根据以上反馈，输出调整后的完整教案。保持原有格式结构，针对反馈意见进行改进。`;
 
-        // 检查并增加 AI 额度
-        await checkAndIncrementQuota(this.env);
-
-        const apiKey = this.env.DASHSCOPE_API_KEY;
-        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
-
-        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                stream: true
-            })
-        });
-
-        if (!response.ok || !response.body) {
-            throw new AppError(`AI API error: ${response.status}`, 500);
-        }
-
-        return new Response(response.body, {
-            headers: {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-            }
-        });
+        return this.callLLM(systemPrompt, userPrompt, true) as Promise<Response>;
     }
 
     /**
@@ -353,39 +288,7 @@ ${feedback}
 
 请确保题目清晰、答案准确、解析详尽。`;
 
-        // 检查并增加 AI 额度
-        await checkAndIncrementQuota(this.env);
-
-        const apiKey = this.env.DASHSCOPE_API_KEY;
-        if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
-
-        const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                stream: true
-            })
-        });
-
-        if (!response.ok || !response.body) {
-            throw new AppError(`AI API error: ${response.status}`, 500);
-        }
-
-        return new Response(response.body, {
-            headers: {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-            }
-        });
+        return this.callLLM(systemPrompt, userPrompt, true) as Promise<Response>;
     }
 
     /**
@@ -427,7 +330,11 @@ ${feedback}
 
 请根据反馈进行调整，输出完整的作业题（含答案和解析）。`;
 
-        // 检查并增加 AI 额度
+        return this.callLLM(systemPrompt, userPrompt, true) as Promise<Response>;
+    }
+
+    private async callLLM(system: string, user: string, stream: boolean): Promise<Response | string> {
+        // 每次调用模型时检查并增加额度
         await checkAndIncrementQuota(this.env);
 
         const apiKey = this.env.DASHSCOPE_API_KEY;
@@ -442,24 +349,30 @@ ${feedback}
             body: JSON.stringify({
                 model: 'deepseek-ai/DeepSeek-V3.2',
                 messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
+                    { role: 'system', content: system },
+                    { role: 'user', content: user }
                 ],
-                stream: true
+                stream
             })
         });
 
-        if (!response.ok || !response.body) {
+        if (!response.ok) {
             throw new AppError(`AI API error: ${response.status}`, 500);
         }
 
-        return new Response(response.body, {
-            headers: {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive'
-            }
-        });
+        if (stream) {
+            if (!response.body) throw new AppError('Empty AI response body', 500);
+            return new Response(response.body, {
+                headers: {
+                    'Content-Type': 'text/event-stream',
+                    'Cache-Control': 'no-cache',
+                    'Connection': 'keep-alive'
+                }
+            });
+        }
+
+        const data: any = await response.json();
+        return data.choices?.[0]?.message?.content || '';
     }
 
     /**

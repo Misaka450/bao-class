@@ -70,6 +70,8 @@
     padding: 16px;
     overflow-y: auto;
     background: #f8f9fa;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
 }
 
 .message-item {
@@ -148,7 +150,12 @@
 
 /* Mobile Adjustments */
 .ai-chat-card.mobile {
-    width: calc(100vw - 48px);
-    height: 60vh;
+    width: calc(100vw - 32px);
+    height: 70vh;
     max-width: none;
+}
+
+.ai-chat-card.mobile .ai-chat-messages {
+    height: calc(70vh - 120px);
+    /* Adjust based on title and input height */
 }

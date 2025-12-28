@@ -1,6 +1,7 @@
 import { Context } from 'hono';
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
+import { checkAndIncrementQuota } from '../utils/aiQuota';
 
 export class AIService {
     private env: Env;
@@ -176,6 +177,9 @@ export class AIService {
     }
 
     private async callAIModelNonStreaming(systemPrompt: string, userPrompt: string) {
+        // 检查并增加 AI 额度
+        await checkAndIncrementQuota(this.env);
+
         const apiKey = this.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new AppError('未配置 DASHSCOPE_API_KEY', 500);
 
@@ -201,6 +205,9 @@ export class AIService {
      * 流式调用 AI (模型响应转发)
      */
     static async callStreaming(c: Context, systemPrompt: string, userPrompt: string) {
+        // 检查并增加 AI 额度
+        await checkAndIncrementQuota(c.env);
+
         const apiKey = c.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new AppError('未配置 DASHSCOPE_API_KEY', 500);
 
