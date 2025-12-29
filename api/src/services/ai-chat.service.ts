@@ -52,7 +52,8 @@ ${schemaInfo}
         const sqlResponse = await LLMClient.call(this.env, {
             system: systemPrompt,
             user: `用户问题：${query}\n请只返回 JSON。`,
-            stream: false
+            stream: false,
+            model: 'Qwen/Qwen3-235B-A22B-Instruct-2507'
         }) as string;
 
         let sqlData: { sql: string };
