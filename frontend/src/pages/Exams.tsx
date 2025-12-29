@@ -54,7 +54,7 @@ export default function Exams() {
     const handleEdit = (record: Exam) => {
         setEditingExam({
             ...record,
-            exam_date: record.exam_date, // Keep as string for ProForm
+            exam_date: record.exam_date ? dayjs(record.exam_date) : null, // Convert string to dayjs for editing
             course_ids: record.courses?.map(c => c.course_id) || []
         } as any);
         setIsModalOpen(true);
@@ -72,9 +72,22 @@ export default function Exams() {
 
     const handleSubmit = async (values: any) => {
         try {
+            let examDateValue = values.exam_date;
+            
+            // Handle both dayjs object and string formats
+            if (typeof examDateValue === 'string') {
+                examDateValue = dayjs(examDateValue);
+            }
+            
+            // Ensure it's a valid dayjs object before formatting
+            if (!examDateValue || typeof examDateValue.format !== 'function') {
+                message.error('日期格式无效，请重新选择');
+                return;
+            }
+            
             const data = {
                 ...values,
-                exam_date: values.exam_date.format('YYYY-MM-DD'),
+                exam_date: examDateValue.format('YYYY-MM-DD'),
                 courses: values.course_ids.map((courseId: number) => ({
                     course_id: courseId,
                     full_score: 100
@@ -91,8 +104,10 @@ export default function Exams() {
             }
             setIsModalOpen(false);
             actionRef.current?.reload();
-        } catch (error) {
-            // Error already handled in request layer
+        } catch (error: any) {
+            console.error('Submit error:', error);
+            const errorMessage = error?.message || '操作失败，请重试';
+            message.error(errorMessage);
         }
     };
 
@@ -242,6 +257,12 @@ export default function Exams() {
                 onFinish={handleSubmit}
                 initialValues={editingExam || {}}
                 layout="vertical"
+                submitter={{
+                    render: (props, defaultDoms) => [
+                        defaultDoms[0],
+                        defaultDoms[1],
+                    ],
+                }}
                 modalProps={{
                     destroyOnClose: true,
                     width: '90%',

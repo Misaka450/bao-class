@@ -253,6 +253,12 @@ export const aiApi = {
             body: { query },
             ...options
         }),
+    chatKnowledgeStream: (message: string, options: { onChunk: (chunk: string) => void }) =>
+        requestStream('/api/ai/chat/knowledge', {
+            method: 'POST',
+            body: { message },
+            ...options
+        }),
 };
 
 // ==================== 用户管理 API ====================
