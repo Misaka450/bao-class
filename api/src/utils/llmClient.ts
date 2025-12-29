@@ -7,6 +7,7 @@ export interface LLMCallOptions {
     user: string;
     stream?: boolean;
     model?: string;
+    history?: Array<{ role: string, content: string }>;
 }
 
 /**
@@ -24,13 +25,20 @@ export class LLMClient {
      * @returns 非流式返回字符串，流式返回 Response
      */
     static async call(env: Env, options: LLMCallOptions): Promise<string | Response> {
-        const { system, user, stream = false, model = this.DEFAULT_MODEL } = options;
+        const { system, user, stream = false, model = this.DEFAULT_MODEL, history = [] } = options;
 
         // 每次调用模型时检查并增加额度
         await checkAndIncrementQuota(env);
 
         const apiKey = env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new AppError('DASHSCOPE_API_KEY not configured', 500);
+
+        // 构建消息列表：system + history + user
+        const messages = [
+            { role: 'system', content: system },
+            ...history.map(h => ({ role: h.role, content: h.content })),
+            { role: 'user', content: user }
+        ];
 
         const response = await fetch(this.API_URL, {
             method: 'POST',
@@ -41,10 +49,7 @@ export class LLMClient {
             },
             body: JSON.stringify({
                 model,
-                messages: [
-                    { role: 'system', content: system },
-                    { role: 'user', content: user }
-                ],
+                messages,
                 stream
             })
         });

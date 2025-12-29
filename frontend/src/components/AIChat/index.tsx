@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Button, Input, List, Avatar, Card, Badge, Segmented, Tooltip } from 'antd';
+import { Button, Input, List, Avatar, Card, Badge, Segmented, Tooltip, Popover } from 'antd';
 import { MessageOutlined, SendOutlined, RobotOutlined, UserOutlined, CloseOutlined, SearchOutlined, BookOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
 import { aiApi } from '../../services/api';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -74,13 +74,13 @@ const AIChat: React.FC = () => {
             if (resizeDirection.includes('w')) {
                 setDimensions(prev => ({
                     ...prev,
-                    width: Math.max(300, Math.min(800, startDim.width - dx)
+                    width: Math.max(300, Math.min(800, startDim.width - dx))
                 }));
             }
             if (resizeDirection.includes('n')) {
                 setDimensions(prev => ({
                     ...prev,
-                    height: Math.max(300, Math.min(700, startDim.height - dy)
+                    height: Math.max(300, Math.min(700, startDim.height - dy))
                 }));
             }
         };

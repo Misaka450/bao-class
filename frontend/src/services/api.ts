@@ -246,7 +246,7 @@ export const aiApi = {
     deleteComment: (id: number) =>
         del(`/api/ai/comments/${id}`),
     getUsage: () =>
-        get<{ success: boolean; data: { used: number; total: number; remaining: number } }>('/api/ai/usage'),
+        get<{ used: number; total: number; remaining: number }>('/api/ai/usage'),
     chatQueryStream: (query: string, options: { onChunk: (chunk: string) => void }) =>
         requestStream('/api/ai/chat/query/stream', {
             method: 'POST',

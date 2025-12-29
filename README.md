@@ -1,22 +1,18 @@
-# 🎓 小学成绩管理系统
+# 🎓 智慧班级助手
 
-一个现代化、智能化的**小学成绩管理**与**教学辅助**系统，采用 Serverless 全栈架构，部署在 Cloudflare 平台。支持成绩管理、数据分析、AI 智能评语、教案生成、作业生成等功能。
+一个现代化、智能化的小学班级管理系统，采用 Serverless 全栈架构，部署在 Cloudflare 平台。集成 AI 智能备课、成绩管理与数据分析等功能。
 
-[![部署状态](https://github.com/Misaka450/bao-class/actions/workflows/deploy.yml/badge.svg)](https://github.com/Misaka450/bao-class/actions/workflows/deploy.yml)
+[![部署状态](https://github.com/Misaka450/bao-class/actions/workflows/deploy.yml/badge.svg)](https://github.com/Misaka450/bao-class/actions)
 [![技术栈](https://img.shields.io/badge/Tech-React%2019%20%7C%20TypeScript%20%7C%20Cloudflare-blue)](https://github.com/Misaka450/bao-class)
 
-## 📋 目录
-
-- [核心特性](#核心特性)
-- [功能模块](#功能模块)
-- [技术栈](#技术栈)
-- [项目结构](#项目结构)
-- [快速开始](#快速开始)
-- [功能使用](#功能使用)
-- [开发指南](#开发指南)
-- [部署](#部署)
-
 ## ✨ 核心特性
+
+### 🤖 AI 智能助手
+- **AI 教案生成** - 基于 DeepSeek-V3.2 智能生成小学各科教案，支持自定义教学目标和重难点
+- **AI 作业生成** - 智能生成分层练习题（基础/提高/拓展），支持历史管理
+- **智能评语生成** - 自动生成个性化学生评语（支持流式输出、推理思维展示）
+- **班级学情报告** - 深度分析班级多维度数据，生成 800-1000 字的专业诊断报告
+- **智能 OCR 识别** - 使用 Qwen3-VL 模型从成绩单照片中提取结构化成绩数据
 
 ### 📊 成绩管理
 - **批量导入** - 支持 Excel 文件批量导入成绩数据
@@ -24,16 +20,8 @@
 - **实时统计** - 自动计算班级排名、平均分、及格率等指标
 - **数据导出** - 支持导出成绩报表和分析结果
 
-### 🤖 AI 智能教学
-- **智能评语生成** - 基于 DeepSeek-V3.2 自动生成个性化学生评语（支持流式输出、推理思维展示）
-- **教案自动生成** - 根据科目、年级、册次、教学主题智能生成完整教案
-- **作业智能出题** - 根据知识点、难度、题量智能生成练习题
-- **班级学情报告** - 深度分析班级多维度数据，生成专业诊断报告
-- **多维度关注群体** - 自动识别临界生、退步生、波动生、偏科生，并给出针对性建议
-- **智能 OCR 识别** - 使用 Qwen3-VL 模型从成绩单照片中提取结构化成绩数据
-
 ### 📈 数据可视化
-- **仪表盘概览** - 直观展示关键数据指标，支持班级/考试/科目多维筛选
+- **仪表盘概览** - 直观展示关键数据指标
 - **班级学情分析** - 多维度成绩对比和趋势分析
   - 年级班级对比分析
   - 各科目成绩分布图
@@ -44,102 +32,9 @@
 
 ### 🔐 系统功能
 - **全方位权限控制** - 管理员、班主任、科任教师三级权限隔离，支持班级/科目精细授权
-- **性能监控与优化** - 内置 Web Vitals 监控及加载时序分析，后端多级缓存机制（KV + 内存）
+- **统一 LLM 客户端** - 集中管理 AI 调用，支持额度控制与错误处理
 - **响应式极致体验** - 深度适配移动端操作，支持侧边栏折叠、卡片式布局自由切换
 - **暗色主题支持** - 现代化视觉设计，支持系统主题跟随与手动切换
-- **操作日志审计** - 完整记录所有关键操作，支持审计追溯
-
-## 🎯 功能模块
-
-### 仪表盘
-- 综合数据概览（班级数、学生数、考试数、参考人次）
-- 成绩分布可视化（饼图展示优秀/良好/及格/不及格比例）
-- TOP10 优秀学生展示
-- 班级进度追踪（已完成/待完成考试）
-- 支持班级、考试、科目三级筛选联动
-
-### 班级管理
-- 班级列表查看
-- 新增/编辑/删除班级
-- 班级信息管理（班级名称、所属年级等）
-
-### 学生管理
-- 学生列表查看
-- 新增/编辑/删除学生
-- 学生信息管理（姓名、性别、班级等）
-- 查看学生详细档案
-
-### 教学管理
-
-#### 课程管理
-- 课程列表管理
-- 新增/编辑/删除课程（语文、数学、英语等）
-
-#### 考试管理
-- 考试安排管理
-- 新增/编辑/删除考试
-- 考试信息配置（考试名称、所属班级、考试科目等）
-
-#### 数据导入
-- Excel 模板下载
-- Excel 文件批量导入成绩
-- AI 智能识别成绩单图片
-- 导入进度和结果展示
-
-### 成绩清单
-- 成绩数据列表展示
-- 多维度筛选（班级、考试、科目）
-- 学生成绩快速查看
-- 成绩数据分析
-
-### 操作日志
-- 系统操作审计记录
-- 按时间、操作类型筛选
-- 操作详情追溯
-
-### 数据分析
-
-#### 班级成绩走势
-- 班级各科目平均分趋势图
-- 年级班级对比分析（雷达图）
-- 成绩分布统计（堆叠柱状图）
-- 学生排名分布（气泡图）
-- AI 班级学情报告生成
-
-#### 管理预警
-- **临界生识别** - 距离及格线或优秀线仅差 1-5 分
-- **退步生识别** - 连续考试成绩显著下降
-- **波动生识别** - 成绩起伏较大，不稳定
-- **偏科生识别** - 学科成绩差异过大
-- 针对性改进建议生成
-
-### AI 智能教学
-
-#### 教案生成
-- 输入教学基本信息（科目、年级、册次、教学主题）
-- 可选关联班级（根据班级学情调整教案难度）
-- 流式输出完整教案内容
-- 支持根据反馈优化教案
-- 教案收藏和管理
-
-#### 作业生成
-- 输入作业要求（科目、年级、知识点、难度、题量）
-- 智能生成针对性练习题
-- 流式输出题目内容
-- 支持根据反馈调整题目
-- 作业收藏和管理
-
-#### 学生评语
-- 在学生档案中一键生成评语
-- 基于学生成绩数据智能分析
-- 流式输出评语内容
-- 展示推理思维过程
-- 评语缓存机制（避免重复生成）
-
-#### AI 对话
-- 智能教学助手
-- 教育相关问题咨询
-- 流式对话交互
 
 ## 🛠️ 技术栈
 
@@ -155,7 +50,6 @@
 | **React Query** | 5.x | 服务端状态管理 |
 | **Zustand** | 5.x | 客户端状态管理 |
 | **React Router** | 7.x | 路由管理 |
-| **React Markdown** | 10.x | Markdown 渲染 |
 
 ### 后端
 | 技术 | 版本 | 说明 |
@@ -163,11 +57,10 @@
 | **Hono.js** | 4.x | 轻量级 Web 框架（运行在 Cloudflare Workers） |
 | **Cloudflare D1** | - | Serverless SQLite 数据库 |
 | **Cloudflare KV** | - | 高性能分布式 Key-Value 存储 (用于评语缓存) |
-| **AI 模型** | - | DeepSeek-V3.2 (评语/教案/作业) / Qwen3-VL (OCR) |
+| **AI 模型** | - | DeepSeek-V3.2 (评语报告) / Qwen3-VL (OCR) |
 | **Cloudflare R2** | - | 对象存储（图片/文件） |
 | **Zod** | 4.x | 运行时类型校验 |
 | **XLSX** | 0.18.x | Excel 文件处理 |
-| **JWT** | - | 身份认证 |
 
 ### 基础设施
 - **Cloudflare Workers** - 边缘计算平台（后端 API）
@@ -180,47 +73,29 @@
 - **npm workspaces** - Monorepo 项目管理
 - **ESLint** + **Prettier** - 代码质量
 - **Vitest** - 单元测试框架
-- **Testing Library** - React 组件测试
 
 ## 📦 项目结构
 
 ```
 bao-class/                      # Monorepo 根目录
-├── api/                        # 后端服务 (Cloudflare Workers)
+├── api/                        # 后端服务
 │   ├── src/
 │   │   ├── index.ts           # Workers 入口
 │   │   ├── routes/            # API 路由
-│   │   │   ├── auth.ts        # 认证相关
-│   │   │   ├── users.ts       # 用户管理
-│   │   │   ├── classes.ts     # 班级管理
-│   │   │   ├── students.ts    # 学生管理
-│   │   │   ├── courses.ts     # 课程管理
-│   │   │   ├── exams.ts       # 考试管理
-│   │   │   ├── scores.ts      # 成绩管理
-│   │   │   ├── import.ts      # 数据导入
-│   │   │   ├── export.ts      # 数据导出
-│   │   │   ├── analysis.ts    # 数据分析
-│   │   │   ├── ai.ts          # AI 评语生成
-│   │   │   ├── ai-chat.ts     # AI 对话
-│   │   │   ├── lesson-prep.ts # 教案/作业生成
-│   │   │   ├── logs.ts        # 操作日志
-│   │   │   ├── stats.ts       # 统计数据
-│   │   │   ├── upload.ts      # 文件上传
-│   │   │   └── init.ts        # 初始化接口
+│   │   │   ├── ai.ts          # AI 评语与报告
+│   │   │   ├── ai-chat.ts     # AI 聊天接口
+│   │   │   ├── lesson-prep.ts # AI 备课接口
+│   │   │   └── ...            # 其他路由
 │   │   ├── services/          # 业务逻辑服务
-│   │   │   ├── ai.service.ts        # AI 评语服务
-│   │   │   ├── ai-chat.service.ts   # AI 对话服务
-│   │   │   ├── analysis.service.ts  # 数据分析服务
-│   │   │   └── lesson-prep.service.ts # 教案/作业服务
-│   │   ├── middleware/        # 中间件
-│   │   │   ├── auth.ts        # 认证中间件
-│   │   │   ├── cache.ts       # 缓存中间件
-│   │   │   ├── error-handler.ts # 错误处理
-│   │   │   ├── logging.ts     # 日志中间件
-│   │   │   └── rate-limiter.ts # 限流中间件
+│   │   │   ├── ai-chat.service.ts    # AI 聊天服务
+│   │   │   └── lesson-prep.service.ts # AI 备课服务
+│   │   ├── middleware/        # 中间件 (Auth/Cache/RateLimit)
 │   │   ├── schemas/           # Zod 验证模式
 │   │   ├── utils/             # 工具函数
-│   │   └── db/                # 数据库
+│   │   │   ├── llmClient.ts   # 统一 LLM 调用客户端
+│   │   │   ├── aiQuota.ts     # AI 额度管理
+│   │   │   └── ...            # 其他工具
+│   │   └── db/               # 数据库
 │   │       ├── schema.sql     # 基础表结构
 │   │       └── migrations/    # 数据库迁移
 │   └── wrangler.toml          # Cloudflare 配置
@@ -228,58 +103,34 @@ bao-class/                      # Monorepo 根目录
 ├── frontend/                   # 前端应用
 │   ├── src/
 │   │   ├── pages/             # 页面组件
-│   │   │   ├── ProDashboard.tsx       # 仪表盘
-│   │   │   ├── ScoresList.tsx         # 成绩清单
-│   │   │   ├── ProScoresList.tsx      # 成绩清单(新)
-│   │   │   ├── ClassAnalysis.tsx      # 班级成绩走势
-│   │   │   ├── StudentProfile.tsx     # 学生档案
-│   │   │   ├── ManagementAlerts.tsx   # 管理预警
-│   │   │   ├── Import.tsx             # 数据导入
-│   │   │   ├── Classes.tsx            # 班级管理
-│   │   │   ├── Students.tsx           # 学生管理
-│   │   │   ├── Exams.tsx              # 考试管理
-│   │   │   ├── Courses.tsx            # 课程管理
-│   │   │   ├── Users.tsx              # 用户管理
-│   │   │   ├── AuditLogs.tsx          # 操作日志
-│   │   │   ├── LessonPrep.tsx         # 教案生成
-│   │   │   ├── HomeworkGenerator.tsx  # 作业生成
-│   │   │   └── Login.tsx              # 登录页
+│   │   │   ├── ProDashboard.tsx      # 仪表盘
+│   │   │   ├── LessonPrep.tsx        # AI 备课生成
+│   │   │   ├── MyLessonPlans.tsx     # 我的教案
+│   │   │   ├── HomeworkGenerator.tsx # AI 作业生成
+│   │   │   ├── MyHomework.tsx        # 我的作业
+│   │   │   ├── ClassAnalysis.tsx     # 班级学情分析
+│   │   │   ├── StudentProfile.tsx    # 学生档案
+│   │   │   ├── ManagementAlerts.tsx  # 重点关注
+│   │   │   └── ...                   # 其他页面
 │   │   ├── components/        # 公共组件
-│   │   │   ├── Charts/              # 图表组件
-│   │   │   │   ├── ChartWrapper.tsx
-│   │   │   │   ├── ScoreDistributionChart.tsx
-│   │   │   │   ├── ScoreTrendChart.tsx
-│   │   │   │   ├── StudentRadarChart.tsx
-│   │   │   │   ├── SubjectRadarChart.tsx
-│   │   │   │   └── ...
-│   │   │   ├── Layout/              # 布局组件
-│   │   │   ├── Feedback/            # 反馈组件
-│   │   │   ├── Guards/              # 路由守卫
-│   │   │   ├── ClassAiReportCard.tsx
-│   │   │   ├── ExamQualityCard.tsx
-│   │   │   └── ...
-│   │   ├── hooks/              # 自定义 Hooks
-│   │   │   ├── useDashboard.ts
-│   │   │   ├── useClassAnalysis.ts
-│   │   │   ├── useManagementAlerts.ts
-│   │   │   └── ...
-│   │   ├── services/           # API 服务
-│   │   ├── store/              # 状态管理
-│   │   ├── types/              # 类型定义
-│   │   ├── utils/              # 工具函数
-│   │   └── config/             # 配置文件
-│   └── vite.config.ts          # Vite 配置
+│   │   │   ├── Charts/        # 图表组件
+│   │   │   └── ...            # 其他组件
+│   │   ├── services/          # API 服务
+│   │   ├── hooks/             # 自定义 Hooks
+│   │   ├── store/             # 状态管理
+│   │   └── types/             # 类型定义
+│   └── vite.config.ts         # Vite 配置
 │
 ├── packages/                   # 共享包
-│   └── types/                  # 共享类型定义
+│   └── types/                 # 共享类型定义
 │
 ├── scripts/                    # 开发脚本
 │
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml          # 自动部署配置
+│       └── deploy.yml         # 自动部署配置
 │
-└── package.json                # Monorepo 配置
+└── package.json               # Monorepo 配置
 ```
 
 ## 🚀 快速开始
@@ -339,44 +190,26 @@ http://localhost:8787/api/init/all
 
 **默认管理员账号**：
 - 用户名：`admin`
-- 密码：`baobao123`
+- 密码：`admin123`
 
-## 📚 功能使用
+## 📚 核心功能使用
 
 ### 成绩导入
 
-1. 进入「教学管理」→「数据导入」页面
+1. 进入「数据导入」页面
 2. **Excel 导入**：下载模板，按格式填写后上传
 3. **AI 智能识别**：上传成绩单图片，AI 自动识别成绩并匹配学生
 
 ### AI 评语生成
 
-1. 进入「学生管理」或通过仪表盘点击学生
-2. 进入学生档案页面
+1. 进入「学生档案」页面
+2. 选择学生查看详情
 3. 点击「生成 AI 评语」按钮
-4. 系统自动分析学生成绩并生成个性化评语（流式输出）
-
-### 教案生成
-
-1. 进入「AI 教学」→「教案生成」页面
-2. 选择科目、年级、册次
-3. 输入教学内容/主题
-4. 可选关联班级（获取班级学情数据）
-5. 点击「生成教案」开始 AI 生成
-6. 生成完成后可保存、修改、重新生成
-
-### 作业生成
-
-1. 进入「AI 教学」→「作业生成」页面
-2. 选择科目、年级
-3. 输入知识点/内容
-4. 选择难度（基础题/提高题/拓展题）
-5. 设置题量
-6. 点击「生成作业」开始 AI 生成
+4. 系统自动分析学生成绩并生成个性化评语
 
 ### 班级学情分析
 
-1. 进入「数据分析」→「班级成绩走势」页面
+1. 进入「班级学情分析」页面
 2. 选择班级和考试
 3. 查看多维度分析图表：
    - 年级班级对比（雷达图）
@@ -387,7 +220,7 @@ http://localhost:8787/api/init/all
 
 ### 重点关注名单
 
-进入「数据分析」→「管理预警」页面，系统自动识别：
+系统自动识别以下类型学生：
 
 - **临界生**：距离及格线或优秀线仅差 1-5 分
 - **退步生**：连续考试成绩显著下降
@@ -473,25 +306,157 @@ npm run build
 
 4. **查看部署状态**
 
-   访问 [Actions](https://github.com/Misaka450/bao-class/actions) 查看部署进度
+   在 GitHub Actions 页面查看部署进度和日志
 
 ### 手动部署
 
-```bash
-# 部署后端
-cd api
-npm run deploy
+#### 部署后端
 
-# 部署前端（需要先构建）
+```bash
+cd api
+npx wrangler deploy
+```
+
+#### 部署前端
+
+```bash
 cd frontend
 npm run build
-# 然后通过 Cloudflare Pages 连接构建产物
+npx wrangler pages deploy dist --project-name=bao-class
 ```
+
+## 📖 API 文档
+
+### 认证相关
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/auth/login` | 用户登录 |
+| GET | `/api/auth/profile` | 获取当前用户信息 |
+
+### 成绩管理
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/scores` | 获取成绩列表 |
+| POST | `/api/scores` | 添加成绩 |
+| PUT | `/api/scores/:id` | 更新成绩 |
+| DELETE | `/api/scores/:id` | 删除成绩 |
+
+### 数据导入/导出
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/template/grades.xlsx` | 下载成绩导入模板 |
+| POST | `/api/import/grades` | Excel 批量导入成绩 |
+| POST | `/api/import/ai-scores` | AI 识别图片导入成绩 |
+| GET | `/api/export/class/:classId` | 导出班级成绩 |
+
+### 统计分析
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/stats/class/:classId` | 班级统计分析 |
+| GET | `/api/stats/profile/:studentId` | 学生档案数据 |
+| GET | `/api/stats/class-trend/:classId` | 班级成绩趋势 |
+| GET | `/api/stats/class-subject-trend/:classId` | 班级科目趋势 |
+| GET | `/api/stats/grade-comparison/:classId` | 年级班级对比 |
+| GET | `/api/stats/distribution/:classId` | 成绩分布统计 |
+| GET | `/api/stats/rankings/:classId` | 学生排名数据 |
+
+### AI 功能
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/ai/generate-comment` | 生成学生评语 |
+| POST | `/api/ai/generate-report` | 生成班级学情报告（流式） |
+| POST | `/api/ai/refresh-report` | 刷新班级学情报告 |
+| GET | `/api/ai/comment-history/:studentId` | 评语历史 |
+
+### AI 智能备课
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/lesson-prep/generate` | 生成 AI 教案（流式） |
+| GET | `/api/lesson-prep/plans` | 获取我的教案列表 |
+| GET | `/api/lesson-prep/plans/:id` | 获取教案详情 |
+| POST | `/api/lesson-prep/plans` | 保存教案 |
+| DELETE | `/api/lesson-prep/plans/:id` | 删除教案 |
+| POST | `/api/lesson-prep/homework/generate` | 生成 AI 作业（流式） |
+| GET | `/api/lesson-prep/homework` | 获取我的作业列表 |
+| DELETE | `/api/lesson-prep/homework/:id` | 删除作业 |
+
+### 分析功能
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/analysis/focus/:classId` | 重点关注名单 |
+| GET | `/api/analysis/class/summary/:classId` | 班级分析总结 |
+
+## 🔒 安全说明
+
+- 所有 API 请求需要携带 JWT Token
+- 密码使用 bcrypt 加密存储
+- 生产环境请修改默认密码和 JWT_SECRET
+- 建议启用 HTTPS 访问
+
+## 📝 更新日志
+
+### v1.2.0 (2025-12)
+- ✅ AI 智能教案生成（支持小学各科目）
+- ✅ AI 作业生成（分层练习：基础/提高/拓展）
+- ✅ 统一 LLM 客户端（集中管理 AI 调用与额度控制）
+- ✅ 系统更名为「智慧班级助手」
+- ✅ 菜单结构优化调整
+- ✅ SQL 注入漏洞修复
+- ✅ 代码质量优化与重构
+
+### v1.1.0 (2025-12)
+- ✅ AI 智能识别导入成绩（图片 OCR）
+- ✅ 班级学情报告 AI 生成（流式输出）
+- ✅ 年级班级对比雷达图
+- ✅ 成绩分布堆叠柱状图
+- ✅ 学生排名位置气泡图
+- ✅ 科任教师管理功能
+- ✅ 暗色主题支持
+- ✅ 图片预览优化
+
+### v1.0.0 (2025-12)
+- ✅ 完整的成绩管理功能
+- ✅ AI 智能评语生成
+- ✅ 数据分析和可视化
+- ✅ 重点关注名单
+- ✅ 自动化 CI/CD 部署
+- ✅ React 19 + TypeScript 升级
+- ✅ Monorepo 架构重构
+
+## 🤝 贡献指南
+
+欢迎提交 Issue 和 Pull Request！
+
+### 贡献流程
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 提交 Pull Request
 
 ## 📄 许可证
 
-本项目仅供学习和个人使用。
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
 
-## 🤝 贡献
+## 🙏 致谢
 
-欢迎提交 Issue 和 Pull Request！
+- [Cloudflare](https://www.cloudflare.com/) - 提供强大的边缘计算平台
+- [Ant Design](https://ant.design/) - 优秀的 React UI 组件库
+- [Hono.js](https://hono.dev/) - 轻量级 Web 框架
+
+## 📞 联系方式
+
+- 项目主页：[https://github.com/Misaka450/bao-class](https://github.com/Misaka450/bao-class)
+- Issue 反馈：[GitHub Issues](https://github.com/Misaka450/bao-class/issues)
+
+---
+
+⭐ 如果这个项目对你有帮助，欢迎 Star 支持！

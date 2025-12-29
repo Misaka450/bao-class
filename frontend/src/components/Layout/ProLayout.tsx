@@ -57,9 +57,10 @@ export default function ProLayoutWrapper({ children }: { children: React.ReactNo
     lastFetchTime.current = now;
 
     aiApi.getUsage().then(res => {
-      if (res.success && res.data) {
-        setAiUsage(res.data);
-        localStorage.setItem('ai_usage_cache', JSON.stringify(res.data));
+      // request.ts 已经自动解包了 { success, data } 格式，res 直接就是 data
+      if (res && res.used !== undefined) {
+        setAiUsage(res);
+        localStorage.setItem('ai_usage_cache', JSON.stringify(res));
       }
     }).catch(() => { });
   }, []);

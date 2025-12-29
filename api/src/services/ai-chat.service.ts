@@ -16,12 +16,21 @@ export class AIChatService {
         // 构造 Schema 描述
         const schemaInfo = `
 表结构说明：
-1. classes (班级): id, name, grade
-2. students (学生): id, name, student_id, gender, class_id
-3. courses (科目): id, name
-4. exams (考试): id, name, class_id, exam_date
-5. exam_courses (考试科目关联): exam_id, course_id, full_score
-6. scores (成绩): student_id, exam_id, course_id, score
+1. classes (班级): id, name(班级名称如"三年级1班"), grade(年级)
+2. students (学生): id, name(学生姓名), student_id(学号), gender, class_id(外键关联classes.id)
+3. courses (科目): id, name(科目名称如"语文","数学","英语")
+4. exams (考试): id, name(考试名称如"期中考试","期末考试","第一次月考"), class_id(外键关联classes.id), exam_date
+5. exam_courses (考试科目关联): exam_id(外键关联exams.id), course_id(外键关联courses.id), full_score(满分，默认100)
+6. scores (成绩): student_id(外键关联students.id), exam_id(外键关联exams.id), course_id(外键关联courses.id), score(分数)
+
+重要业务规则：
+- 及格线：score >= 60 为及格，score < 60 为不及格
+- 优秀线：score >= 90 为优秀
+- 良好线：score >= 80 为良好
+
+常见查询模式：
+- 查询某次考试某科目不及格人数：需要 JOIN exams, courses, scores 三表，按 exams.name 和 courses.name 筛选，统计 score < 60 的记录数
+- 示例：SELECT COUNT(*) FROM scores s JOIN exams e ON s.exam_id = e.id JOIN courses c ON s.course_id = c.id WHERE e.name LIKE '%期中%' AND c.name = '语文' AND s.score < 60
 
 查询范围限制：
 - 请生成一条只读 SQL (只能是 SELECT)。
@@ -103,7 +112,7 @@ ${dataInfo}
      * 知识对话模式（纯对话，不查询数据）
      * 适用于：教学知识咨询、教育理念交流、方法建议等
      */
-    async knowledgeChat(message: string, history: Array<{role: string, content: string}>): Promise<Response> {
+    async knowledgeChat(message: string, history: Array<{ role: string, content: string }>): Promise<Response> {
         const educationSystemPrompt = `你是一位经验丰富、专业贴心的班主任AI助教。
 
 ## 你的职责
