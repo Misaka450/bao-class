@@ -104,7 +104,8 @@ ${dataInfo}
         return LLMClient.call(this.env, {
             system: "你是一位资深的班主任助教。",
             user: summaryPrompt,
-            stream: true
+            stream: true,
+            model: 'ZhipuAI/GLM-4.7'
         }) as Promise<Response>;
     }
 
@@ -150,7 +151,8 @@ ${dataInfo}
             system: educationSystemPrompt,
             user: message,
             stream: true,
-            history: history
+            history: history,
+            model: 'ZhipuAI/GLM-4.7'
         }) as Promise<Response>;
     }
 }
