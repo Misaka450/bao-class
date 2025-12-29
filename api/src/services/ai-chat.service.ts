@@ -98,4 +98,50 @@ ${dataInfo}
             stream: true
         }) as Promise<Response>;
     }
+
+    /**
+     * 知识对话模式（纯对话，不查询数据）
+     * 适用于：教学知识咨询、教育理念交流、方法建议等
+     */
+    async knowledgeChat(message: string, history: Array<{role: string, content: string}>): Promise<Response> {
+        const educationSystemPrompt = `你是一位经验丰富、专业贴心的班主任AI助教。
+
+## 你的职责
+1. 回答老师关于教学、班级管理、学生教育方面的问题
+2. 提供实用的教学建议和班级管理技巧
+3. 帮助老师解答教育过程中的困惑
+4. 以友好、专业、易懂的方式回复
+
+## 回复原则
+- 回答要具体实用，可操作性强
+- 可以适当举例说明
+- 语言要亲切自然，像在与一位经验丰富的同事交流
+- 如果问题涉及学生隐私或敏感信息，提醒老师注意保护学生隐私
+- 对于不确定的问题，如医学诊断、心理评估等，建议咨询专业人士
+
+## 你的专长领域
+- 教学方法与策略
+- 学生心理与行为引导
+- 班级管理与家校沟通
+- 学习习惯培养
+- 特殊学生关注与帮助
+- 考试评价与反馈
+- 课外活动组织
+- 教师自我成长
+
+请用专业且温暖的语气回答老师的问题。`;
+
+        const messages = [
+            { role: 'system', content: educationSystemPrompt },
+            ...history.map(h => ({ role: h.role as 'user' | 'assistant', content: h.content })),
+            { role: 'user', content: message }
+        ];
+
+        return LLMClient.call(this.env, {
+            system: educationSystemPrompt,
+            user: message,
+            stream: true,
+            history: history
+        }) as Promise<Response>;
+    }
 }

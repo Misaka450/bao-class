@@ -10,6 +10,65 @@ const aiChat = new Hono<{ Bindings: Env; Variables: { user: JWTPayload } }>();
 aiChat.use('*', authMiddleware);
 
 /**
+ * AI 助教 - 知识对话模式（纯对话，不查询数据）
+ * POST /api/ai/chat/knowledge
+ */
+aiChat.post('/knowledge', async (c) => {
+    const { message, history } = await c.req.json();
+    if (!message) return c.json({ error: 'Message is required' }, 400);
+
+    const aiChatService = new AIChatService(c.env);
+
+    try {
+        const response = await aiChatService.knowledgeChat(message, history || []);
+        if (!response.body) throw new Error('Failed to start stream');
+
+        return streamText(c, async (sse) => {
+            const reader = response.body!.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+
+            try {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const trimmedLine = line.trim();
+                        if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
+
+                        const dataStr = trimmedLine.substring(5).trim();
+                        if (dataStr === '[DONE]') break;
+
+                        try {
+                            const parsed = JSON.parse(dataStr);
+                            const chunk = parsed.choices?.[0]?.delta?.content;
+                            if (chunk) {
+                                await sse.write(`data: ${JSON.stringify({ content: chunk })}\n`);
+                            }
+                        } catch (e) {
+                            // 忽略解析错误
+                        }
+                    }
+                }
+                await sse.write('data: [DONE]\n');
+            } finally {
+                reader.releaseLock();
+            }
+        });
+    } catch (error: any) {
+        return c.json({
+            success: false,
+            error: error.message
+        }, error.statusCode || 500);
+    }
+});
+
+/**
  * AI 助教对话查询 (流式)
  * POST /api/ai/chat/query/stream
  */
