@@ -34,7 +34,7 @@ describe('ProLayout Property-Based Tests', () => {
           expect(menuData).toBeDefined();
           expect(Array.isArray(menuData)).toBe(true);
           expect(menuData.length).toBeGreaterThan(0);
-          
+
           // Verify each menu item has required properties
           menuData.forEach(item => {
             expect(item).toHaveProperty('path');
@@ -47,10 +47,10 @@ describe('ProLayout Property-Based Tests', () => {
 
           // Verify that the pathname would be handled by the menu structure
           const allPaths = getAllMenuPaths(menuData);
-          const isValidPath = allPaths.some(path => 
+          const isValidPath = allPaths.some(path =>
             pathname === path || pathname.startsWith(path + '/')
           );
-          
+
           // All test paths should be valid menu paths or sub-paths
           expect(isValidPath || pathname === '/dashboard').toBe(true);
         }
@@ -89,7 +89,7 @@ describe('ProLayout Property-Based Tests', () => {
         ({ pathname, userInfo }) => {
           // Test that menu structure supports navigation state synchronization
           const menuItem = findMenuItemByPath(menuData, pathname);
-          
+
           if (menuItem) {
             // If menu item exists, it should have proper structure for navigation
             expect(menuItem.name).toBeDefined();
@@ -100,7 +100,7 @@ describe('ProLayout Property-Based Tests', () => {
           // Test user info structure for display consistency
           expect(userInfo.name.trim().length).toBeGreaterThan(0);
           expect(userInfo.username.trim().length).toBeGreaterThanOrEqual(3);
-          
+
           // User info should be suitable for display
           expect(userInfo.name).not.toMatch(/^\s+$/); // Not just whitespace
           expect(userInfo.username).not.toMatch(/^\s+$/); // Not just whitespace
@@ -131,7 +131,7 @@ describe('ProLayout Property-Based Tests', () => {
         ({ user }) => {
           // Test that layout configuration is consistent regardless of user state
           const layoutConfig = {
-            title: '成绩管理系统',
+            title: '智慧班级助手',
             layout: 'mix' as const,
             theme: 'light' as const,
             menuData: menuData,
@@ -142,12 +142,12 @@ describe('ProLayout Property-Based Tests', () => {
           };
 
           // Configuration should be valid
-          expect(layoutConfig.title).toBe('成绩管理系统');
+          expect(layoutConfig.title).toBe('智慧班级助手');
           expect(layoutConfig.layout).toBe('mix');
           expect(layoutConfig.theme).toBe('light');
           expect(layoutConfig.menuData).toBe(menuData);
           expect(layoutConfig.userInfo.name).toBe(user.name);
-          
+
           // User data should be valid for display
           expect(user.id).toBeGreaterThan(0);
           expect(user.name.trim().length).toBeGreaterThan(0);
@@ -162,7 +162,7 @@ describe('ProLayout Property-Based Tests', () => {
 // Helper functions
 function getAllMenuPaths(menuItems: typeof menuData): string[] {
   const paths: string[] = [];
-  
+
   function collectPaths(items: typeof menuData) {
     items.forEach(item => {
       paths.push(item.path);
@@ -171,7 +171,7 @@ function getAllMenuPaths(menuItems: typeof menuData): string[] {
       }
     });
   }
-  
+
   collectPaths(menuItems);
   return paths;
 }

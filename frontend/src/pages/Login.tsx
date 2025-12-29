@@ -91,7 +91,7 @@ export default function Login() {
                             <Title level={3} style={{ margin: 0, color: 'white', fontWeight: 800 }}>B</Title>
                         </div>
                         <Title level={2} style={{ marginBottom: 8, fontWeight: 700, letterSpacing: '-0.5px' }}>
-                            成绩管理系统
+                            智慧班级助手
                         </Title>
                         <Text type="secondary" style={{ fontSize: 15 }}>
                             欢迎回来! 请登录您的教职工账号
