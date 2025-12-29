@@ -7,6 +7,7 @@ import { Env, JWTPayload } from '../types'
 import { AIService } from '../services/ai.service'
 import { generateCommentSchema } from '../schemas/ai.schema'
 import { getAIUsage } from '../utils/aiQuota'
+import { getModelQuotas } from '../utils/modelQuota'
 
 type Variables = {
     user: JWTPayload
@@ -260,6 +261,18 @@ ai.get('/usage', async (c) => {
     return c.json({
         success: true,
         data: usage
+    });
+})
+
+/**
+ * 获取各模型额度信息
+ * GET /api/ai/model-quota
+ */
+ai.get('/model-quota', async (c) => {
+    const quotas = await getModelQuotas(c.env);
+    return c.json({
+        success: true,
+        data: quotas
     });
 })
 

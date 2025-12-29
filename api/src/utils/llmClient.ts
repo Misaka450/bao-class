@@ -1,6 +1,7 @@
 import { Env } from '../types';
 import { AppError } from './AppError';
 import { checkAndIncrementQuota } from './aiQuota';
+import { extractQuotaFromHeaders, saveModelQuota } from './modelQuota';
 
 export interface LLMCallOptions {
     system: string;
@@ -53,6 +54,10 @@ export class LLMClient {
                 stream
             })
         });
+
+        // 提取并保存模型额度信息（异步执行，不阻塞主流程）
+        const quotaInfo = extractQuotaFromHeaders(response.headers);
+        saveModelQuota(env, model, quotaInfo).catch(() => { /* 忽略保存错误 */ });
 
         if (!response.ok) {
             const error = await response.json().catch(() => ({ message: 'unknown error' })) as any;

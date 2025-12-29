@@ -12,6 +12,7 @@ import {
   BarChartOutlined,
   AlertOutlined,
   RobotOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 
 /**
@@ -57,6 +58,7 @@ const LessonPrep = React.lazy(() => import('../pages/LessonPrep'));
 const MyLessonPlans = React.lazy(() => import('../pages/MyLessonPlans'));
 const HomeworkGenerator = React.lazy(() => import('../pages/HomeworkGenerator'));
 const MyHomework = React.lazy(() => import('../pages/MyHomework'));
+const AIQuotaDashboard = React.lazy(() => import('../pages/AIQuotaDashboard'));
 
 /**
  * Main route configuration
@@ -130,6 +132,15 @@ const routes: RouteConfig[] = [
         access: ['admin', 'head_teacher', 'teacher'],
         title: '我的作业 - 智慧班级助手',
         description: '查看和管理已保存的作业',
+      },
+      {
+        path: '/lesson-prep/quota',
+        name: '额度监控',
+        icon: React.createElement(ThunderboltOutlined),
+        component: AIQuotaDashboard,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: 'AI 额度监控 - 智慧班级助手',
+        description: '查看各模型 API 额度使用情况',
       },
     ],
   },

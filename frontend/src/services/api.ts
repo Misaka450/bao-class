@@ -281,6 +281,15 @@ export const aiApi = {
             body: { message },
             ...options
         }),
+    getModelQuotas: () =>
+        get<Array<{
+            model: string;
+            userLimit: number | null;
+            userRemaining: number | null;
+            modelLimit: number | null;
+            modelRemaining: number | null;
+            updatedAt: string;
+        }>>('/api/ai/model-quota'),
 };
 
 // ==================== 用户管理 API ====================
