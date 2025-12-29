@@ -17,6 +17,7 @@ export default function ClassAnalysis() {
     const { data: classes = [] } = useClassList();
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [selectedExamId, setSelectedExamId] = useState<string>('');
+    const [selectedSubjectForTrend, setSelectedSubjectForTrend] = useState<string>('total');
 
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
@@ -66,6 +67,21 @@ export default function ClassAnalysis() {
         }));
     }, [subjectData]);
 
+    // 获取科目列表用于综合成绩筛选
+    const subjectListForTrend = useMemo(() => {
+        if (!subjectData?.subjects?.length) return [];
+        return subjectData.subjects.map((sub: any) => sub.course_name);
+    }, [subjectData]);
+
+    // 根据选择的科目筛选趋势数据
+    const filteredTrendData = useMemo(() => {
+        if (selectedSubjectForTrend === 'total') {
+            return trendData?.trends || [];
+        }
+        const subjectInfo = subjectData?.subjects?.find((s: any) => s.course_name === selectedSubjectForTrend);
+        return subjectInfo?.trends || [];
+    }, [trendData, subjectData, selectedSubjectForTrend]);
+
     return (
         <Space direction="vertical" size={24} style={{ width: '100%' }}>
             <PageHeader
@@ -99,12 +115,30 @@ export default function ClassAnalysis() {
             ) : (
                 <>
                     {/* 模块一：综合成绩与排名 */}
-                    <Card title="📊 综合成绩与排名分析" bordered={false} className="glass-card" style={{ marginBottom: 24 }}>
+                    <Card
+                        title="📊 综合成绩与排名分析"
+                        bordered={false}
+                        className="glass-card"
+                        style={{ marginBottom: 24 }}
+                        extra={
+                            <Select
+                                value={selectedSubjectForTrend}
+                                onChange={setSelectedSubjectForTrend}
+                                style={{ width: 120 }}
+                                size="small"
+                            >
+                                <Select.Option value="total">全科总分</Select.Option>
+                                {subjectListForTrend.map((subject: string) => (
+                                    <Select.Option key={subject} value={subject}>{subject}</Select.Option>
+                                ))}
+                            </Select>
+                        }
+                    >
                         <Row gutter={[24, 24]}>
                             <Col xs={24} lg={14}>
                                 <ScoreTrendChart
-                                    data={trendData?.trends}
-                                    title="班级平均分历史走势"
+                                    data={filteredTrendData}
+                                    title={selectedSubjectForTrend === 'total' ? '班级平均分历史走势' : `${selectedSubjectForTrend}平均分走势`}
                                 />
                             </Col>
                             <Col xs={24} lg={10}>
