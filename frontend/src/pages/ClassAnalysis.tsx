@@ -1,5 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Card, Select, Spin, Typography, Row, Col, Space } from 'antd';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { Card, Select, Spin, Typography, Row, Col, Space, Button, message } from 'antd';
+import { FilePdfOutlined } from '@ant-design/icons';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import ClassAiReportCard from '../components/ClassAiReportCard';
 import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
@@ -18,6 +21,8 @@ export default function ClassAnalysis() {
     const [selectedClassId, setSelectedClassId] = useState<string>('');
     const [selectedExamId, setSelectedExamId] = useState<string>('');
     const [selectedSubjectForTrend, setSelectedSubjectForTrend] = useState<string>('total');
+    const [exporting, setExporting] = useState(false);
+    const reportRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (classes.length > 0 && !selectedClassId) {
@@ -82,6 +87,54 @@ export default function ClassAnalysis() {
         return subjectInfo?.trends || [];
     }, [trendData, subjectData, selectedSubjectForTrend]);
 
+    // PDF 导出功能
+    const handleExportPDF = async () => {
+        if (!reportRef.current) return;
+
+        setExporting(true);
+        message.loading({ content: '正在生成 PDF 报告...', key: 'pdf-export', duration: 0 });
+
+        try {
+            const element = reportRef.current;
+            const canvas = await html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+            // 如果内容超过一页，分页处理
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            let heightLeft = pdfHeight;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+            heightLeft -= pageHeight;
+
+            while (heightLeft > 0) {
+                position = heightLeft - pdfHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight);
+                heightLeft -= pageHeight;
+            }
+
+            const className = classes.find((c: any) => c.id.toString() === selectedClassId)?.name || '班级';
+            pdf.save(`${className}-学情分析报告.pdf`);
+
+            message.success({ content: 'PDF 导出成功!', key: 'pdf-export' });
+        } catch (error) {
+            console.error('PDF export error:', error);
+            message.error({ content: 'PDF 导出失败，请重试', key: 'pdf-export' });
+        } finally {
+            setExporting(false);
+        }
+    };
+
     return (
         <Space direction="vertical" size={24} style={{ width: '100%' }}>
             <PageHeader
@@ -104,6 +157,15 @@ export default function ClassAnalysis() {
                             options={exams.map((e: any) => ({ label: e.name, value: e.id.toString() }))}
                             allowClear
                         />
+                        <Button
+                            type="primary"
+                            icon={<FilePdfOutlined />}
+                            onClick={handleExportPDF}
+                            loading={exporting}
+                            disabled={loading || !selectedClassId}
+                        >
+                            导出 PDF
+                        </Button>
                     </Space>
                 }
             />
@@ -113,7 +175,7 @@ export default function ClassAnalysis() {
                     <Spin size="large" tip="正在分析数据..." />
                 </div>
             ) : (
-                <>
+                <div ref={reportRef} style={{ background: '#fff', padding: 16, borderRadius: 12 }}>
                     {/* 模块一：综合成绩与排名 */}
                     <Card
                         title="📊 综合成绩与排名分析"
@@ -194,7 +256,7 @@ export default function ClassAnalysis() {
                             </Row>
                         </Card>
                     )}
-                </>
+                </div>
             )}
 
             <ClassAiReportCard

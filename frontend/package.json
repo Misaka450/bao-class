@@ -34,6 +34,8 @@
     "antd": "^5.24.1",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.4",
     "lodash": "^4.17.21",
     "nprogress": "^0.2.0",
     "rc-field-form": "^2.7.1",

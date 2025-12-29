@@ -21,7 +21,7 @@ ai.use('*', authMiddleware)
 ai.post('/generate-comment', async (c) => {
     const json = await c.req.json()
     const validated = generateCommentSchema.parse(json)
-    const { student_id, force_regenerate } = validated
+    const { student_id, force_regenerate, style } = validated
 
     const user = c.get('user')
 
@@ -33,7 +33,7 @@ ai.post('/generate-comment', async (c) => {
     }
 
     const aiService = new AIService(c.env)
-    const result = await aiService.generateStudentComment(student_id, force_regenerate)
+    const result = await aiService.generateStudentComment(student_id, force_regenerate, style)
 
     return c.json(result)
 })
@@ -42,7 +42,7 @@ ai.post('/generate-comment', async (c) => {
 ai.post('/generate-comment/stream', async (c) => {
     const json = await c.req.json()
     const validated = generateCommentSchema.parse(json)
-    const { student_id } = validated
+    const { student_id, style } = validated
 
     const user = c.get('user')
 
@@ -52,7 +52,7 @@ ai.post('/generate-comment/stream', async (c) => {
     // 根据用户反馈，不强制越权隔离
 
     const aiService = new AIService(c.env);
-    const { stream, data: commentMetadata } = await aiService.generateStudentCommentStream(c, student_id);
+    const { stream, data: commentMetadata } = await aiService.generateStudentCommentStream(c, student_id, style);
     if (!stream) {
         return c.json({ error: 'Failed to start stream' }, 500);
     }
@@ -117,6 +117,67 @@ ai.post('/generate-comment/stream', async (c) => {
             reader.releaseLock();
         }
     });
+})
+
+// Batch generate comments for a class
+ai.post('/generate-comment/batch', async (c) => {
+    const { class_id, style = 'friendly' } = await c.req.json()
+
+    if (!class_id) throw new AppError('请提供班级 ID', 400)
+
+    const user = c.get('user')
+
+    // 权限校验
+    if (!await checkClassAccess(c.env.DB, user, class_id)) {
+        throw new AppError('无权访问该班级', 403)
+    }
+
+    const aiService = new AIService(c.env)
+
+    // 使用流式响应返回进度
+    return streamText(c, async (sse) => {
+        // 获取班级学生列表
+        const studentsResult = await c.env.DB.prepare(`
+            SELECT id, name FROM students WHERE class_id = ?
+        `).bind(class_id).all() as any
+
+        const students = studentsResult.results || []
+        const total = students.length
+        let completed = 0
+
+        await sse.write(`data: ${JSON.stringify({ type: 'start', total })}\n`)
+
+        for (const student of students) {
+            try {
+                const result = await aiService.generateStudentComment(student.id, true, style)
+                completed++
+                await sse.write(`data: ${JSON.stringify({
+                    type: 'progress',
+                    completed,
+                    total,
+                    studentId: student.id,
+                    studentName: student.name,
+                    comment: result.comment,
+                    success: true
+                })}\n`)
+            } catch (error: any) {
+                completed++
+                await sse.write(`data: ${JSON.stringify({
+                    type: 'progress',
+                    completed,
+                    total,
+                    studentId: student.id,
+                    studentName: student.name,
+                    comment: null,
+                    success: false,
+                    error: error.message
+                })}\n`)
+            }
+        }
+
+        await sse.write(`data: ${JSON.stringify({ type: 'done', completed, total })}\n`)
+        await sse.write('data: [DONE]\n')
+    })
 })
 
 // Get comment history for a student

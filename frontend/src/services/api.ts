@@ -213,8 +213,10 @@ export const logsApi = {
 
 // ==================== AI API ====================
 
+export type CommentStyle = 'formal' | 'friendly' | 'concise';
+
 export const aiApi = {
-    generateComment: (data: { student_id: number; exam_ids?: number[]; force_regenerate?: boolean }) =>
+    generateComment: (data: { student_id: number; exam_ids?: number[]; force_regenerate?: boolean; style?: CommentStyle }) =>
         post<{
             success: boolean;
             comment: string;
@@ -222,11 +224,31 @@ export const aiApi = {
             cached?: boolean;
             source?: string;
         }>('/api/ai/generate-comment', data),
-    generateCommentStream: (data: { student_id: number; exam_ids?: number[]; force_regenerate?: boolean }, options: { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) =>
+    generateCommentStream: (data: { student_id: number; exam_ids?: number[]; force_regenerate?: boolean; style?: CommentStyle }, options: { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) =>
         requestStream('/api/ai/generate-comment/stream', {
             method: 'POST',
             body: data,
             ...options
+        }),
+    generateBatchComments: (data: { class_id: number; style?: CommentStyle }, options: {
+        onProgress: (progress: { completed: number; total: number; studentId: number; studentName: string; comment: string | null; success: boolean }) => void;
+        onComplete: (result: { completed: number; total: number }) => void;
+    }) =>
+        requestStream('/api/ai/generate-comment/batch', {
+            method: 'POST',
+            body: data,
+            onChunk: (chunk: string) => {
+                try {
+                    const parsed = JSON.parse(chunk);
+                    if (parsed.type === 'progress') {
+                        options.onProgress(parsed);
+                    } else if (parsed.type === 'done') {
+                        options.onComplete(parsed);
+                    }
+                } catch (e) {
+                    // ignore parse errors
+                }
+            }
         }),
     getCommentHistory: (studentId: number) =>
         get<{

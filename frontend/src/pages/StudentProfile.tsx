@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined, ClockCircleOutlined, EditOutlined, DeleteOutlined, BulbOutlined } from '@ant-design/icons';
 import { Card, Row, Col, Typography, Table, Tag, message, Button, Empty, Modal, Input, List, Popconfirm, Alert, Collapse, Space, Select } from 'antd';
-import api from '../services/api';
+import api, { CommentStyle } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useStudentProfile } from '../hooks/useStudentProfile';
 import { PageHeader } from '../components/Layout/PageHeader';
@@ -28,6 +28,7 @@ export default function StudentProfile() {
     const [commentSource, setCommentSource] = useState<string>('');
     const [thinkingContent, setThinkingContent] = useState('');
     const [selectedSubject, setSelectedSubject] = useState<string>('total');
+    const [commentStyle, setCommentStyle] = useState<CommentStyle>('friendly');
 
     // 获取所有科目列表
     const subjectList = useMemo(() => {
@@ -87,7 +88,8 @@ export default function StudentProfile() {
         try {
             await api.ai.generateCommentStream({
                 student_id: data.student.id,
-                force_regenerate: forceRegenerate
+                force_regenerate: forceRegenerate,
+                style: commentStyle
             }, {
                 onChunk: (chunk) => {
                     console.log('[StudentProfile] Received chunk:', chunk);
@@ -380,16 +382,29 @@ export default function StudentProfile() {
                                     title={<span><RobotOutlined style={{ color: '#1890ff', marginRight: 8 }} />AI 智能评语</span>}
                                     bordered={false}
                                     extra={
-                                        <Button
-                                            type="primary"
-                                            size="small"
-                                            icon={aiComment ? <ReloadOutlined /> : <RobotOutlined />}
-                                            onClick={() => handleGenerateComment(!!aiComment)}
-                                            loading={generatingComment}
-                                            disabled={!isAuthorized}
-                                        >
-                                            {aiComment ? '重新生成' : '一键生成'}
-                                        </Button>
+                                        <Space>
+                                            <Select
+                                                value={commentStyle}
+                                                onChange={setCommentStyle}
+                                                style={{ width: 100 }}
+                                                size="small"
+                                                disabled={generatingComment}
+                                            >
+                                                <Select.Option value="friendly">亲切</Select.Option>
+                                                <Select.Option value="formal">正式</Select.Option>
+                                                <Select.Option value="concise">简洁</Select.Option>
+                                            </Select>
+                                            <Button
+                                                type="primary"
+                                                size="small"
+                                                icon={aiComment ? <ReloadOutlined /> : <RobotOutlined />}
+                                                onClick={() => handleGenerateComment(!!aiComment)}
+                                                loading={generatingComment}
+                                                disabled={!isAuthorized}
+                                            >
+                                                {aiComment ? '重新生成' : '一键生成'}
+                                            </Button>
+                                        </Space>
                                     }
                                 >
                                     {aiComment || (generatingComment && thinkingContent) ? (
