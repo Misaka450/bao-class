@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftOutlined, RiseOutlined, FallOutlined, WarningOutlined, TrophyOutlined, RobotOutlined, ReloadOutlined, ClockCircleOutlined, EditOutlined, DeleteOutlined, BulbOutlined } from '@ant-design/icons';
-import { Card, Row, Col, Typography, Table, Tag, message, Button, Empty, Modal, Input, List, Popconfirm, Alert, Collapse, Space } from 'antd';
+import { Card, Row, Col, Typography, Table, Tag, message, Button, Empty, Modal, Input, List, Popconfirm, Alert, Collapse, Space, Select } from 'antd';
 import api from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { useStudentProfile } from '../hooks/useStudentProfile';
@@ -27,6 +27,40 @@ export default function StudentProfile() {
     const [editingCommentText, setEditingCommentText] = useState('');
     const [commentSource, setCommentSource] = useState<string>('');
     const [thinkingContent, setThinkingContent] = useState('');
+    const [selectedSubject, setSelectedSubject] = useState<string>('total');
+
+    // 获取所有科目列表
+    const subjectList = useMemo(() => {
+        if (!data?.history || data.history.length === 0) return [];
+        const subjects = new Set<string>();
+        data.history.forEach((exam: any) => {
+            if (exam.subjects) {
+                exam.subjects.forEach((s: any) => subjects.add(s.subject));
+            }
+        });
+        return Array.from(subjects);
+    }, [data?.history]);
+
+    // 根据选择的科目筛选图表数据
+    const chartData = useMemo(() => {
+        if (!data?.history) return [];
+        return data.history.map((exam: any) => {
+            if (selectedSubject === 'total') {
+                return {
+                    exam_name: exam.exam_name,
+                    score: exam.total_score,
+                    class_avg: exam.class_avg_total || null
+                };
+            } else {
+                const subjectData = exam.subjects?.find((s: any) => s.subject === selectedSubject);
+                return {
+                    exam_name: exam.exam_name,
+                    score: subjectData?.score || null,
+                    class_avg: subjectData?.class_avg || null
+                };
+            }
+        }).filter((item: any) => item.score !== null);
+    }, [data?.history, selectedSubject]);
 
     const loadCommentHistory = async (studentId: number) => {
         setLoadingHistory(true);
@@ -216,24 +250,53 @@ export default function StudentProfile() {
 
                 {/* 图表展示区 */}
                 <Col xs={24} lg={12}>
-                    <Card title="考试成绩趋势" bordered={false} style={{ height: '100%' }}>
+                    <Card
+                        title="考试成绩趋势"
+                        bordered={false}
+                        style={{ height: '100%' }}
+                        extra={
+                            <Select
+                                value={selectedSubject}
+                                onChange={setSelectedSubject}
+                                style={{ width: 120 }}
+                                size="small"
+                            >
+                                <Select.Option value="total">全科总分</Select.Option>
+                                {subjectList.map(subject => (
+                                    <Select.Option key={subject} value={subject}>{subject}</Select.Option>
+                                ))}
+                            </Select>
+                        }
+                    >
                         <ChartWrapper height={300}>
-                            <LineChart data={data.history} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                 <XAxis dataKey="exam_name" axisLine={false} tickLine={false} />
-                                <YAxis domain={[0, 100]} axisLine={false} tickLine={false} />
+                                <YAxis domain={selectedSubject === 'total' ? [0, 'auto'] : [0, 100]} axisLine={false} tickLine={false} />
                                 <Tooltip />
                                 <Legend />
                                 <Line
                                     type="monotone"
-                                    dataKey="total_score"
-                                    name="总分"
+                                    dataKey="score"
+                                    name={selectedSubject === 'total' ? '总分' : selectedSubject}
                                     stroke="var(--primary-color)"
                                     strokeWidth={3}
                                     dot={{ fill: 'var(--primary-color)', strokeWidth: 2, r: 4, stroke: '#fff' }}
                                     activeDot={{ r: 6 }}
                                     animationDuration={1500}
                                 />
+                                {chartData.some((d: any) => d.class_avg) && (
+                                    <Line
+                                        type="monotone"
+                                        dataKey="class_avg"
+                                        name="班级平均"
+                                        stroke="#8884d8"
+                                        strokeWidth={2}
+                                        strokeDasharray="5 5"
+                                        dot={false}
+                                        animationDuration={1500}
+                                    />
+                                )}
                             </LineChart>
                         </ChartWrapper>
                     </Card>
