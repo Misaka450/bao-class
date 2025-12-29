@@ -1,6 +1,6 @@
 import { Hono } from 'hono'
 import { streamText } from 'hono/streaming'
-import { authMiddleware } from '../middleware/auth'
+import { authMiddleware, checkRole } from '../middleware/auth'
 import { checkClassAccess } from '../utils/auth'
 import { AppError } from '../utils/AppError'
 import { Env, JWTPayload } from '../types'
@@ -8,6 +8,10 @@ import { AIService } from '../services/ai.service'
 import { generateCommentSchema } from '../schemas/ai.schema'
 import { getAIUsage } from '../utils/aiQuota'
 import { getModelQuotas } from '../utils/modelQuota'
+import {
+    getAllModelConfigs, setModelForFeature, isValidModel,
+    TEXT_MODELS, VISION_MODELS, FEATURE_LABELS, AIFeature
+} from '../utils/modelConfig'
 
 type Variables = {
     user: JWTPayload
@@ -273,6 +277,51 @@ ai.get('/model-quota', async (c) => {
     return c.json({
         success: true,
         data: quotas
+    });
+})
+
+/**
+ * 获取所有功能的模型配置
+ * GET /api/ai/model-config
+ */
+ai.get('/model-config', checkRole(['admin']), async (c) => {
+    const configs = await getAllModelConfigs(c.env);
+    return c.json({
+        success: true,
+        data: {
+            configs,
+            textModels: TEXT_MODELS,
+            visionModels: VISION_MODELS,
+            featureLabels: FEATURE_LABELS
+        }
+    });
+})
+
+/**
+ * 更新功能的模型配置
+ * PUT /api/ai/model-config
+ */
+ai.put('/model-config', checkRole(['admin']), async (c) => {
+    const { feature, model } = await c.req.json();
+
+    if (!feature || !model) {
+        throw new AppError('缺少 feature 或 model 参数', 400);
+    }
+
+    const validFeatures: AIFeature[] = ['comment', 'report', 'lesson', 'chat', 'vision'];
+    if (!validFeatures.includes(feature)) {
+        throw new AppError('无效的功能类型', 400);
+    }
+
+    if (!isValidModel(feature, model)) {
+        throw new AppError('无效的模型', 400);
+    }
+
+    await setModelForFeature(c.env, feature, model);
+
+    return c.json({
+        success: true,
+        message: `已将 ${FEATURE_LABELS[feature as AIFeature]} 的模型更新为 ${model}`
     });
 })
 

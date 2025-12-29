@@ -1,6 +1,7 @@
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
 import { LLMClient } from '../utils/llmClient';
+import { getModelForFeature } from '../utils/modelConfig';
 
 export class AIChatService {
     private env: Env;
@@ -49,11 +50,12 @@ ${schemaInfo}
 }
 `;
 
+        const model = await getModelForFeature(this.env, 'chat');
         const sqlResponse = await LLMClient.call(this.env, {
             system: systemPrompt,
             user: `用户问题：${query}\n请只返回 JSON。`,
             stream: false,
-            model: 'Qwen/Qwen3-235B-A22B-Instruct-2507'
+            model
         }) as string;
 
         let sqlData: { sql: string };
@@ -102,11 +104,12 @@ ${schemaInfo}
 ${dataInfo}
 请根据以上数据给出一个友好、简洁且专业的回答。如果数据为空，请如实告知。如果是趋势分析，请给出你的洞察。`;
 
+        const model = await getModelForFeature(this.env, 'chat');
         return LLMClient.call(this.env, {
             system: "你是一位资深的班主任助教。",
             user: summaryPrompt,
             stream: true,
-            model: 'Qwen/Qwen3-235B-A22B-Instruct-2507'
+            model
         }) as Promise<Response>;
     }
 
@@ -148,12 +151,13 @@ ${dataInfo}
             { role: 'user', content: message }
         ];
 
+        const model = await getModelForFeature(this.env, 'chat');
         return LLMClient.call(this.env, {
             system: educationSystemPrompt,
             user: message,
             stream: true,
             history: history,
-            model: 'Qwen/Qwen3-235B-A22B-Instruct-2507'
+            model
         }) as Promise<Response>;
     }
 }

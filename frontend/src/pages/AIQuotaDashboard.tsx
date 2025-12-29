@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Table, Progress, Spin, Empty, Statistic, Row, Col, Tag, Typography, Tooltip } from 'antd';
-import { ThunderboltOutlined, ReloadOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Card, Table, Progress, Spin, Empty, Statistic, Row, Col, Tag, Typography, Tooltip, Select, message } from 'antd';
+import { ThunderboltOutlined, ReloadOutlined, ClockCircleOutlined, SettingOutlined } from '@ant-design/icons';
 import { aiApi } from '../services/api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -20,23 +20,60 @@ interface ModelQuota {
     updatedAt: string;
 }
 
+interface ModelConfig {
+    configs: Record<string, string>;
+    textModels: string[];
+    visionModels: string[];
+    featureLabels: Record<string, string>;
+}
+
 /**
  * AI 额度监控仪表盘
  * 展示用户和各模型的 API 额度使用情况
  */
 const AIQuotaDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
+    const [configLoading, setConfigLoading] = useState(false);
     const [quotas, setQuotas] = useState<ModelQuota[]>([]);
+    const [modelConfig, setModelConfig] = useState<ModelConfig | null>(null);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const quotasRes = await aiApi.getModelQuotas();
+            const [quotasRes, configRes] = await Promise.all([
+                aiApi.getModelQuotas(),
+                aiApi.getModelConfig()
+            ]);
             setQuotas(quotasRes || []);
+            setModelConfig(configRes);
         } catch (error) {
             console.error('获取额度数据失败:', error);
+            message.error('获取额度数据失败');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleModelChange = async (feature: string, model: string) => {
+        setConfigLoading(true);
+        try {
+            await aiApi.updateModelConfig(feature, model);
+            message.success('模型配置已更新');
+            // 更新本地状态
+            if (modelConfig) {
+                setModelConfig({
+                    ...modelConfig,
+                    configs: {
+                        ...modelConfig.configs,
+                        [feature]: model
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('更新模型配置失败:', error);
+            message.error('更新模型配置失败');
+        } finally {
+            setConfigLoading(false);
         }
     };
 
@@ -169,7 +206,7 @@ const AIQuotaDashboard: React.FC = () => {
             )}
 
             {/* 模型额度表格 */}
-            <Card title="各模型 API 额度" size="small">
+            <Card title="各模型 API 额度" size="small" style={{ marginBottom: 24 }}>
                 <Spin spinning={loading}>
                     {quotas.length > 0 ? (
                         <Table
@@ -188,10 +225,41 @@ const AIQuotaDashboard: React.FC = () => {
                 </Spin>
             </Card>
 
+            {/* 模型配置卡片 */}
+            {modelConfig && (
+                <Card
+                    title={<span><SettingOutlined style={{ marginRight: 8 }} />功能模型配置</span>}
+                    size="small"
+                >
+                    <Spin spinning={configLoading || loading}>
+                        <Row gutter={[16, 16]}>
+                            {Object.entries(modelConfig.featureLabels).map(([feature, label]) => (
+                                <Col xs={24} sm={12} md={8} key={feature}>
+                                    <div style={{ marginBottom: 8 }}>
+                                        <Text strong>{label}</Text>
+                                    </div>
+                                    <Select
+                                        style={{ width: '100%' }}
+                                        value={modelConfig.configs[feature]}
+                                        onChange={(value) => handleModelChange(feature, value)}
+                                    >
+                                        {(feature === 'vision' ? modelConfig.visionModels : modelConfig.textModels).map(model => (
+                                            <Select.Option key={model} value={model}>
+                                                {getModelShortName(model)}
+                                            </Select.Option>
+                                        ))}
+                                    </Select>
+                                </Col>
+                            ))}
+                        </Row>
+                    </Spin>
+                </Card>
+            )}
+
             <Card size="small" style={{ marginTop: 16 }}>
                 <Text type="secondary">
                     💡 提示：额度数据来源于 ModelScope API 响应头，每次调用 AI 功能后会自动更新。
-                    用户日限额为账户级别限制，模型日限额为单个模型的限制。
+                    用户日限额为账户级别限制，模型日限额为单个模型的限制。您可以直接在上方的“功能模型配置”中切换各功能使用的模型。
                 </Text>
             </Card>
         </div>

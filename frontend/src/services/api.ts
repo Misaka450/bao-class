@@ -290,6 +290,15 @@ export const aiApi = {
             modelRemaining: number | null;
             updatedAt: string;
         }>>('/api/ai/model-quota'),
+    getModelConfig: () =>
+        get<{
+            configs: Record<string, string>;
+            textModels: string[];
+            visionModels: string[];
+            featureLabels: Record<string, string>;
+        }>('/api/ai/model-config'),
+    updateModelConfig: (feature: string, model: string) =>
+        put('/api/ai/model-config', { feature, model }),
 };
 
 // ==================== 用户管理 API ====================

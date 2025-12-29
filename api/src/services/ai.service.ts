@@ -3,6 +3,7 @@ import { Env } from '../types';
 import { AppError } from '../utils/AppError';
 import { checkAndIncrementQuota } from '../utils/aiQuota';
 import { CommentStyle } from '../schemas/ai.schema';
+import { getModelForFeature } from '../utils/modelConfig';
 
 export class AIService {
     private env: Env;
@@ -45,7 +46,8 @@ export class AIService {
         const { student, avgScore, trend, strongSubjects, weakSubjects } = data;
 
         // 3. AI 调用
-        const comment = await this.callAIModelNonStreaming(systemPrompt, userPrompt);
+        const model = await getModelForFeature(this.env, 'comment');
+        const comment = await this.callAIModelNonStreaming(systemPrompt, userPrompt, model);
 
         // 4. 结果持久化
         await this.persistComment(studentId, comment, {
@@ -53,7 +55,7 @@ export class AIService {
             trend,
             strong_subjects: strongSubjects,
             weak_subjects: weakSubjects,
-            model: 'deepseek-ai/DeepSeek-V3.2',
+            model,
             style
         });
 
@@ -77,7 +79,8 @@ export class AIService {
     async generateStudentCommentStream(c: Context, studentId: number, style: CommentStyle = 'friendly') {
         const data = await this.prepareStudentCommentData(studentId);
         const { systemPrompt, userPrompt } = this.buildCommentPrompts(data, style);
-        const stream = await AIService.callStreaming(c, systemPrompt, userPrompt);
+        const model = await getModelForFeature(c.env, 'comment');
+        const stream = await AIService.callStreaming(c, systemPrompt, userPrompt, model);
         return { stream, data };
     }
 
@@ -243,7 +246,7 @@ export class AIService {
         return Object.entries(exams).map(([name, subs]) => `\n${name}: ${subs.join('; ')}`).join('');
     }
 
-    private async callAIModelNonStreaming(systemPrompt: string, userPrompt: string) {
+    private async callAIModelNonStreaming(systemPrompt: string, userPrompt: string, model: string) {
         // 检查并增加 AI 额度
         await checkAndIncrementQuota(this.env);
 
@@ -254,7 +257,7 @@ export class AIService {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
+                model,
                 messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }]
             })
         });
@@ -271,7 +274,7 @@ export class AIService {
     /**
      * 流式调用 AI (模型响应转发)
      */
-    static async callStreaming(c: Context, systemPrompt: string, userPrompt: string) {
+    static async callStreaming(c: Context, systemPrompt: string, userPrompt: string, model: string) {
         // 检查并增加 AI 额度
         await checkAndIncrementQuota(c.env);
 
@@ -286,7 +289,7 @@ export class AIService {
                 'Accept': 'text/event-stream'
             },
             body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
+                model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }

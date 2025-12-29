@@ -2,6 +2,7 @@ import { Context } from 'hono';
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
 import { AIService } from './ai.service';
+import { getModelForFeature } from '../utils/modelConfig';
 
 export class AnalysisService {
     private env: Env;
@@ -165,6 +166,7 @@ export class AnalysisService {
         }
 
         const { systemPrompt, userPrompt } = await this.prepareEnhancedReportPrompt(classId, examId);
+        const model = await getModelForFeature(this.env, 'report');
 
         const apiKey = this.env.DASHSCOPE_API_KEY;
         if (!apiKey) throw new Error('DASHSCOPE_API_KEY is missing');
@@ -173,7 +175,7 @@ export class AnalysisService {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                model: 'deepseek-ai/DeepSeek-V3.2',
+                model,
                 messages: [
                     { role: 'system', content: systemPrompt },
                     { role: 'user', content: userPrompt }
@@ -208,7 +210,8 @@ export class AnalysisService {
      */
     async generateClassReportStream(c: Context, classId: number, examId: number, reporterName: string = '系统') {
         const { systemPrompt, userPrompt } = await this.prepareEnhancedReportPrompt(classId, examId, reporterName);
-        return AIService.callStreaming(c, systemPrompt, userPrompt);
+        const model = await getModelForFeature(c.env, 'report');
+        return AIService.callStreaming(c, systemPrompt, userPrompt, model);
     }
 
     /**

@@ -2,6 +2,7 @@ import { Context } from 'hono';
 import { Env } from '../types';
 import { AppError } from '../utils/AppError';
 import { LLMClient } from '../utils/llmClient';
+import { getModelForFeature } from '../utils/modelConfig';
 
 interface ClassPerformance {
     avgScore: number;
@@ -74,7 +75,8 @@ export class LessonPrepService {
      */
     async generateLessonPlanStream(c: Context, context: LessonPlanContext): Promise<Response> {
         const { systemPrompt, userPrompt } = this.buildPrompts(context);
-        return this.callLLM(systemPrompt, userPrompt, true) as Promise<Response>;
+        const model = await getModelForFeature(this.env, 'lesson');
+        return this.callLLM(systemPrompt, userPrompt, true, model) as Promise<Response>;
     }
 
     /**
@@ -195,7 +197,8 @@ ${feedback}
 
 请根据以上反馈，输出调整后的完整教案。保持原有格式结构，针对反馈意见进行改进。`;
 
-        return this.callLLM(systemPrompt, userPrompt, true) as Promise<Response>;
+        const model = await getModelForFeature(this.env, 'lesson');
+        return this.callLLM(systemPrompt, userPrompt, true, model) as Promise<Response>;
     }
 
     /**
@@ -288,7 +291,8 @@ ${feedback}
 
 请确保题目清晰、答案准确、解析详尽。`;
 
-        return this.callLLM(systemPrompt, userPrompt, true) as Promise<Response>;
+        const model = await getModelForFeature(this.env, 'lesson');
+        return this.callLLM(systemPrompt, userPrompt, true, model) as Promise<Response>;
     }
 
     /**
@@ -330,11 +334,12 @@ ${feedback}
 
 请根据反馈进行调整，输出完整的作业题（含答案和解析）。`;
 
-        return this.callLLM(systemPrompt, userPrompt, true) as Promise<Response>;
+        const model = await getModelForFeature(this.env, 'lesson');
+        return this.callLLM(systemPrompt, userPrompt, true, model) as Promise<Response>;
     }
 
-    private async callLLM(system: string, user: string, stream: boolean): Promise<Response | string> {
-        return LLMClient.call(this.env, { system, user, stream });
+    private async callLLM(system: string, user: string, stream: boolean, model?: string): Promise<Response | string> {
+        return LLMClient.call(this.env, { system, user, stream, model });
     }
 
     /**

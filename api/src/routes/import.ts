@@ -5,6 +5,7 @@ import { checkClassAccess } from '../utils/auth'
 import { validateStudentsData, validateScoresData } from '../services/data-validator'
 import { JWTPayload } from '../types'
 import { extractQuotaFromHeaders, saveModelQuota } from '../utils/modelQuota'
+import { getModelForFeature } from '../utils/modelConfig'
 
 type Bindings = {
     DB: D1Database
@@ -511,6 +512,9 @@ importRoute.post('/ai-scores', checkRole(['admin', 'head_teacher', 'teacher']), 
 2. 分数必须对应准确。
 3. 如果表格有多个科目，只提取最显眼的或当前上下文相关的。`
 
+        // 获取动态配置的视觉模型
+        const model = await getModelForFeature({ KV: c.env.KV } as any, 'vision');
+
         // Call ModelScope Inference API (OpenAI Compatible)
         const response = await fetch('https://api-inference.modelscope.cn/v1/chat/completions', {
             method: 'POST',
@@ -519,7 +523,7 @@ importRoute.post('/ai-scores', checkRole(['admin', 'head_teacher', 'teacher']), 
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: 'Qwen/Qwen3-VL-8B-Instruct', // Use user-specified model
+                model,
                 messages: [
                     {
                         role: 'system',
@@ -537,9 +541,8 @@ importRoute.post('/ai-scores', checkRole(['admin', 'head_teacher', 'teacher']), 
         })
 
         // 提取并保存模型额度信息
-        const modelName = 'Qwen/Qwen3-VL-8B-Instruct'
         const quotaInfo = extractQuotaFromHeaders(response.headers)
-        saveModelQuota({ KV: c.env.KV } as any, modelName, quotaInfo).catch(() => { /* 忽略保存错误 */ })
+        saveModelQuota({ KV: c.env.KV } as any, model, quotaInfo).catch(() => { /* 忽略保存错误 */ })
 
         if (!response.ok) {
             const errorText = await response.text()
