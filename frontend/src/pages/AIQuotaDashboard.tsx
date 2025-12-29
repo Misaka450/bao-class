@@ -27,17 +27,12 @@ interface ModelQuota {
 const AIQuotaDashboard: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [quotas, setQuotas] = useState<ModelQuota[]>([]);
-    const [usage, setUsage] = useState<{ used: number; total: number; remaining: number } | null>(null);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [quotasRes, usageRes] = await Promise.all([
-                aiApi.getModelQuotas(),
-                aiApi.getUsage()
-            ]);
+            const quotasRes = await aiApi.getModelQuotas();
             setQuotas(quotasRes || []);
-            setUsage(usageRes);
         } catch (error) {
             console.error('获取额度数据失败:', error);
         } finally {
@@ -48,6 +43,12 @@ const AIQuotaDashboard: React.FC = () => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    // 从最新记录中获取用户额度（用户额度在所有模型中是相同的）
+    const latestQuota = quotas.length > 0 ? quotas[0] : null;
+    const userLimit = latestQuota?.userLimit ?? null;
+    const userRemaining = latestQuota?.userRemaining ?? null;
+    const userUsed = userLimit !== null && userRemaining !== null ? userLimit - userRemaining : null;
 
     // 计算进度条百分比和颜色
     const getProgressInfo = (remaining: number | null, limit: number | null) => {
@@ -99,27 +100,6 @@ const AIQuotaDashboard: React.FC = () => {
             },
         },
         {
-            title: '用户日限额',
-            key: 'userQuota',
-            render: (_: any, record: ModelQuota) => {
-                const { percent, color } = getProgressInfo(record.userRemaining, record.userLimit);
-                return (
-                    <div style={{ minWidth: 150 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <Text type="secondary">剩余 {record.userRemaining ?? '-'}</Text>
-                            <Text type="secondary">/ {record.userLimit ?? '-'}</Text>
-                        </div>
-                        <Progress
-                            percent={percent}
-                            size="small"
-                            strokeColor={color}
-                            showInfo={false}
-                        />
-                    </div>
-                );
-            },
-        },
-        {
             title: '更新时间',
             dataIndex: 'updatedAt',
             key: 'updatedAt',
@@ -133,6 +113,8 @@ const AIQuotaDashboard: React.FC = () => {
             ),
         },
     ];
+
+    const userQuotaInfo = getProgressInfo(userRemaining, userLimit);
 
     return (
         <div style={{ padding: '24px' }}>
@@ -150,37 +132,37 @@ const AIQuotaDashboard: React.FC = () => {
                 </Tooltip>
             </div>
 
-            {/* 本地额度统计卡片 */}
-            {usage && (
+            {/* 用户日额度统计卡片 */}
+            {userLimit !== null && (
                 <Card style={{ marginBottom: 24 }} size="small">
                     <Row gutter={24}>
                         <Col span={8}>
                             <Statistic
                                 title="今日已用"
-                                value={usage.used}
+                                value={userUsed ?? '-'}
                                 suffix="次"
                                 valueStyle={{ color: '#1890ff' }}
                             />
                         </Col>
                         <Col span={8}>
                             <Statistic
-                                title="今日限额"
-                                value={usage.total}
+                                title="用户日限额"
+                                value={userLimit}
                                 suffix="次"
                             />
                         </Col>
                         <Col span={8}>
                             <Statistic
                                 title="剩余额度"
-                                value={usage.remaining}
+                                value={userRemaining ?? '-'}
                                 suffix="次"
-                                valueStyle={{ color: usage.remaining < 50 ? '#ff4d4f' : '#52c41a' }}
+                                valueStyle={{ color: userQuotaInfo.color }}
                             />
                         </Col>
                     </Row>
                     <Progress
-                        percent={Math.round((usage.remaining / usage.total) * 100)}
-                        status={usage.remaining < 50 ? 'exception' : 'active'}
+                        percent={userQuotaInfo.percent}
+                        status={userQuotaInfo.status}
                         style={{ marginTop: 16 }}
                     />
                 </Card>
@@ -208,7 +190,7 @@ const AIQuotaDashboard: React.FC = () => {
 
             <Card size="small" style={{ marginTop: 16 }}>
                 <Text type="secondary">
-                    💡 提示：模型额度数据来源于 ModelScope API 响应头，每次调用 AI 功能后会自动更新。
+                    💡 提示：额度数据来源于 ModelScope API 响应头，每次调用 AI 功能后会自动更新。
                     用户日限额为账户级别限制，模型日限额为单个模型的限制。
                 </Text>
             </Card>
