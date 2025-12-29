@@ -1,0 +1,45 @@
+npm warn deprecated node-domexception@1.0.0: Use your platform's native DOMException instead
+npm warn deprecated core-js@2.6.12: core-js@<3.23.3 is no longer maintained and not recommended for usage due to the number of issues. Because of the V8 engine whims, feature detection in old core-js versions could cause a slowdown up to 100x even if nothing is polyfilled. Some versions have web compatibility issues. Please, upgrade your dependencies to the actual version of core-js.
+npm warn cleanup Failed to remove some directories [
+npm warn cleanup   [
+npm warn cleanup     '\\\\?\\D:\\code\\qoder\\bao-class\\node_modules\\esbuild',
+npm warn cleanup     [Error: EBUSY: resource busy or locked, rmdir 'D:\code\qoder\bao-class\node_modules\esbuild'] {
+npm warn cleanup       errno: -4082,
+npm warn cleanup       code: 'EBUSY',
+npm warn cleanup       syscall: 'rmdir',
+npm warn cleanup       path: 'D:\\code\\qoder\\bao-class\\node_modules\\esbuild'
+npm warn cleanup     }
+npm warn cleanup   ],
+npm warn cleanup   [
+npm warn cleanup     '\\\\?\\D:\\code\\qoder\\bao-class\\node_modules\\vitest\\node_modules\\esbuild',
+npm warn cleanup     [Error: EBUSY: resource busy or locked, rmdir 'D:\code\qoder\bao-class\node_modules\vitest\node_modules\esbuild'] {
+npm warn cleanup       errno: -4082,
+npm warn cleanup       code: 'EBUSY',
+npm warn cleanup       syscall: 'rmdir',
+npm warn cleanup       path: 'D:\\code\\qoder\\bao-class\\node_modules\\vitest\\node_modules\\esbuild'
+npm warn cleanup     }
+npm warn cleanup   ],
+npm warn cleanup   [
+npm warn cleanup     '\\\\?\\D:\\code\\qoder\\bao-class\\node_modules',
+npm warn cleanup     [Error: EPERM: operation not permitted, rmdir 'D:\code\qoder\bao-class\node_modules\@cspotcode\source-map-support\node_modules\@jridgewell\trace-mapping'] {
+npm warn cleanup       errno: -4048,
+npm warn cleanup       code: 'EPERM',
+npm warn cleanup       syscall: 'rmdir',
+npm warn cleanup       path: 'D:\\code\\qoder\\bao-class\\node_modules\\@cspotcode\\source-map-support\\node_modules\\@jridgewell\\trace-mapping'
+npm warn cleanup     }
+npm warn cleanup   ]
+npm warn cleanup ]
+npm error code 1
+npm error path D:\code\qoder\bao-class\node_modules\workerd
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c node install.js
+npm error D:\code\qoder\bao-class\node_modules\workerd\install.js:98
+npm error     throw new Error(
+npm error           ^
+npm error
+npm error Error: Expected "2025-12-17" but got "workerd 2025-11-13"
+npm error     at validateBinaryVersion (D:\code\qoder\bao-class\node_modules\workerd\install.js:98:11)
+npm error     at D:\code\qoder\bao-class\node_modules\workerd\install.js:247:5
+npm error
+npm error Node.js v22.14.0
+npm error A complete log of this run can be found in: C:\Users\40377\AppData\Local\npm-cache\_logs\2025-12-19T08_31_11_773Z-debug-0.log

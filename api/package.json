@@ -1,0 +1,25 @@
+{
+    "name": "bao-class-api",
+    "version": "0.0.1",
+    "private": true,
+    "scripts": {
+        "dev": "wrangler dev",
+        "deploy": "wrangler deploy",
+        "cf-typegen": "wrangler types"
+    },
+    "dependencies": {
+        "@bao-class/types": "^1.0.0",
+        "@hono/node-server": "^1.19.6",
+        "@types/bcrypt": "^6.0.0",
+        "bcrypt": "^6.0.0",
+        "hono": "^4.6.10",
+        "xlsx": "^0.18.5",
+        "zod": "^4.2.1"
+    },
+    "devDependencies": {
+        "@cloudflare/workers-types": "^4.20241112.0",
+        "prettier": "^3.6.2",
+        "typescript": "^5.9.3",
+        "wrangler": "^4.49.0"
+    }
+}

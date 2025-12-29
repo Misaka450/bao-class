@@ -1,0 +1,55 @@
+[36mvite v6.4.1 [32mbuilding for production...[36m[39m
+transforming...
+[32m鉁?[39m 10600 modules transformed.
+Export "Bar" of module "../node_modules/recharts/es6/cartesian/Bar.js" was reexported through module "../node_modules/recharts/es6/index.js" while both modules are dependencies of each other and will end up in different chunks by current Rollup settings. This scenario is not well supported at the moment as it will produce a circular dependency between chunks and will likely lead to broken execution order.
+Either change the import in "src/components/Charts/SimpleDistributionChart.tsx" to point directly to the exporting module or reconfigure "output.manualChunks" to ensure these modules end up in the same chunk.
+Export "Bar" of module "../node_modules/recharts/es6/cartesian/Bar.js" was reexported through module "../node_modules/recharts/es6/index.js" while both modules are dependencies of each other and will end up in different chunks by current Rollup settings. This scenario is not well supported at the moment as it will produce a circular dependency between chunks and will likely lead to broken execution order.
+Either change the import in "src/pages/ClassAnalysis.tsx" to point directly to the exporting module or reconfigure "output.manualChunks" to ensure these modules end up in the same chunk.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32mindex.html                                 [39m[1m[2m    0.48 kB[22m[1m[22m[2m 鈹?gzip:   0.33 kB[22m
+[2mdist/[22m[35massets/css/index-C55gdWCv.css              [39m[1m[2m   10.08 kB[22m[1m[22m[2m 鈹?gzip:   2.70 kB[22m
+[2mdist/[22m[36massets/js/useClassList-BCAxSFbZ.js         [39m[1m[2m    0.23 kB[22m[1m[22m[2m 鈹?gzip:   0.21 kB[22m
+[2mdist/[22m[36massets/js/useExamList-Mz3dcbcx.js          [39m[1m[2m    0.30 kB[22m[1m[22m[2m 鈹?gzip:   0.24 kB[22m
+[2mdist/[22m[36massets/js/useCourseList-BWjLdRs_.js        [39m[1m[2m    0.42 kB[22m[1m[22m[2m 鈹?gzip:   0.28 kB[22m
+[2mdist/[22m[36massets/js/InfoCircleOutlined-BWYuV3b3.js   [39m[1m[2m    0.49 kB[22m[1m[22m[2m 鈹?gzip:   0.31 kB[22m
+[2mdist/[22m[36massets/js/EditOutlined-Dr-NBEvs.js         [39m[1m[2m    0.73 kB[22m[1m[22m[2m 鈹?gzip:   0.35 kB[22m
+[2mdist/[22m[36massets/js/RiseOutlined-KPFQiFQP.js         [39m[1m[2m    0.79 kB[22m[1m[22m[2m 鈹?gzip:   0.55 kB[22m
+[2mdist/[22m[36massets/js/WarningOutlined-h5BJ1Zny.js      [39m[1m[2m    0.80 kB[22m[1m[22m[2m 鈹?gzip:   0.57 kB[22m
+[2mdist/[22m[36massets/js/CheckCircleOutlined-6bnFvo96.js  [39m[1m[2m    0.90 kB[22m[1m[22m[2m 鈹?gzip:   0.59 kB[22m
+[2mdist/[22m[36massets/js/AuditLogs-B81qZRlm.js            [39m[1m[2m    1.75 kB[22m[1m[22m[2m 鈹?gzip:   1.00 kB[22m
+[2mdist/[22m[36massets/js/PageHeader-Br7ZNNbN.js           [39m[1m[2m    2.19 kB[22m[1m[22m[2m 鈹?gzip:   1.15 kB[22m
+[2mdist/[22m[36massets/js/Courses-CGOpvS-3.js              [39m[1m[2m    3.17 kB[22m[1m[22m[2m 鈹?gzip:   1.64 kB[22m
+[2mdist/[22m[36massets/js/Classes-CIYjJTTQ.js              [39m[1m[2m    3.20 kB[22m[1m[22m[2m 鈹?gzip:   1.64 kB[22m
+[2mdist/[22m[36massets/js/index-8oLu4USo.js                [39m[1m[2m    3.39 kB[22m[1m[22m[2m 鈹?gzip:   1.39 kB[22m
+[2mdist/[22m[36massets/js/Students-CBiXYVF2.js             [39m[1m[2m    4.07 kB[22m[1m[22m[2m 鈹?gzip:   1.87 kB[22m
+[2mdist/[22m[36massets/js/ProScoresList-D0Zfx3OC.js        [39m[1m[2m    4.10 kB[22m[1m[22m[2m 鈹?gzip:   2.05 kB[22m
+[2mdist/[22m[36massets/js/ScoresList-DDMBxPf4.js           [39m[1m[2m    4.48 kB[22m[1m[22m[2m 鈹?gzip:   2.18 kB[22m
+[2mdist/[22m[36massets/js/ManagementAlerts-QavZkJfk.js     [39m[1m[2m    4.83 kB[22m[1m[22m[2m 鈹?gzip:   2.28 kB[22m
+[2mdist/[22m[36massets/js/Users-UR_Baoep.js                [39m[1m[2m    4.89 kB[22m[1m[22m[2m 鈹?gzip:   2.45 kB[22m
+[2mdist/[22m[36massets/js/index-BcEnm7hO.js                [39m[1m[2m    5.59 kB[22m[1m[22m[2m 鈹?gzip:   2.18 kB[22m
+[2mdist/[22m[36massets/js/Exams-Hz9b_IlR.js                [39m[1m[2m    6.69 kB[22m[1m[22m[2m 鈹?gzip:   2.66 kB[22m
+[2mdist/[22m[36massets/js/ClassAnalysis-C2SJC2pA.js        [39m[1m[2m    9.81 kB[22m[1m[22m[2m 鈹?gzip:   4.04 kB[22m
+[2mdist/[22m[36massets/js/StudentProfile-3R9HZSLc.js       [39m[1m[2m   10.15 kB[22m[1m[22m[2m 鈹?gzip:   4.43 kB[22m
+[2mdist/[22m[36massets/js/useQuery-D9NgY46u.js             [39m[1m[2m   11.06 kB[22m[1m[22m[2m 鈹?gzip:   3.94 kB[22m
+[2mdist/[22m[36massets/js/FallOutlined-BAtBc97A.js         [39m[1m[2m   11.78 kB[22m[1m[22m[2m 鈹?gzip:   4.41 kB[22m
+[2mdist/[22m[36massets/js/ProDashboard-lbDXs4nv.js         [39m[1m[2m   12.04 kB[22m[1m[22m[2m 鈹?gzip:   3.91 kB[22m
+[2mdist/[22m[36massets/js/BarChart-Cav0FssO.js             [39m[1m[2m   17.93 kB[22m[1m[22m[2m 鈹?gzip:   6.42 kB[22m
+[2mdist/[22m[36massets/js/Pagination-CYETQOC2.js           [39m[1m[2m   23.96 kB[22m[1m[22m[2m 鈹?gzip:   7.16 kB[22m
+[2mdist/[22m[36massets/js/index-DXFtQexZ.js                [39m[1m[2m   33.03 kB[22m[1m[22m[2m 鈹?gzip:  10.82 kB[22m
+[2mdist/[22m[36massets/js/index-C62Rr9f5.js                [39m[1m[2m   39.47 kB[22m[1m[22m[2m 鈹?gzip:  11.35 kB[22m
+[2mdist/[22m[36massets/js/ProCard-Dg2i9Nm8.js              [39m[1m[2m   39.97 kB[22m[1m[22m[2m 鈹?gzip:  10.43 kB[22m
+[2mdist/[22m[36massets/js/RadarChart-DsbYwbJc.js           [39m[1m[2m   56.66 kB[22m[1m[22m[2m 鈹?gzip:  15.02 kB[22m
+[2mdist/[22m[36massets/js/Import-DUHi1O1O.js               [39m[1m[2m   66.19 kB[22m[1m[22m[2m 鈹?gzip:  21.43 kB[22m
+[2mdist/[22m[36massets/js/index-CMGKadJy.js                [39m[1m[2m   83.15 kB[22m[1m[22m[2m 鈹?gzip:  27.72 kB[22m
+[2mdist/[22m[36massets/js/DeleteOutlined-CTZcQ0jD.js       [39m[1m[2m  170.06 kB[22m[1m[22m[2m 鈹?gzip:  54.76 kB[22m
+[2mdist/[22m[36massets/js/ChartWrapper-C0oUxJYs.js         [39m[1m[2m  328.06 kB[22m[1m[22m[2m 鈹?gzip:  99.89 kB[22m
+[2mdist/[22m[36massets/js/xlsx-Dq5iWsr5.js                 [39m[1m[2m  426.16 kB[22m[1m[22m[2m 鈹?gzip: 142.26 kB[22m
+[2mdist/[22m[36massets/js/Table-CkETr4Rh.js                [39m[1m[2m  712.91 kB[22m[1m[22m[2m 鈹?gzip: 225.29 kB[22m
+[2mdist/[22m[36massets/js/index-BEH3wwB-.js                [39m[1m[33m1,260.52 kB[39m[22m[2m 鈹?gzip: 404.11 kB[22m
+
+(!) Some chunks are larger than 1000 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[32m鉁?built in 26.99s[39m
