@@ -135,16 +135,6 @@ const routes: RouteConfig[] = [
       },
     ],
   },
-  // 班级管理
-  {
-    path: '/classes',
-    name: '班级管理',
-    icon: React.createElement(TeamOutlined),
-    component: Classes,
-    access: ['admin', 'head_teacher', 'teacher'],
-    title: '班级管理 - 智慧班级助手',
-    description: '管理班级信息和学生分配',
-  },
   // 学生管理
   {
     path: '/student-manage',
@@ -152,6 +142,15 @@ const routes: RouteConfig[] = [
     icon: React.createElement(UserOutlined),
     access: ['admin', 'head_teacher', 'teacher'],
     children: [
+      {
+        path: '/classes',
+        name: '班级管理',
+        icon: React.createElement(TeamOutlined),
+        component: Classes,
+        access: ['admin', 'head_teacher', 'teacher'],
+        title: '班级管理 - 智慧班级助手',
+        description: '管理班级信息和学生分配',
+      },
       {
         path: '/students',
         name: '学生列表',
