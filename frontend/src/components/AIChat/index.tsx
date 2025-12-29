@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Button, Input, List, Avatar, Card, Badge, Segmented, Tooltip, Popover } from 'antd';
 import { MessageOutlined, SendOutlined, RobotOutlined, UserOutlined, CloseOutlined, SearchOutlined, BookOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
+import Markdown from 'react-markdown';
 import { aiApi } from '../../services/api';
 import { useResponsive } from '../../hooks/useResponsive';
 import './style.css';
@@ -266,7 +267,13 @@ const AIChat: React.FC = () => {
                             <div className={`message-item ${item.role}`}>
                                 <Avatar icon={item.role === 'ai' ? <RobotOutlined /> : <UserOutlined />} />
                                 <div className="message-content">
-                                    <div className="message-text">{item.content}</div>
+                                    <div className="message-text">
+                                        {item.role === 'ai' ? (
+                                            <Markdown>{item.content}</Markdown>
+                                        ) : (
+                                            item.content
+                                        )}
+                                    </div>
                                     <div className="message-time">{item.time}</div>
                                 </div>
                             </div>
