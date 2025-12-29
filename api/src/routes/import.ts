@@ -4,9 +4,11 @@ import { authMiddleware, checkRole } from '../middleware/auth'
 import { checkClassAccess } from '../utils/auth'
 import { validateStudentsData, validateScoresData } from '../services/data-validator'
 import { JWTPayload } from '../types'
+import { extractQuotaFromHeaders, saveModelQuota } from '../utils/modelQuota'
 
 type Bindings = {
     DB: D1Database
+    KV: KVNamespace
     AI: any // 暂时保留，虽然主流程用 HTTP 请求 DashScope
     DASHSCOPE_API_KEY: string
 }
@@ -533,6 +535,11 @@ importRoute.post('/ai-scores', checkRole(['admin', 'head_teacher', 'teacher']), 
                 ]
             })
         })
+
+        // 提取并保存模型额度信息
+        const modelName = 'Qwen/Qwen3-VL-8B-Instruct'
+        const quotaInfo = extractQuotaFromHeaders(response.headers)
+        saveModelQuota({ KV: c.env.KV } as any, modelName, quotaInfo).catch(() => { /* 忽略保存错误 */ })
 
         if (!response.ok) {
             const errorText = await response.text()

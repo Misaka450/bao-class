@@ -133,15 +133,6 @@ const routes: RouteConfig[] = [
         title: '我的作业 - 智慧班级助手',
         description: '查看和管理已保存的作业',
       },
-      {
-        path: '/lesson-prep/quota',
-        name: '额度监控',
-        icon: React.createElement(ThunderboltOutlined),
-        component: AIQuotaDashboard,
-        access: ['admin', 'head_teacher', 'teacher'],
-        title: 'AI 额度监控 - 智慧班级助手',
-        description: '查看各模型 API 额度使用情况',
-      },
     ],
   },
   // 班级管理
@@ -288,6 +279,15 @@ const routes: RouteConfig[] = [
     access: ['admin'],
     title: '用户管理 - 智慧班级助手',
     description: '维护系统登录账号和权限分配',
+  },
+  {
+    path: '/ai-quota',
+    name: '额度监控',
+    icon: React.createElement(ThunderboltOutlined),
+    component: AIQuotaDashboard,
+    access: ['admin'],
+    title: 'AI 额度监控 - 智慧班级助手',
+    description: '查看各模型 API 额度使用情况',
   },
 ];
 
