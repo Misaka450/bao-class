@@ -105,7 +105,7 @@ ${dataInfo}
             system: "你是一位资深的班主任助教。",
             user: summaryPrompt,
             stream: true,
-            model: 'ZhipuAI/GLM-4.7'
+            model: 'Qwen/Qwen3-Coder-480B-A35B-Instruct'
         }) as Promise<Response>;
     }
 
@@ -152,7 +152,7 @@ ${dataInfo}
             user: message,
             stream: true,
             history: history,
-            model: 'ZhipuAI/GLM-4.7'
+            model: 'Qwen/Qwen3-Coder-480B-A35B-Instruct'
         }) as Promise<Response>;
     }
 }
