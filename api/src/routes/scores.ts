@@ -90,28 +90,22 @@ scores.post('/batch', async (c) => {
 
 
     try {
-        let updatedCount = 0
-        for (const item of scoreList) {
-            // Check if score exists
-            const existing = await c.env.DB.prepare(
-                'SELECT id FROM scores WHERE student_id = ? AND exam_id = ? AND course_id = ?'
-            ).bind(item.student_id, exam_id, course_id).first()
+        // 使用 UPSERT (ON CONFLICT) 批量操作，避免 N+1 查询
+        // SQLite 需要逐条执行 UPSERT，但避免了先查询再更新的两步操作
+        const upsertPromises = scoreList.map(item =>
+            c.env.DB.prepare(`
+                INSERT INTO scores (student_id, exam_id, course_id, score)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(student_id, exam_id, course_id) 
+                DO UPDATE SET score = excluded.score, updated_at = CURRENT_TIMESTAMP
+            `).bind(item.student_id, exam_id, course_id, item.score).run()
+        )
 
-            if (existing) {
-                await c.env.DB.prepare(
-                    'UPDATE scores SET score = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-                ).bind(item.score, existing.id).run()
-            } else {
-                await c.env.DB.prepare(
-                    'INSERT INTO scores (student_id, exam_id, course_id, score) VALUES (?, ?, ?, ?)'
-                ).bind(item.student_id, exam_id, course_id, item.score).run()
-            }
-            updatedCount++
-        }
+        await Promise.all(upsertPromises)
 
-        await logAction(c.env.DB, user.userId, user.username, 'BATCH_UPDATE_SCORES', 'score', null, { exam_id, course_id, count: updatedCount })
+        await logAction(c.env.DB, user.userId, user.username, 'BATCH_UPDATE_SCORES', 'score', null, { exam_id, course_id, count: scoreList.length })
 
-        return c.json({ message: 'Scores updated successfully' })
+        return c.json({ message: 'Scores updated successfully', count: scoreList.length })
     } catch (error) {
         console.error('Batch update scores error:', error)
         return c.json({ error: 'Failed to update scores' }, 500)
