@@ -122,49 +122,33 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
         `).bind(classInfo.grade, examInfo.exam_date).first<{ id: number, name: string, exam_date: string }>()
 
         if (previousExam) {
-            // Calculate ranks for the previous exam using the same logic
-            const previousClassesData: Array<{
-                class_id: number,
-                average_score: number,
-                rank?: number
-            }> = []
-
-            for (const cls of (gradeClasses.results || []) as any[]) {
-                // Find the previous exam for this class
-                const classPrevExam = await c.env.DB.prepare(
-                    'SELECT id FROM exams WHERE class_id = ? AND name = ? AND exam_date = ?'
-                ).bind(cls.id, previousExam.name, previousExam.exam_date).first<{ id: number }>()
-
-                if (!classPrevExam) continue
-
-                // Calculate average total score for previous exam
-                const prevAvgQuery = `
-                    SELECT AVG(student_totals.total_score) as average_score
-                    FROM students st
-                    LEFT JOIN (
-                        SELECT student_id, SUM(score) as total_score
-                        FROM scores
-                        WHERE exam_id = ?
-                        GROUP BY student_id
-                    ) student_totals ON st.id = student_totals.student_id
-                    WHERE st.class_id = ?
-                `
-
-                const prevAvgResult = await c.env.DB.prepare(prevAvgQuery).bind(classPrevExam.id, cls.id).first<{
-                    average_score: number
-                }>()
-
-                previousClassesData.push({
-                    class_id: cls.id,
-                    average_score: prevAvgResult?.average_score ? parseFloat(Number(prevAvgResult.average_score).toFixed(2)) : 0
-                })
-            }
+            // Optimize: 使用批量查询替代循环查询，避免 N+1 问题
+            const previousClassesDataResult = await c.env.DB.prepare(`
+                SELECT 
+                    c.id as class_id,
+                    AVG(totals.total_score) as average_score
+                FROM classes c
+                LEFT JOIN students st ON c.id = st.class_id
+                LEFT JOIN (
+                    SELECT s.student_id, SUM(s.score) as total_score
+                    FROM scores s
+                    JOIN exams e ON s.exam_id = e.id
+                    WHERE e.name = ? AND e.exam_date = ?
+                    GROUP BY s.student_id
+                ) totals ON st.id = totals.student_id
+                WHERE c.grade = ?
+                GROUP BY c.id
+                HAVING average_score IS NOT NULL
+            `).bind(previousExam.name, previousExam.exam_date, classInfo.grade).all()
 
             // Sort and assign ranks for previous exam
-            previousClassesData.sort((a, b) => b.average_score - a.average_score)
-            previousClassesData.forEach((cls, index) => {
-                cls.rank = index + 1
-            })
+            const previousClassesData = ((previousClassesDataResult.results || []) as any[])
+                .map(row => ({
+                    class_id: row.class_id,
+                    average_score: row.average_score ? parseFloat(Number(row.average_score).toFixed(2)) : 0
+                }))
+                .sort((a, b) => b.average_score - a.average_score)
+                .map((cls, index) => ({ ...cls, rank: index + 1 }))
 
             // Find previous rank for current class
             const previousClassData = previousClassesData.find(c => c.class_id === classId)
