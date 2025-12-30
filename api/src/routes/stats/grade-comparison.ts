@@ -123,6 +123,7 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
 
         if (previousExam) {
             // Optimize: 使用批量查询替代循环查询，避免 N+1 问题
+            // 修复：通过 students 表关联确保只统计该班级学生的成绩
             const previousClassesDataResult = await c.env.DB.prepare(`
                 SELECT 
                     c.id as class_id,
@@ -133,13 +134,15 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
                     SELECT s.student_id, SUM(s.score) as total_score
                     FROM scores s
                     JOIN exams e ON s.exam_id = e.id
-                    WHERE e.name = ? AND e.exam_date = ?
+                    JOIN students stu ON s.student_id = stu.id
+                    JOIN classes cls ON stu.class_id = cls.id
+                    WHERE e.name = ? AND e.exam_date = ? AND cls.grade = ?
                     GROUP BY s.student_id
                 ) totals ON st.id = totals.student_id
                 WHERE c.grade = ?
                 GROUP BY c.id
                 HAVING average_score IS NOT NULL
-            `).bind(previousExam.name, previousExam.exam_date, classInfo.grade).all()
+            `).bind(previousExam.name, previousExam.exam_date, classInfo.grade, classInfo.grade).all()
 
             // Sort and assign ranks for previous exam
             const previousClassesData = ((previousClassesDataResult.results || []) as any[])
