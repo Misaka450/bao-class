@@ -28,14 +28,14 @@ export class AnalysisService {
 
         // 并行获取各类群体
         const [critical, examsCount, imbalanced] = await Promise.all([
-            // 临界生 (55-62 或 85-92)
+            // 临界生 (55-62，及格边缘)
             this.env.DB.prepare(`
                 SELECT DISTINCT st.id, st.name, 'critical' as type, s.score, c.name as subject
                 FROM students st
                 JOIN scores s ON st.id = s.student_id
                 JOIN courses c ON s.course_id = c.id
                 WHERE st.class_id = ? AND s.exam_id = ?
-                AND ((s.score BETWEEN 55 AND 62) OR (s.score BETWEEN 85 AND 92))
+                AND s.score BETWEEN 55 AND 62
             `).bind(classId, examId).all(),
 
             // 检查是否有足够的考试进行趋势分析
@@ -207,17 +207,19 @@ export class AnalysisService {
 
     /**
      * 生成班级学情诊断报告 (流式)
+     * @param focusGroupData 可选，前端传入的预警学生数据（避免重复查询）
      */
-    async generateClassReportStream(c: Context, classId: number, examId: number, reporterName: string = '系统') {
-        const { systemPrompt, userPrompt } = await this.prepareEnhancedReportPrompt(classId, examId, reporterName);
+    async generateClassReportStream(c: Context, classId: number, examId: number, reporterName: string = '系统', focusGroupData?: any) {
+        const { systemPrompt, userPrompt } = await this.prepareEnhancedReportPrompt(classId, examId, reporterName, focusGroupData);
         const model = await getModelForFeature(c.env, 'report');
         return AIService.callStreaming(c, systemPrompt, userPrompt, model);
     }
 
     /**
      * 增强版报告数据准备 - 多维度数据采集
+     * @param focusGroupData 可选，前端传入的预警学生数据（避免重复查询）
      */
-    private async prepareEnhancedReportPrompt(classId: number, examId: number, reporterName: string = '系统'): Promise<{ systemPrompt: string; userPrompt: string }> {
+    private async prepareEnhancedReportPrompt(classId: number, examId: number, reporterName: string = '系统', focusGroupData?: any): Promise<{ systemPrompt: string; userPrompt: string }> {
         // 获取北京时间 (UTC+8)
         const now = new Date();
         const beijingTime = new Date(now.getTime() + 8 * 60 * 60 * 1000);
@@ -299,10 +301,10 @@ export class AnalysisService {
             }
         }
 
-        // 5. 重点关注群体
+        // 5. 重点关注群体（优先使用前端传入的缓存数据）
         let focusSection = '暂无需特别关注的学生。';
         try {
-            const focusGroups = await this.getClassFocusGroup(classId);
+            const focusGroups = focusGroupData || await this.getClassFocusGroup(classId);
             const criticalCount = focusGroups.critical?.length || 0;
             const regressingCount = focusGroups.regressing?.length || 0;
             const imbalancedCount = focusGroups.imbalanced?.length || 0;

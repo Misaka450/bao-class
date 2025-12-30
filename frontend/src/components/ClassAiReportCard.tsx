@@ -10,6 +10,7 @@ const { Title, Text } = Typography;
 interface Props {
     classId: number;
     examId: number;
+    focusGroupData?: any; // 前端缓存的预警数据，避免后端重复查询
 }
 
 interface TocItem {
@@ -53,7 +54,7 @@ function addAnchors(markdown: string, toc: TocItem[]): string {
     return result;
 }
 
-const ClassAiReportCard: React.FC<Props> = ({ classId, examId }) => {
+const ClassAiReportCard: React.FC<Props> = ({ classId, examId, focusGroupData }) => {
     const queryClient = useQueryClient();
     const [isStreaming, setIsStreaming] = useState(false);
     const [streamContent, setStreamContent] = useState('');
@@ -73,6 +74,7 @@ const ClassAiReportCard: React.FC<Props> = ({ classId, examId }) => {
             setThinkingContent('');
             try {
                 await analysisApi.refreshClassAiReportStream(classId, examId, {
+                    focusGroupData,
                     onChunk: (chunk) => {
                         setStreamContent(prev => prev + chunk);
                     },

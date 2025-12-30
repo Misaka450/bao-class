@@ -160,11 +160,12 @@ export const analysisApi = {
     refreshClassAiReport: (classId: string, examId: number) =>
         post<{ success: boolean; message: string; report?: string; cached?: boolean; error?: string }>('/api/analysis/class/report/refresh', { classId, examId }),
 
-    refreshClassAiReportStream: (classId: number, examId: number, options: { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) =>
+    refreshClassAiReportStream: (classId: number, examId: number, options: { focusGroupData?: any; onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) =>
         requestStream('/api/analysis/class/report/refresh/stream', {
             method: 'POST',
-            body: { classId, examId },
-            ...options
+            body: { classId, examId, focusGroupData: options.focusGroupData },
+            onChunk: options.onChunk,
+            onThinking: options.onThinking
         }),
 };
 

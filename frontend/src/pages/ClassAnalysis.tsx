@@ -7,6 +7,7 @@ import ClassAiReportCard from '../components/ClassAiReportCard';
 import { useClassList } from '../hooks/useClassList';
 import { useExamList } from '../hooks/useExamList';
 import { useClassTrend, useClassSubjectTrend, useGradeComparison } from '../hooks/useClassAnalysis';
+import { useFocusGroup } from '../hooks/useFocusGroup';
 import { PageHeader } from '../components/Layout/PageHeader';
 import ScoreTrendChart from '../components/Charts/ScoreTrendChart';
 import SubjectRadarChart from '../components/Charts/SubjectRadarChart';
@@ -34,6 +35,9 @@ export default function ClassAnalysis() {
     const { data: subjectData, isLoading: loadingSubject } = useClassSubjectTrend(selectedClassId ? Number(selectedClassId) : undefined);
 
     const { data: exams = [] } = useExamList({ classId: selectedClassId, enabled: !!selectedClassId });
+
+    // 获取预警数据（用于传递给 AI 报告，避免重复查询）
+    const { data: focusGroupData } = useFocusGroup(selectedClassId || undefined);
 
     // 自动选择考试逻辑
     useEffect(() => {
@@ -262,6 +266,7 @@ export default function ClassAnalysis() {
             <ClassAiReportCard
                 classId={Number(selectedClassId)}
                 examId={selectedExamId ? Number(selectedExamId) : 0}
+                focusGroupData={focusGroupData}
             />
         </Space>
     );
