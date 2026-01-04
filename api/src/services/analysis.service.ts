@@ -56,9 +56,17 @@ export class AnalysisService {
                 AND st.id IN (
                     SELECT student_id FROM scores WHERE exam_id = ?
                     GROUP BY student_id 
-                    HAVING SUM(score) > (SELECT AVG(total) FROM (SELECT SUM(score) as total FROM scores WHERE exam_id = ? GROUP BY student_id))
+                    HAVING SUM(score) > (
+                        SELECT AVG(total) FROM (
+                            SELECT SUM(score) as total 
+                            FROM scores s2
+                            JOIN students st2 ON s2.student_id = st2.id
+                            WHERE s2.exam_id = ? AND st2.class_id = ?
+                            GROUP BY s2.student_id
+                        )
+                    )
                 )
-            `).bind(classId, examId, examId, examId).all()
+            `).bind(classId, examId, examId, examId, classId).all()
         ]);
 
         let regressing: any[] = [];
@@ -113,24 +121,31 @@ export class AnalysisService {
         `).bind(examId).all();
 
         const results = [];
+
+        // 批量获取该考试的所有成绩，然后在内存中进行统计，避免循环查询数据库
+        const allScoresResult = await this.env.DB.prepare(`
+            SELECT course_id, score FROM scores WHERE exam_id = ?
+        `).bind(examId).all();
+        const allScores = (allScoresResult.results || []) as any[];
+
         for (const course of (courses.results || [])) {
-            const scoresResult = await this.env.DB.prepare(`
-                SELECT score FROM scores WHERE exam_id = ? AND course_id = ? ORDER BY score DESC
-            `).bind(examId, course.course_id).all();
+            const courseScores = allScores
+                .filter(s => s.course_id === course.course_id)
+                .map(s => s.score)
+                .sort((a, b) => b - a);
 
-            const scores = (scoresResult.results || []).map((s: any) => s.score);
-            if (scores.length === 0) continue;
+            if (courseScores.length === 0) continue;
 
-            const count = scores.length;
-            const avg = scores.reduce((a, b) => a + b, 0) / count;
-            const stdDev = Math.sqrt(scores.map(s => Math.pow(s - avg, 2)).reduce((a, b) => a + b, 0) / count);
+            const count = courseScores.length;
+            const avg = courseScores.reduce((a, b) => a + b, 0) / count;
+            const stdDev = Math.sqrt(courseScores.map(s => Math.pow(s - avg, 2)).reduce((a, b) => a + b, 0) / count);
             const fullScore = Number(course.full_score) || 100;
             const groupSize = Math.floor(count * 0.27);
             let discrimination = 0;
 
             if (groupSize > 0) {
-                const highGroup = scores.slice(0, groupSize);
-                const lowGroup = scores.slice(-groupSize);
+                const highGroup = courseScores.slice(0, groupSize);
+                const lowGroup = courseScores.slice(-groupSize);
                 discrimination = (highGroup.reduce((a, b) => a + b, 0) / groupSize - lowGroup.reduce((a, b) => a + b, 0) / groupSize) / fullScore;
             }
 
@@ -141,8 +156,8 @@ export class AnalysisService {
                 stats: {
                     count,
                     avg: Number(avg.toFixed(1)),
-                    max: Math.max(...scores),
-                    min: Math.min(...scores),
+                    max: Math.max(...courseScores),
+                    min: Math.min(...courseScores),
                     std_dev: Number(stdDev.toFixed(1)),
                     difficulty: Number((avg / fullScore).toFixed(2)),
                     discrimination: Number(discrimination.toFixed(2))

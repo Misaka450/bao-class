@@ -210,7 +210,7 @@ export default function StudentProfile() {
                             items={[
                                 {
                                     title: '性别',
-                                    value: data.student.id % 2 === 0 ? '男' : '女',
+                                    value: data.student.gender || (data.student.id % 2 === 0 ? '男' : '女'),
                                     key: 'gender',
                                     flex: '1 0 18%',
                                     valueStyle: { color: '#722ed1' }

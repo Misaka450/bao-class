@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Card, Row, Col, Statistic, Skeleton, List, Avatar, Space, Tag } from 'antd';
 import {
     TrophyOutlined,
     CheckCircleOutlined,
@@ -8,8 +7,10 @@ import {
     FallOutlined,
     ArrowUpOutlined,
     ArrowDownOutlined,
+    ReloadOutlined,
 } from '@ant-design/icons';
 import { ProCard } from '@ant-design/pro-components';
+import { Card, Row, Col, Statistic, Skeleton, List, Avatar, Space, Tag, Button } from 'antd';
 import FilterBar from '../components/FilterBar';
 import SimpleDistributionChart from '../components/Charts/SimpleDistributionChart';
 import { useClasses, useExams, useDashboardData } from '../hooks/useDashboard';
@@ -72,9 +73,19 @@ export default function ProDashboard() {
 
     return (
         <div>
-            <div className="dashboard-header">
-                <h2 className="dashboard-title">数据仪表盘</h2>
-                <p className="dashboard-subtitle">综合数据分析与可视化</p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <div className="dashboard-header" style={{ marginBottom: 0 }}>
+                    <h2 className="dashboard-title" style={{ margin: 0 }}>数据仪表盘</h2>
+                    <p className="dashboard-subtitle" style={{ margin: 0 }}>综合数据分析与可视化</p>
+                </div>
+                <Button
+                    icon={<ReloadOutlined />}
+                    onClick={() => window.location.reload()}
+                    type="primary"
+                    ghost
+                >
+                    刷新数据
+                </Button>
             </div>
 
             {/* Filters */}

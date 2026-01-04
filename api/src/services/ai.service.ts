@@ -96,22 +96,30 @@ export class AIService {
         const students = studentsResult.results || [];
         const results: { studentId: number; studentName: string; comment: string }[] = [];
 
-        for (const student of students) {
-            try {
-                const result = await this.generateStudentComment(student.id, true, style);
-                results.push({
-                    studentId: student.id,
-                    studentName: student.name,
-                    comment: result.comment
-                });
-            } catch (error) {
-                console.error(`Failed to generate comment for student ${student.id}:`, error);
-                results.push({
-                    studentId: student.id,
-                    studentName: student.name,
-                    comment: '生成失败'
-                });
-            }
+        // 分批并发处理 (控制并发量防止 API 限流)
+        const BATCH_SIZE = 3;
+        for (let i = 0; i < students.length; i += BATCH_SIZE) {
+            const batch = students.slice(i, i + BATCH_SIZE);
+            const batchPromises = batch.map(async (student: any) => {
+                try {
+                    const result = await this.generateStudentComment(student.id, true, style);
+                    return {
+                        studentId: student.id,
+                        studentName: student.name,
+                        comment: result.comment
+                    };
+                } catch (error) {
+                    console.error(`Failed to generate comment for student ${student.id}:`, error);
+                    return {
+                        studentId: student.id,
+                        studentName: student.name,
+                        comment: '生成失败'
+                    };
+                }
+            });
+
+            const batchResults = await Promise.all(batchPromises);
+            results.push(...batchResults);
         }
 
         return results;
