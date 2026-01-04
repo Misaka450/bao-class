@@ -79,8 +79,8 @@ export default function Classes() {
             setAllTeachers(users.filter(u => u.role === 'teacher' || u.role === 'head_teacher'));
         }
         if (allCourses.length === 0) {
-            const courses = await api.course.list();
-            setAllCourses(courses);
+            const response = await api.course.list();
+            setAllCourses(response.data);
         }
     };
 
@@ -210,46 +210,18 @@ export default function Classes() {
                 ] : []}
                 request={async (params) => {
                     try {
-                        const data = await api.class.list();
-
-                        // Apply search filters
-                        let filteredData = data;
-
-                        if (params.name) {
-                            filteredData = filteredData.filter(cls =>
-                                cls.name.toLowerCase().includes((params.name as string).toLowerCase())
-                            );
-                        }
-
-                        if (params.grade) {
-                            filteredData = filteredData.filter(cls =>
-                                Number(cls.grade) === Number(params.grade)
-                            );
-                        }
-                        // Filter for teachers: only show relevant classes
-                        if (!isAdmin && user?.role === 'teacher') {
-                            // Backend already filters list? No, api.class.list returns all? 
-                            // Wait, classes.ts GET / returns ALL. We should filter frontend side or update backend.
-                            // For now, let's filter here if needed, but actually the requirement "Teacher creates class" 
-                            // implies they can see all? Or only theirs? 
-                            // Implementation plan check: "Teacher can create OWN classes". 
-                            // Usually teachers only care about their own. 
-                            // Let's filter by authorizedClassIds if not admin?
-                            // But wait, "authorizedClassIds" includes subject classes.
-                            // Let's keep showing all for now, or filter if requested. 
-                            // Actually, let's just stick to the requested changes.
-                        }
-
-                        // Apply pagination
-                        const { current = 1, pageSize = 10 } = params;
-                        const start = (current - 1) * pageSize;
-                        const end = start + pageSize;
-                        const paginatedData = filteredData.slice(start, end);
+                        const { current, pageSize, name, grade } = params;
+                        const response = await api.class.list({
+                            page: current,
+                            pageSize,
+                            name: name as string,
+                            grade: grade as number,
+                        });
 
                         return {
-                            data: paginatedData,
-                            success: true,
-                            total: filteredData.length,
+                            data: response.data,
+                            success: response.success,
+                            total: response.total,
                         };
                     } catch (error) {
                         return {

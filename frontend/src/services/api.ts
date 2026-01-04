@@ -29,7 +29,15 @@ export const authApi = {
 // ==================== 班级 API ====================
 
 export const classApi = {
-    list: () => get<Class[]>('/api/classes'),
+    list: (params?: { page?: number; pageSize?: number; name?: string; grade?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.page) query.append('page', params.page.toString());
+        if (params?.pageSize) query.append('pageSize', params.pageSize.toString());
+        if (params?.name) query.append('name', params.name);
+        if (params?.grade) query.append('grade', params.grade.toString());
+        const queryString = query.toString() ? `?${query.toString()}` : '';
+        return get<{ data: Class[]; total: number; success: boolean }>(`/api/classes${queryString}`);
+    },
     getById: (id: number) => get<Class>(`/api/classes/${id}`),
     create: (data: Omit<Class, 'id'>) => post<Class>('/api/classes', data),
     update: (id: number, data: Partial<Class>) => put<Class>(`/api/classes/${id}`, data),
@@ -44,7 +52,16 @@ export const classApi = {
 // ==================== 学生 API ====================
 
 export const studentApi = {
-    list: () => get<Student[]>('/api/students'),
+    list: (params?: { page?: number; pageSize?: number; name?: string; student_id?: string; class_id?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.page) query.append('page', params.page.toString());
+        if (params?.pageSize) query.append('pageSize', params.pageSize.toString());
+        if (params?.name) query.append('name', params.name);
+        if (params?.student_id) query.append('student_id', params.student_id);
+        if (params?.class_id) query.append('class_id', params.class_id.toString());
+        const queryString = query.toString() ? `?${query.toString()}` : '';
+        return get<{ data: Student[]; total: number; success: boolean }>(`/api/students${queryString}`);
+    },
     getById: (id: number) => get<Student>(`/api/students/${id}`),
     create: (data: Omit<Student, 'id'>) => post<Student>('/api/students', data),
     update: (id: number, data: Partial<Student>) => put<Student>(`/api/students/${id}`, data),
@@ -54,7 +71,15 @@ export const studentApi = {
 // ==================== 科目 API ====================
 
 export const courseApi = {
-    list: () => get<Course[]>('/api/courses'),
+    list: (params?: { page?: number; pageSize?: number; name?: string; grade?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.page) query.append('page', params.page.toString());
+        if (params?.pageSize) query.append('pageSize', params.pageSize.toString());
+        if (params?.name) query.append('name', params.name);
+        if (params?.grade) query.append('grade', params.grade.toString());
+        const queryString = query.toString() ? `?${query.toString()}` : '';
+        return get<{ data: Course[]; total: number; success: boolean }>(`/api/courses${queryString}`);
+    },
     getById: (id: number) => get<Course>(`/api/courses/${id}`),
     create: (data: Omit<Course, 'id'>) => post<Course>('/api/courses', data),
     update: (id: number, data: Partial<Course>) => put<Course>(`/api/courses/${id}`, data),
@@ -64,9 +89,15 @@ export const courseApi = {
 // ==================== 考试 API ====================
 
 export const examApi = {
-    list: (params?: { class_id?: string }) => {
-        const query = params?.class_id ? `?class_id=${params.class_id}` : '';
-        return get<Exam[]>(`/api/exams${query}`);
+    list: (params?: { page?: number; pageSize?: number; name?: string; class_id?: number; exam_date?: string }) => {
+        const query = new URLSearchParams();
+        if (params?.page) query.append('page', params.page.toString());
+        if (params?.pageSize) query.append('pageSize', params.pageSize.toString());
+        if (params?.name) query.append('name', params.name);
+        if (params?.class_id) query.append('class_id', params.class_id.toString());
+        if (params?.exam_date) query.append('exam_date', params.exam_date);
+        const queryString = query.toString() ? `?${query.toString()}` : '';
+        return get<{ data: Exam[]; total: number; success: boolean }>(`/api/exams${queryString}`);
     },
     getById: (id: number) => get<Exam>(`/api/exams/${id}`),
     create: (data: any) => post<Exam>('/api/exams', data),

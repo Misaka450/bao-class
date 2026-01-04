@@ -23,8 +23,8 @@ export default function Students() {
     useEffect(() => {
         const fetchClassesLocal = async () => {
             try {
-                const data = await api.class.list();
-                setClasses(data);
+                const response = await api.class.list();
+                setClasses(response.data);
             } catch (error) {
                 // Error already handled
             }
@@ -174,32 +174,19 @@ export default function Students() {
                 ]}
                 request={async (params) => {
                     try {
-                        const data = await api.student.list();
+                        const { current, pageSize, name, student_id, class_id } = params;
+                        const response = await api.student.list({
+                            page: current,
+                            pageSize,
+                            name: name as string,
+                            student_id: student_id as string,
+                            class_id: class_id as number,
+                        });
 
-                        let filteredData = data;
-                        if (params.name) {
-                            filteredData = filteredData.filter(student =>
-                                student.name.includes(params.name as string)
-                            );
-                        }
-                        if (params.student_id) {
-                            filteredData = filteredData.filter(student =>
-                                student.student_id.includes(params.student_id as string)
-                            );
-                        }
-                        if (params.class_id) {
-                            filteredData = filteredData.filter(student =>
-                                student.class_id === Number(params.class_id)
-                            );
-                        }
-
-                        const { current = 1, pageSize = 10 } = params;
-                        const start = (current - 1) * pageSize;
-                        const end = start + pageSize;
                         return {
-                            data: filteredData.slice(start, end),
-                            success: true,
-                            total: filteredData.length,
+                            data: response.data,
+                            success: response.success,
+                            total: response.total,
                         };
                     } catch (error) {
                         return { data: [], success: false, total: 0 };

@@ -18,8 +18,43 @@ const courses = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 courses.use('*', authMiddleware)
 
 courses.get('/', async (c) => {
-    const { results } = await c.env.DB.prepare('SELECT * FROM courses ORDER BY created_at DESC').all<Course>()
-    return c.json(results)
+    const page = Number(c.req.query('page') || '1')
+    const pageSize = Number(c.req.query('pageSize') || '10')
+    const name = c.req.query('name')
+    const grade = c.req.query('grade')
+
+    let query = 'FROM courses'
+    const params: (string | number)[] = []
+    const conditions: string[] = []
+
+    if (name) {
+        conditions.push('name LIKE ?')
+        params.push(`%${name}%`)
+    }
+    if (grade) {
+        conditions.push('grade = ?')
+        params.push(Number(grade))
+    }
+
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ')
+    }
+
+    // Get total count
+    const totalResult = await c.env.DB.prepare(`SELECT COUNT(*) as count ${query}`).bind(...params).first<{ count: number }>()
+    const total = totalResult?.count || 0
+
+    // Get paginated data
+    const offset = (page - 1) * pageSize
+    const results = await c.env.DB.prepare(`SELECT * ${query} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+        .bind(...params, pageSize, offset)
+        .all<Course>()
+
+    return c.json({
+        data: results.results,
+        total,
+        success: true
+    })
 })
 
 courses.post('/', checkRole('admin'), async (c) => {

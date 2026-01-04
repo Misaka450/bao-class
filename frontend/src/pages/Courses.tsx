@@ -144,33 +144,18 @@ export default function Courses() {
                 ] : []}
                 request={async (params) => {
                     try {
-                        const data = await api.course.list();
-
-                        // Apply search filters
-                        let filteredData = data;
-
-                        if (params.name) {
-                            filteredData = filteredData.filter(course =>
-                                course.name.includes(params.name as string)
-                            );
-                        }
-
-                        if (params.grade) {
-                            filteredData = filteredData.filter(course =>
-                                Number(course.grade) === Number(params.grade)
-                            );
-                        }
-
-                        // Apply pagination
-                        const { current = 1, pageSize = 10 } = params;
-                        const start = (current - 1) * pageSize;
-                        const end = start + pageSize;
-                        const paginatedData = filteredData.slice(start, end);
+                        const { current, pageSize, name, grade } = params;
+                        const response = await api.course.list({
+                            page: current,
+                            pageSize,
+                            name: name as string,
+                            grade: grade as number,
+                        });
 
                         return {
-                            data: paginatedData,
-                            success: true,
-                            total: filteredData.length,
+                            data: response.data,
+                            success: response.success,
+                            total: response.total,
                         };
                     } catch (error) {
                         return {

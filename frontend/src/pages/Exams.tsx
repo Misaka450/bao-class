@@ -21,8 +21,8 @@ export default function Exams() {
 
     const fetchClasses = async () => {
         try {
-            const data = await api.class.list();
-            setClasses(data);
+            const response = await api.class.list();
+            setClasses(response.data);
         } catch (error) {
             // Error already handled in request layer
         }
@@ -30,8 +30,8 @@ export default function Exams() {
 
     const fetchCourses = async () => {
         try {
-            const data = await api.course.list();
-            setCourses(data);
+            const response = await api.course.list();
+            setCourses(response.data);
         } catch (error) {
             // Error already handled in request layer
         }
@@ -73,18 +73,18 @@ export default function Exams() {
     const handleSubmit = async (values: any) => {
         try {
             let examDateValue = values.exam_date;
-            
+
             // Handle both dayjs object and string formats
             if (typeof examDateValue === 'string') {
                 examDateValue = dayjs(examDateValue);
             }
-            
+
             // Ensure it's a valid dayjs object before formatting
             if (!examDateValue || typeof examDateValue.format !== 'function') {
                 message.error('日期格式无效，请重新选择');
                 return;
             }
-            
+
             const data = {
                 ...values,
                 exam_date: examDateValue.format('YYYY-MM-DD'),
@@ -207,33 +207,18 @@ export default function Exams() {
                 ]}
                 request={async (params) => {
                     try {
-                        const data = await api.exam.list();
-
-                        // Apply search filters
-                        let filteredData = data;
-
-                        if (params.name) {
-                            filteredData = filteredData.filter(exam =>
-                                exam.name.includes(params.name as string)
-                            );
-                        }
-
-                        if (params.exam_date) {
-                            filteredData = filteredData.filter(exam =>
-                                exam.exam_date === params.exam_date
-                            );
-                        }
-
-                        // Apply pagination
-                        const { current = 1, pageSize = 10 } = params;
-                        const start = (current - 1) * pageSize;
-                        const end = start + pageSize;
-                        const paginatedData = filteredData.slice(start, end);
+                        const { current, pageSize, name, exam_date } = params;
+                        const response = await api.exam.list({
+                            page: current,
+                            pageSize,
+                            name: name as string,
+                            exam_date: exam_date as string,
+                        });
 
                         return {
-                            data: paginatedData,
-                            success: true,
-                            total: filteredData.length,
+                            data: response.data,
+                            success: response.success,
+                            total: response.total,
                         };
                     } catch (error) {
                         return {
