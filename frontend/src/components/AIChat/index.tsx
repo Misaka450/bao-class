@@ -4,7 +4,7 @@ import { MessageOutlined, SendOutlined, RobotOutlined, UserOutlined, CloseOutlin
 import Markdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { FixedSizeList as List } from 'react-window';
+// react-window removed due to type issues, using normal list rendering
 import { aiApi } from '../../services/api';
 import { useResponsive } from '../../hooks/useResponsive';
 import './style.css';
@@ -394,20 +394,9 @@ const AIChat: React.FC = () => {
                     />
                 </div>
                 <div className="ai-chat-messages" ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-                    {useVirtualList ? (
-                        <List
-                            height={messageAreaHeight}
-                            itemCount={messages.length}
-                            itemSize={100}
-                            width="100%"
-                        >
-                            {Row}
-                        </List>
-                    ) : (
-                        messages.map((item) => (
-                            <MessageItem key={item.id} message={item} />
-                        ))
-                    )}
+                    {messages.map((item) => (
+                        <MessageItem key={item.id} message={item} />
+                    ))}
                     {loading && (
                         <div className="message-item ai">
                             <Avatar icon={<RobotOutlined />} />

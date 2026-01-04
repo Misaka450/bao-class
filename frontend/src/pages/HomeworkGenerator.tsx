@@ -1,9 +1,9 @@
-import { useState } from 'react';
-import { Card, Select, Button, Spin, Typography, message, Empty, Space, Input, InputNumber, Checkbox, Divider } from 'antd';
-import { RobotOutlined, SaveOutlined, FormOutlined, EditOutlined, SyncOutlined } from '@ant-design/icons';
+import { useState, useRef, useCallback } from 'react';
+import { Card, Select, Button, Typography, message, Empty, Space, Input, InputNumber, Checkbox, Divider, Collapse } from 'antd';
+import { RobotOutlined, SaveOutlined, FormOutlined, EditOutlined, SyncOutlined, EyeOutlined, EyeInvisibleOutlined } from '@ant-design/icons';
 import { useMutation } from '@tanstack/react-query';
-import ReactMarkdown from 'react-markdown';
 import { API_BASE_URL } from '../config';
+import StreamingMarkdown from '../components/StreamingMarkdown';
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -46,7 +46,6 @@ export default function HomeworkGenerator() {
     const [grade, setGrade] = useState<number>(3);
     const [topic, setTopic] = useState<string>('');
     const [difficulty, setDifficulty] = useState<string>('basic');
-    // 题型配置（替换原来的 count）
     const [questionTypes, setQuestionTypes] = useState<QuestionTypes>({
         choice: { enabled: true, count: 3 },
         blank: { enabled: true, count: 2 },
@@ -56,8 +55,11 @@ export default function HomeworkGenerator() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [feedbackInput, setFeedbackInput] = useState<string>('');
     const [isRefining, setIsRefining] = useState(false);
+    const [showAnswers, setShowAnswers] = useState(true);
 
-    // 更新题型启用状态
+    // 用于中断请求
+    const abortControllerRef = useRef<AbortController | null>(null);
+
     const handleTypeToggle = (type: keyof QuestionTypes, checked: boolean) => {
         setQuestionTypes(prev => ({
             ...prev,
@@ -65,7 +67,6 @@ export default function HomeworkGenerator() {
         }));
     };
 
-    // 更新题型数量
     const handleCountChange = (type: keyof QuestionTypes, count: number | null) => {
         setQuestionTypes(prev => ({
             ...prev,
@@ -73,12 +74,31 @@ export default function HomeworkGenerator() {
         }));
     };
 
-    // 获取总题数
     const getTotalCount = () => {
         return (questionTypes.choice.enabled ? questionTypes.choice.count : 0) +
             (questionTypes.blank.enabled ? questionTypes.blank.count : 0) +
             (questionTypes.shortAnswer.enabled ? questionTypes.shortAnswer.count : 0);
     };
+
+    // 停止生成
+    const handleStop = useCallback(() => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+            setIsGenerating(false);
+            setIsRefining(false);
+        }
+    }, []);
+
+    // 处理内容：分离题目和答案
+    const processContentForDisplay = useCallback((content: string) => {
+        if (showAnswers) return content;
+
+        // 隐藏答案和解析部分
+        return content
+            .replace(/\*\*答案\*\*[：:]\s*[^\n]*/g, '**答案**：[点击显示]')
+            .replace(/\*\*解析\*\*[：:]\s*[\s\S]*?(?=\n##|\n\*\*题目|$)/g, '**解析**：[点击显示]\n');
+    }, [showAnswers]);
 
     const handleGenerate = async () => {
         if (!topic.trim()) {
@@ -90,6 +110,7 @@ export default function HomeworkGenerator() {
             return;
         }
 
+        abortControllerRef.current = new AbortController();
         setIsGenerating(true);
         setGeneratedContent('');
 
@@ -111,7 +132,8 @@ export default function HomeworkGenerator() {
                         blank: questionTypes.blank.enabled ? questionTypes.blank.count : undefined,
                         shortAnswer: questionTypes.shortAnswer.enabled ? questionTypes.shortAnswer.count : undefined
                     }
-                })
+                }),
+                signal: abortControllerRef.current.signal
             });
 
             if (!response.ok) throw new Error('生成失败');
@@ -138,11 +160,15 @@ export default function HomeworkGenerator() {
                     }
                 }
             }
-        } catch {
-            message.error('作业生成失败，请重试');
+        } catch (e: any) {
+            if (e.name === 'AbortError') {
+                message.info('已停止生成');
+            } else {
+                message.error('作业生成失败，请重试');
+            }
         } finally {
             setIsGenerating(false);
-            // 触发额度刷新事件
+            abortControllerRef.current = null;
             window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
@@ -153,6 +179,7 @@ export default function HomeworkGenerator() {
             return;
         }
 
+        abortControllerRef.current = new AbortController();
         setIsRefining(true);
         const previousContent = generatedContent;
         setGeneratedContent('');
@@ -171,7 +198,8 @@ export default function HomeworkGenerator() {
                     subject,
                     grade,
                     topic
-                })
+                }),
+                signal: abortControllerRef.current.signal
             });
 
             if (!response.ok) throw new Error('调整失败');
@@ -201,12 +229,17 @@ export default function HomeworkGenerator() {
 
             setFeedbackInput('');
             message.success('作业已根据您的反馈进行调整');
-        } catch {
-            message.error('调整失败，请重试');
-            setGeneratedContent(previousContent);
+        } catch (e: any) {
+            if (e.name === 'AbortError') {
+                message.info('已停止生成');
+                setGeneratedContent(previousContent);
+            } else {
+                message.error('调整失败，请重试');
+                setGeneratedContent(previousContent);
+            }
         } finally {
             setIsRefining(false);
-            // 触发额度刷新事件
+            abortControllerRef.current = null;
             window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
@@ -241,6 +274,8 @@ export default function HomeworkGenerator() {
         onSuccess: () => message.success('作业保存成功'),
         onError: () => message.error('保存失败')
     });
+
+    const isLoading = isGenerating || isRefining;
 
     return (
         <div style={{ padding: 24 }}>
@@ -281,88 +316,88 @@ export default function HomeworkGenerator() {
                         </div>
                     </Space>
 
-                    {/* 题型选择器 */}
-                    <Divider orientation="left" style={{ margin: '16px 0 12px' }}>
-                        题型配置 <Text type="secondary" style={{ fontWeight: 'normal', fontSize: 12 }}>（至少选择一种题型）</Text>
-                    </Divider>
-                    <div style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 24,
-                        background: '#fafafa',
-                        padding: 16,
-                        borderRadius: 8
-                    }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <Checkbox
-                                checked={questionTypes.choice.enabled}
-                                onChange={e => handleTypeToggle('choice', e.target.checked)}
-                            >
-                                选择题
-                            </Checkbox>
-                            <InputNumber
-                                min={1}
-                                max={10}
-                                value={questionTypes.choice.count}
-                                onChange={v => handleCountChange('choice', v)}
-                                disabled={!questionTypes.choice.enabled}
-                                size="small"
-                                style={{ width: 60 }}
-                                addonAfter="道"
-                            />
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <Checkbox
-                                checked={questionTypes.blank.enabled}
-                                onChange={e => handleTypeToggle('blank', e.target.checked)}
-                            >
-                                填空题
-                            </Checkbox>
-                            <InputNumber
-                                min={1}
-                                max={10}
-                                value={questionTypes.blank.count}
-                                onChange={v => handleCountChange('blank', v)}
-                                disabled={!questionTypes.blank.enabled}
-                                size="small"
-                                style={{ width: 60 }}
-                                addonAfter="道"
-                            />
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                            <Checkbox
-                                checked={questionTypes.shortAnswer.enabled}
-                                onChange={e => handleTypeToggle('shortAnswer', e.target.checked)}
-                            >
-                                简答题
-                            </Checkbox>
-                            <InputNumber
-                                min={1}
-                                max={10}
-                                value={questionTypes.shortAnswer.count}
-                                onChange={v => handleCountChange('shortAnswer', v)}
-                                disabled={!questionTypes.shortAnswer.enabled}
-                                size="small"
-                                style={{ width: 60 }}
-                                addonAfter="道"
-                            />
-                        </div>
-                        <Text type="secondary" style={{ width: '100%', marginTop: 4 }}>
-                            共 <Text strong>{getTotalCount()}</Text> 道题目
-                        </Text>
-                    </div>
-
                     <div>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
                             知识点/内容 <Text type="danger">*</Text>
                         </Text>
                         <TextArea
-                            placeholder="例如：两位数加减法、分数的意义、形容词比较级..."
+                            placeholder="例如：两位数加减法、分数的初步认识、阅读理解..."
                             rows={2}
                             value={topic}
                             onChange={e => setTopic(e.target.value)}
                             style={{ maxWidth: 600 }}
                         />
+                    </div>
+
+                    {/* 题型配置 */}
+                    <div>
+                        <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>题型配置</Text>
+                        <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 16,
+                            padding: 16,
+                            background: '#fafafa',
+                            borderRadius: 8,
+                            border: '1px solid #f0f0f0'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Checkbox
+                                    checked={questionTypes.choice.enabled}
+                                    onChange={e => handleTypeToggle('choice', e.target.checked)}
+                                >
+                                    选择题
+                                </Checkbox>
+                                <InputNumber
+                                    min={0}
+                                    max={10}
+                                    value={questionTypes.choice.count}
+                                    onChange={v => handleCountChange('choice', v)}
+                                    disabled={!questionTypes.choice.enabled}
+                                    size="small"
+                                    style={{ width: 60 }}
+                                />
+                                <Text type="secondary">道</Text>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Checkbox
+                                    checked={questionTypes.blank.enabled}
+                                    onChange={e => handleTypeToggle('blank', e.target.checked)}
+                                >
+                                    填空题
+                                </Checkbox>
+                                <InputNumber
+                                    min={0}
+                                    max={10}
+                                    value={questionTypes.blank.count}
+                                    onChange={v => handleCountChange('blank', v)}
+                                    disabled={!questionTypes.blank.enabled}
+                                    size="small"
+                                    style={{ width: 60 }}
+                                />
+                                <Text type="secondary">道</Text>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Checkbox
+                                    checked={questionTypes.shortAnswer.enabled}
+                                    onChange={e => handleTypeToggle('shortAnswer', e.target.checked)}
+                                >
+                                    简答题
+                                </Checkbox>
+                                <InputNumber
+                                    min={0}
+                                    max={10}
+                                    value={questionTypes.shortAnswer.count}
+                                    onChange={v => handleCountChange('shortAnswer', v)}
+                                    disabled={!questionTypes.shortAnswer.enabled}
+                                    size="small"
+                                    style={{ width: 60 }}
+                                />
+                                <Text type="secondary">道</Text>
+                            </div>
+                            <Divider type="vertical" style={{ height: 'auto' }} />
+                            <Text strong>共 {getTotalCount()} 道题目</Text>
+                        </div>
                     </div>
 
                     <Button
@@ -380,60 +415,72 @@ export default function HomeworkGenerator() {
 
             <Card
                 title={<><FormOutlined /> 作业预览</>}
-                extra={generatedContent && (
-                    <Button
-                        icon={<SaveOutlined />}
-                        onClick={() => saveMutation.mutate()}
-                        loading={saveMutation.isPending}
-                        type="primary"
-                    >
-                        保存作业
-                    </Button>
-                )}
+                extra={
+                    <Space>
+                        {generatedContent && !isLoading && (
+                            <>
+                                <Button
+                                    icon={showAnswers ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                                    onClick={() => setShowAnswers(!showAnswers)}
+                                >
+                                    {showAnswers ? '隐藏答案' : '显示答案'}
+                                </Button>
+                                <Button
+                                    icon={<SaveOutlined />}
+                                    onClick={() => saveMutation.mutate()}
+                                    loading={saveMutation.isPending}
+                                    type="primary"
+                                >
+                                    保存作业
+                                </Button>
+                            </>
+                        )}
+                    </Space>
+                }
             >
-                {isGenerating || isRefining ? (
-                    <div style={{ textAlign: 'center', padding: 40 }}>
-                        <Spin size="large" />
-                        <p style={{ marginTop: 16, color: '#666' }}>
-                            {isRefining ? 'AI 正在根据您的反馈调整作业...' : 'AI 正在生成作业题...'}
-                        </p>
-                    </div>
-                ) : generatedContent ? (
+                {generatedContent || isLoading ? (
                     <>
-                        <div className="markdown-content" style={{ padding: 16 }}>
-                            <ReactMarkdown>{generatedContent}</ReactMarkdown>
-                        </div>
+                        <StreamingMarkdown
+                            content={processContentForDisplay(generatedContent)}
+                            isStreaming={isLoading}
+                            onStop={handleStop}
+                            showCopy={!isLoading}
+                            loading={isLoading && !generatedContent}
+                            style={{ padding: 16 }}
+                        />
 
                         {/* 反馈调整模块 */}
-                        <div style={{
-                            borderTop: '1px solid #f0f0f0',
-                            padding: '16px',
-                            marginTop: '16px',
-                            background: '#fafafa',
-                            borderRadius: '0 0 8px 8px'
-                        }}>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                                <EditOutlined /> 不满意？输入您的修改意见，AI 将重新调整
-                            </Text>
-                            <Space.Compact style={{ width: '100%' }}>
-                                <TextArea
-                                    placeholder="例如：增加应用题、难度再降低一些、增加计算题..."
-                                    rows={2}
-                                    value={feedbackInput}
-                                    onChange={e => setFeedbackInput(e.target.value)}
-                                    style={{ width: 'calc(100% - 120px)' }}
-                                />
-                                <Button
-                                    type="primary"
-                                    icon={<SyncOutlined />}
-                                    onClick={handleRefine}
-                                    disabled={!feedbackInput.trim()}
-                                    style={{ height: 'auto', minHeight: 56 }}
-                                >
-                                    重新调整
-                                </Button>
-                            </Space.Compact>
-                        </div>
+                        {generatedContent && !isLoading && (
+                            <div style={{
+                                borderTop: '1px solid #f0f0f0',
+                                padding: '16px',
+                                marginTop: '16px',
+                                background: '#fafafa',
+                                borderRadius: '0 0 8px 8px'
+                            }}>
+                                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                                    <EditOutlined /> 不满意？输入您的修改意见，AI 将重新调整
+                                </Text>
+                                <Space.Compact style={{ width: '100%' }}>
+                                    <TextArea
+                                        placeholder="例如：增加应用题、难度再降低一些、增加计算题..."
+                                        rows={2}
+                                        value={feedbackInput}
+                                        onChange={e => setFeedbackInput(e.target.value)}
+                                        style={{ width: 'calc(100% - 120px)' }}
+                                    />
+                                    <Button
+                                        type="primary"
+                                        icon={<SyncOutlined />}
+                                        onClick={handleRefine}
+                                        disabled={!feedbackInput.trim()}
+                                        style={{ height: 'auto', minHeight: 56 }}
+                                    >
+                                        重新调整
+                                    </Button>
+                                </Space.Compact>
+                            </div>
+                        )}
                     </>
                 ) : (
                     <Empty description="设置参数后点击生成作业" />

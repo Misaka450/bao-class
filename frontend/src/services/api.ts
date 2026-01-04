@@ -160,13 +160,15 @@ export const analysisApi = {
     refreshClassAiReport: (classId: string, examId: number) =>
         post<{ success: boolean; message: string; report?: string; cached?: boolean; error?: string }>('/api/analysis/class/report/refresh', { classId, examId }),
 
-    refreshClassAiReportStream: (classId: number, examId: number, options: { focusGroupData?: any; onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) =>
-        requestStream('/api/analysis/class/report/refresh/stream', {
+    refreshClassAiReportStream: (classId: number, examId: number, options: { focusGroupData?: any; onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) => {
+        const stream = requestStream('/api/analysis/class/report/refresh/stream', {
             method: 'POST',
             body: { classId, examId, focusGroupData: options.focusGroupData },
             onChunk: options.onChunk,
             onThinking: options.onThinking
-        }),
+        });
+        return stream;
+    },
 };
 
 // ==================== 导入/导出 API ====================
@@ -225,12 +227,14 @@ export const aiApi = {
             cached?: boolean;
             source?: string;
         }>('/api/ai/generate-comment', data),
-    generateCommentStream: (data: { student_id: number; exam_ids?: number[]; force_regenerate?: boolean; style?: CommentStyle }, options: { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) =>
-        requestStream('/api/ai/generate-comment/stream', {
+    generateCommentStream: (data: { student_id: number; exam_ids?: number[]; force_regenerate?: boolean; style?: CommentStyle }, options: { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }) => {
+        const stream = requestStream('/api/ai/generate-comment/stream', {
             method: 'POST',
             body: data,
             ...options
-        }),
+        });
+        return stream;
+    },
     generateBatchComments: (data: { class_id: number; style?: CommentStyle }, options: {
         onProgress: (progress: { completed: number; total: number; studentId: number; studentName: string; comment: string | null; success: boolean }) => void;
         onComplete: (result: { completed: number; total: number }) => void;

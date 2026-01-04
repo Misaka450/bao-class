@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { Card, Select, Button, Spin, Typography, message, Empty, Space, Input } from 'antd';
+import { useState, useRef, useCallback } from 'react';
+import { Card, Select, Button, Typography, message, Empty, Space, Input } from 'antd';
 import { RobotOutlined, SaveOutlined, BookOutlined, EditOutlined, SyncOutlined } from '@ant-design/icons';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import ReactMarkdown from 'react-markdown';
 import { lessonPrepApi, classApi } from '../services/api';
 import { API_BASE_URL } from '../config';
+import StreamingMarkdown from '../components/StreamingMarkdown';
 
 const { Title, Paragraph, Text } = Typography;
 const { TextArea } = Input;
@@ -40,16 +40,32 @@ export default function LessonPrep() {
     const [feedbackInput, setFeedbackInput] = useState<string>('');
     const [isRefining, setIsRefining] = useState(false);
 
+    // 用于中断请求
+    const abortControllerRef = useRef<AbortController | null>(null);
+
     const { data: classes } = useQuery({
         queryKey: ['classes'],
         queryFn: () => classApi.list()
     });
+
+    // 停止生成
+    const handleStop = useCallback(() => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+            setIsGenerating(false);
+            setIsRefining(false);
+        }
+    }, []);
 
     const handleGenerate = async () => {
         if (!topic.trim()) {
             message.warning('请输入教学内容/主题');
             return;
         }
+
+        // 创建新的 AbortController
+        abortControllerRef.current = new AbortController();
 
         setIsGenerating(true);
         setGeneratedContent('');
@@ -68,7 +84,8 @@ export default function LessonPrep() {
                     volume,
                     topic,
                     classId: selectedClass
-                })
+                }),
+                signal: abortControllerRef.current.signal
             });
 
             if (!response.ok) throw new Error('生成失败');
@@ -95,11 +112,15 @@ export default function LessonPrep() {
                     }
                 }
             }
-        } catch {
-            message.error('教案生成失败，请重试');
+        } catch (e: any) {
+            if (e.name === 'AbortError') {
+                message.info('已停止生成');
+            } else {
+                message.error('教案生成失败，请重试');
+            }
         } finally {
             setIsGenerating(false);
-            // 触发额度刷新事件
+            abortControllerRef.current = null;
             window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
@@ -110,6 +131,9 @@ export default function LessonPrep() {
             message.warning('请输入修改意见');
             return;
         }
+
+        // 创建新的 AbortController
+        abortControllerRef.current = new AbortController();
 
         setIsRefining(true);
         const previousContent = generatedContent;
@@ -130,7 +154,8 @@ export default function LessonPrep() {
                     grade,
                     volume,
                     topic
-                })
+                }),
+                signal: abortControllerRef.current.signal
             });
 
             if (!response.ok) throw new Error('调整失败');
@@ -158,14 +183,19 @@ export default function LessonPrep() {
                 }
             }
 
-            setFeedbackInput(''); // 清空反馈输入
+            setFeedbackInput('');
             message.success('教案已根据您的反馈进行调整');
-        } catch {
-            message.error('调整失败，请重试');
-            setGeneratedContent(previousContent); // 恢复原内容
+        } catch (e: any) {
+            if (e.name === 'AbortError') {
+                message.info('已停止生成');
+                setGeneratedContent(previousContent);
+            } else {
+                message.error('调整失败，请重试');
+                setGeneratedContent(previousContent);
+            }
         } finally {
             setIsRefining(false);
-            // 触发额度刷新事件
+            abortControllerRef.current = null;
             window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
@@ -188,6 +218,8 @@ export default function LessonPrep() {
         onSuccess: () => message.success('教案保存成功'),
         onError: () => message.error('保存失败')
     });
+
+    const isLoading = isGenerating || isRefining;
 
     return (
         <div style={{ padding: 24 }}>
@@ -269,7 +301,7 @@ export default function LessonPrep() {
 
             <Card
                 title={<><BookOutlined /> 教案预览</>}
-                extra={generatedContent && (
+                extra={generatedContent && !isLoading && (
                     <Button
                         icon={<SaveOutlined />}
                         onClick={() => saveMutation.mutate()}
@@ -280,49 +312,49 @@ export default function LessonPrep() {
                     </Button>
                 )}
             >
-                {isGenerating || isRefining ? (
-                    <div style={{ textAlign: 'center', padding: 40 }}>
-                        <Spin size="large" />
-                        <p style={{ marginTop: 16, color: '#666' }}>
-                            {isRefining ? 'AI 正在根据您的反馈调整教案...' : 'AI 正在根据人教版教材生成教案...'}
-                        </p>
-                    </div>
-                ) : generatedContent ? (
+                {generatedContent || isLoading ? (
                     <>
-                        <div className="markdown-content" style={{ padding: 16 }}>
-                            <ReactMarkdown>{generatedContent}</ReactMarkdown>
-                        </div>
+                        <StreamingMarkdown
+                            content={generatedContent}
+                            isStreaming={isLoading}
+                            onStop={handleStop}
+                            showCopy={!isLoading}
+                            loading={isLoading && !generatedContent}
+                            style={{ padding: 16 }}
+                        />
 
                         {/* 反馈调整模块 */}
-                        <div style={{
-                            borderTop: '1px solid #f0f0f0',
-                            padding: '16px',
-                            marginTop: '16px',
-                            background: '#fafafa',
-                            borderRadius: '0 0 8px 8px'
-                        }}>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                                <EditOutlined /> 不满意？输入您的修改意见，AI 将重新调整教案
-                            </Text>
-                            <Space.Compact style={{ width: '100%' }}>
-                                <TextArea
-                                    placeholder="例如：请增加更多课堂互动环节、难度降低一些、增加分层练习..."
-                                    rows={2}
-                                    value={feedbackInput}
-                                    onChange={e => setFeedbackInput(e.target.value)}
-                                    style={{ width: 'calc(100% - 120px)' }}
-                                />
-                                <Button
-                                    type="primary"
-                                    icon={<SyncOutlined />}
-                                    onClick={handleRefine}
-                                    disabled={!feedbackInput.trim()}
-                                    style={{ height: 'auto', minHeight: 56 }}
-                                >
-                                    重新调整
-                                </Button>
-                            </Space.Compact>
-                        </div>
+                        {generatedContent && !isLoading && (
+                            <div style={{
+                                borderTop: '1px solid #f0f0f0',
+                                padding: '16px',
+                                marginTop: '16px',
+                                background: '#fafafa',
+                                borderRadius: '0 0 8px 8px'
+                            }}>
+                                <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                                    <EditOutlined /> 不满意？输入您的修改意见，AI 将重新调整教案
+                                </Text>
+                                <Space.Compact style={{ width: '100%' }}>
+                                    <TextArea
+                                        placeholder="例如：请增加更多课堂互动环节、难度降低一些、增加分层练习..."
+                                        rows={2}
+                                        value={feedbackInput}
+                                        onChange={e => setFeedbackInput(e.target.value)}
+                                        style={{ width: 'calc(100% - 120px)' }}
+                                    />
+                                    <Button
+                                        type="primary"
+                                        icon={<SyncOutlined />}
+                                        onClick={handleRefine}
+                                        disabled={!feedbackInput.trim()}
+                                        style={{ height: 'auto', minHeight: 56 }}
+                                    >
+                                        重新调整
+                                    </Button>
+                                </Space.Compact>
+                            </div>
+                        )}
                     </>
                 ) : (
                     <Empty description="填写教学信息后点击生成教案" />

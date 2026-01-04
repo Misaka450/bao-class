@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Card, Button, Typography, Skeleton, Empty, Space, message, Alert, Collapse, Anchor, Dropdown, Divider, Affix } from 'antd';
-import { RobotOutlined, ReloadOutlined, BulbOutlined, DownloadOutlined, MenuOutlined, CopyOutlined } from '@ant-design/icons';
+import { RobotOutlined, ReloadOutlined, BulbOutlined, DownloadOutlined, MenuOutlined, CopyOutlined, StopOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { analysisApi } from '../services/api';
 import ReactMarkdown from 'react-markdown';
@@ -60,6 +60,7 @@ const ClassAiReportCard: React.FC<Props> = ({ classId, examId, focusGroupData })
     const [streamContent, setStreamContent] = useState('');
     const [thinkingContent, setThinkingContent] = useState('');
     const [showToc, setShowToc] = useState(false);
+    const abortRef = React.useRef<(() => void) | null>(null);
 
     const { data, isLoading } = useQuery({
         queryKey: ['classAiReport', classId, examId],
@@ -73,7 +74,7 @@ const ClassAiReportCard: React.FC<Props> = ({ classId, examId, focusGroupData })
             setStreamContent('');
             setThinkingContent('');
             try {
-                await analysisApi.refreshClassAiReportStream(classId, examId, {
+                const stream = analysisApi.refreshClassAiReportStream(classId, examId, {
                     focusGroupData,
                     onChunk: (chunk) => {
                         setStreamContent(prev => prev + chunk);
@@ -82,18 +83,31 @@ const ClassAiReportCard: React.FC<Props> = ({ classId, examId, focusGroupData })
                         setThinkingContent(prev => prev + thinking);
                     }
                 });
+                abortRef.current = stream.abort;
+                await stream.promise;
                 message.success('生成完成');
                 queryClient.invalidateQueries({ queryKey: ['classAiReport', classId, examId] });
-            } catch (error) {
-                console.error('Refresh report error:', error);
-                message.error('刷新报告失败');
+            } catch (error: any) {
+                if (error?.name === 'AbortError') {
+                    message.info('已停止生成');
+                } else {
+                    console.error('Refresh report error:', error);
+                    message.error('刷新报告失败');
+                }
             } finally {
                 setIsStreaming(false);
-                // 触发额度刷新事件
+                abortRef.current = null;
                 window.dispatchEvent(new CustomEvent('ai-usage-update'));
             }
         }
     });
+
+    // 停止生成
+    const handleStop = () => {
+        if (abortRef.current) {
+            abortRef.current();
+        }
+    };
 
     const displayContent = isStreaming ? streamContent : data?.report;
 
@@ -187,11 +201,22 @@ ${displayContent.replace(/^# /gm, '<h1>').replace(/^## /gm, '<h2>').replace(/^##
                             </Button>
                         </Dropdown>
                     )}
+                    {isStreaming && (
+                        <Button
+                            type="primary"
+                            danger
+                            icon={<StopOutlined />}
+                            onClick={handleStop}
+                        >
+                            停止
+                        </Button>
+                    )}
                     <Button
                         type="link"
                         icon={<ReloadOutlined />}
                         loading={refreshMutation.isPending || isStreaming}
                         onClick={() => refreshMutation.mutate()}
+                        disabled={isStreaming}
                     >
                         重新生成
                     </Button>
