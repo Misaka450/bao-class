@@ -15,19 +15,48 @@ const students = new Hono<{ Bindings: Env; Variables: Variables }>()
 students.use('*', authMiddleware)
 
 students.get('/', async (c) => {
-    const classIdFromQuery = c.req.query('class_id')
-    let query = 'SELECT * FROM students'
-    const params: (string | number)[] = []
+    const page = Number(c.req.query('page') || '1')
+    const pageSize = Number(c.req.query('pageSize') || '10')
+    const name = c.req.query('name')
+    const student_id = c.req.query('student_id')
+    const class_id = c.req.query('class_id')
 
-    if (classIdFromQuery) {
-        query += ' WHERE class_id = ?'
-        params.push(classIdFromQuery)
+    let query = 'FROM students'
+    const params: (string | number)[] = []
+    const conditions: string[] = []
+
+    if (name) {
+        conditions.push('name LIKE ?')
+        params.push(`%${name}%`)
+    }
+    if (student_id) {
+        conditions.push('student_id LIKE ?')
+        params.push(`%${student_id}%`)
+    }
+    if (class_id) {
+        conditions.push('class_id = ?')
+        params.push(Number(class_id))
     }
 
-    query += ' ORDER BY created_at DESC'
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ')
+    }
 
-    const { results } = await c.env.DB.prepare(query).bind(...params).all<Student>()
-    return c.json(results)
+    // Get total count
+    const totalResult = await c.env.DB.prepare(`SELECT COUNT(*) as count ${query}`).bind(...params).first<{ count: number }>()
+    const total = totalResult?.count || 0
+
+    // Get paginated data
+    const offset = (page - 1) * pageSize
+    const results = await c.env.DB.prepare(`SELECT * ${query} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
+        .bind(...params, pageSize, offset)
+        .all<Student>()
+
+    return c.json({
+        data: results.results,
+        total,
+        success: true
+    })
 })
 
 students.post('/', async (c) => {

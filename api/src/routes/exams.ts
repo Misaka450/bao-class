@@ -46,7 +46,11 @@ exams.get('/', async (c) => {
             })
         )
 
-        return c.json(examsWithCourses)
+        return c.json({
+            data: examsWithCourses,
+            total: examsWithCourses.length,
+            success: true
+        })
     } catch (error) {
         return c.json({ error: 'Failed to fetch exams' }, 500)
     }

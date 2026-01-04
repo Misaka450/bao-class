@@ -97,8 +97,9 @@ export async function request<T = any>(
             // 或者 AI API 格式 { success: boolean, comment: string, ... }
             if (result && typeof result === 'object' && 'success' in result) {
                 if (result.success) {
-                    // 如果有 data 字段，返回 data；否则返回整个 result
-                    return ('data' in result ? result.data : result) as T;
+                    // 如果有 data 字段且没有 total 字段，返回 data（兼容旧结构）；
+                    // 如果有 total 字段，通常是分页请求，返回整个 result 以便提取 total
+                    return ('data' in result && !('total' in result) ? result.data : result) as T;
                 } else {
                     throw createRequestError(
                         result.message || getStatusMessage(response.status),

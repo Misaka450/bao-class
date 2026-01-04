@@ -95,12 +95,12 @@ export default function Students() {
             dataIndex: 'class_id',
             key: 'class_id',
             valueType: 'select',
-            valueEnum: classes.reduce((acc, cls) => {
+            valueEnum: (classes || []).reduce((acc, cls) => {
                 acc[cls.id] = { text: cls.name };
                 return acc;
             }, {} as Record<number, { text: string }>),
             render: (_, record) => {
-                const cls = classes.find((c) => c.id === record.class_id);
+                const cls = (classes || []).find((c) => c.id === record.class_id);
                 return cls?.name || record.class_id;
             },
         },
