@@ -238,6 +238,9 @@ ${feedback}
 
     /**
      * 生成作业题（流式）
+     * @param questionTypes 题型配置，支持:
+     *   - { total: number } - 向后兼容，自动分配题型
+     *   - { choice?: number, blank?: number, shortAnswer?: number } - 按题型指定数量
      */
     async generateHomeworkStream(
         c: Context,
@@ -245,7 +248,7 @@ ${feedback}
         grade: number,
         topic: string,
         difficulty: string,
-        count: number
+        questionTypes: { total?: number; choice?: number; blank?: number; shortAnswer?: number }
     ): Promise<Response> {
         const subjectNames: Record<string, string> = {
             math: '数学',
@@ -264,13 +267,51 @@ ${feedback}
         const gradeName = gradeNames[grade] || grade;
         const difficultyName = difficultyNames[difficulty] || '综合';
 
+        // 构建题型要求
+        let questionRequirement = '';
+        let totalCount = 0;
+
+        if (questionTypes.total) {
+            // 向后兼容：使用 total 时自动分配题型
+            totalCount = questionTypes.total;
+            questionRequirement = `请设计 ${totalCount} 道题目，题型自动分配（可包含选择题、填空题、简答题等）。`;
+        } else {
+            // 新格式：按题型指定数量
+            const parts: string[] = [];
+            if (questionTypes.choice && questionTypes.choice > 0) {
+                parts.push(`选择题 ${questionTypes.choice} 道`);
+                totalCount += questionTypes.choice;
+            }
+            if (questionTypes.blank && questionTypes.blank > 0) {
+                parts.push(`填空题 ${questionTypes.blank} 道`);
+                totalCount += questionTypes.blank;
+            }
+            if (questionTypes.shortAnswer && questionTypes.shortAnswer > 0) {
+                parts.push(`简答题 ${questionTypes.shortAnswer} 道`);
+                totalCount += questionTypes.shortAnswer;
+            }
+
+            if (parts.length === 0) {
+                // 如果没有指定，默认生成 5 道题
+                totalCount = 5;
+                questionRequirement = '请设计 5 道题目，题型自动分配。';
+            } else {
+                questionRequirement = `请严格按照以下题型和数量设计题目：\n${parts.map(p => `- ${p}`).join('\n')}`;
+            }
+        }
+
         const systemPrompt = `你是一位经验丰富的小学${subjectName}教师，擅长设计练习题。
 请根据教学内容设计高质量的练习题，题目要：
 1. 紧扣知识点，难度适中
-2. 题型多样（选择、填空、判断、应用题等）
-3. 每道题要有完整的答案和解析`;
+2. 严格按照指定的题型和数量生成
+3. 每道题要有完整的答案和解析
 
-        const userPrompt = `请为以下内容设计${count}道${difficultyName}：
+**题型说明**：
+- 选择题：提供 A、B、C、D 四个选项
+- 填空题：用括号或下划线标记填空位置
+- 简答题：需要完整作答的问题`;
+
+        const userPrompt = `请为以下内容设计${difficultyName}：
 
 **教学信息**
 - 科目：${subjectName}
@@ -278,18 +319,32 @@ ${feedback}
 - 知识点：${topic}
 - 难度：${difficultyName}
 
+**题目要求**
+${questionRequirement}
+
 **输出格式**
 # ${subjectName} ${difficultyName}
 
-## 第1题
+## 一、选择题（如果有）
+### 第1题
+**题目**：...
+A. ...  B. ...  C. ...  D. ...
+**答案**：...
+**解析**：...
+
+## 二、填空题（如果有）
+### 第1题
 **题目**：...
 **答案**：...
 **解析**：...
 
-## 第2题
-...
+## 三、简答题（如果有）
+### 第1题
+**题目**：...
+**答案**：...
+**解析**：...
 
-请确保题目清晰、答案准确、解析详尽。`;
+请确保题目清晰、答案准确、解析详尽。只输出指定的题型和数量。`;
 
         const model = await getModelForFeature(this.env, 'lesson');
         return this.callLLM(systemPrompt, userPrompt, true, model) as Promise<Response>;

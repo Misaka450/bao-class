@@ -175,7 +175,7 @@ lessonPrep.delete('/plans/:id', async (c) => {
  * POST /api/lesson-prep/homework/stream
  */
 lessonPrep.post('/homework/stream', async (c) => {
-    const { subject, grade, topic, difficulty, count } = await c.req.json();
+    const { subject, grade, topic, difficulty, count, questionTypes } = await c.req.json();
 
     if (!subject || !grade || !topic) {
         return c.json({ error: '请填写科目、年级和知识点' }, 400);
@@ -183,13 +183,14 @@ lessonPrep.post('/homework/stream', async (c) => {
 
     const service = new LessonPrepService(c.env);
 
+    // 支持新的 questionTypes 参数，向后兼容旧的 count 参数
     return service.generateHomeworkStream(
         c,
         subject,
         parseInt(grade),
         topic,
         difficulty || 'basic',
-        parseInt(count) || 5
+        questionTypes || { total: parseInt(count) || 5 }
     );
 });
 

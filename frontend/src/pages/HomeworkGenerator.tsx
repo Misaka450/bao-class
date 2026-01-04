@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, Select, Button, Spin, Typography, message, Empty, Space, Input, InputNumber } from 'antd';
+import { Card, Select, Button, Spin, Typography, message, Empty, Space, Input, InputNumber, Checkbox, Divider } from 'antd';
 import { RobotOutlined, SaveOutlined, FormOutlined, EditOutlined, SyncOutlined } from '@ant-design/icons';
 import { useMutation } from '@tanstack/react-query';
 import ReactMarkdown from 'react-markdown';
@@ -29,20 +29,64 @@ const difficultyOptions = [
     { value: 'challenge', label: '拓展题' },
 ];
 
+// 题型配置
+interface QuestionTypeConfig {
+    enabled: boolean;
+    count: number;
+}
+
+interface QuestionTypes {
+    choice: QuestionTypeConfig;
+    blank: QuestionTypeConfig;
+    shortAnswer: QuestionTypeConfig;
+}
+
 export default function HomeworkGenerator() {
     const [subject, setSubject] = useState<string>('math');
     const [grade, setGrade] = useState<number>(3);
     const [topic, setTopic] = useState<string>('');
     const [difficulty, setDifficulty] = useState<string>('basic');
-    const [count, setCount] = useState<number>(5);
+    // 题型配置（替换原来的 count）
+    const [questionTypes, setQuestionTypes] = useState<QuestionTypes>({
+        choice: { enabled: true, count: 3 },
+        blank: { enabled: true, count: 2 },
+        shortAnswer: { enabled: false, count: 0 }
+    });
     const [generatedContent, setGeneratedContent] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
     const [feedbackInput, setFeedbackInput] = useState<string>('');
     const [isRefining, setIsRefining] = useState(false);
 
+    // 更新题型启用状态
+    const handleTypeToggle = (type: keyof QuestionTypes, checked: boolean) => {
+        setQuestionTypes(prev => ({
+            ...prev,
+            [type]: { ...prev[type], enabled: checked, count: checked ? (prev[type].count || 2) : 0 }
+        }));
+    };
+
+    // 更新题型数量
+    const handleCountChange = (type: keyof QuestionTypes, count: number | null) => {
+        setQuestionTypes(prev => ({
+            ...prev,
+            [type]: { ...prev[type], count: count || 0 }
+        }));
+    };
+
+    // 获取总题数
+    const getTotalCount = () => {
+        return (questionTypes.choice.enabled ? questionTypes.choice.count : 0) +
+            (questionTypes.blank.enabled ? questionTypes.blank.count : 0) +
+            (questionTypes.shortAnswer.enabled ? questionTypes.shortAnswer.count : 0);
+    };
+
     const handleGenerate = async () => {
         if (!topic.trim()) {
             message.warning('请输入知识点/内容');
+            return;
+        }
+        if (getTotalCount() === 0) {
+            message.warning('请至少选择一种题型');
             return;
         }
 
@@ -62,7 +106,11 @@ export default function HomeworkGenerator() {
                     grade,
                     topic,
                     difficulty,
-                    count
+                    questionTypes: {
+                        choice: questionTypes.choice.enabled ? questionTypes.choice.count : undefined,
+                        blank: questionTypes.blank.enabled ? questionTypes.blank.count : undefined,
+                        shortAnswer: questionTypes.shortAnswer.enabled ? questionTypes.shortAnswer.count : undefined
+                    }
                 })
             });
 
@@ -231,17 +279,78 @@ export default function HomeworkGenerator() {
                                 onChange={setDifficulty}
                             />
                         </div>
-                        <div>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>题目数量</Text>
+                    </Space>
+
+                    {/* 题型选择器 */}
+                    <Divider orientation="left" style={{ margin: '16px 0 12px' }}>
+                        题型配置 <Text type="secondary" style={{ fontWeight: 'normal', fontSize: 12 }}>（至少选择一种题型）</Text>
+                    </Divider>
+                    <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 24,
+                        background: '#fafafa',
+                        padding: 16,
+                        borderRadius: 8
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Checkbox
+                                checked={questionTypes.choice.enabled}
+                                onChange={e => handleTypeToggle('choice', e.target.checked)}
+                            >
+                                选择题
+                            </Checkbox>
                             <InputNumber
                                 min={1}
-                                max={20}
-                                value={count}
-                                onChange={v => setCount(v || 5)}
-                                style={{ width: 80 }}
+                                max={10}
+                                value={questionTypes.choice.count}
+                                onChange={v => handleCountChange('choice', v)}
+                                disabled={!questionTypes.choice.enabled}
+                                size="small"
+                                style={{ width: 60 }}
+                                addonAfter="道"
                             />
                         </div>
-                    </Space>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Checkbox
+                                checked={questionTypes.blank.enabled}
+                                onChange={e => handleTypeToggle('blank', e.target.checked)}
+                            >
+                                填空题
+                            </Checkbox>
+                            <InputNumber
+                                min={1}
+                                max={10}
+                                value={questionTypes.blank.count}
+                                onChange={v => handleCountChange('blank', v)}
+                                disabled={!questionTypes.blank.enabled}
+                                size="small"
+                                style={{ width: 60 }}
+                                addonAfter="道"
+                            />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <Checkbox
+                                checked={questionTypes.shortAnswer.enabled}
+                                onChange={e => handleTypeToggle('shortAnswer', e.target.checked)}
+                            >
+                                简答题
+                            </Checkbox>
+                            <InputNumber
+                                min={1}
+                                max={10}
+                                value={questionTypes.shortAnswer.count}
+                                onChange={v => handleCountChange('shortAnswer', v)}
+                                disabled={!questionTypes.shortAnswer.enabled}
+                                size="small"
+                                style={{ width: 60 }}
+                                addonAfter="道"
+                            />
+                        </div>
+                        <Text type="secondary" style={{ width: '100%', marginTop: 4 }}>
+                            共 <Text strong>{getTotalCount()}</Text> 道题目
+                        </Text>
+                    </div>
 
                     <div>
                         <Text type="secondary" style={{ display: 'block', marginBottom: 4 }}>
@@ -261,7 +370,7 @@ export default function HomeworkGenerator() {
                         icon={<RobotOutlined />}
                         onClick={handleGenerate}
                         loading={isGenerating}
-                        disabled={!topic.trim()}
+                        disabled={!topic.trim() || getTotalCount() === 0}
                         size="large"
                     >
                         {isGenerating ? 'AI 生成中...' : '生成作业'}
