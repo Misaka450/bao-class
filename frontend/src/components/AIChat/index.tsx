@@ -1,12 +1,16 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Button, Input, List, Avatar, Card, Badge, Segmented, Tooltip, Popover } from 'antd';
-import { MessageOutlined, SendOutlined, RobotOutlined, UserOutlined, CloseOutlined, SearchOutlined, BookOutlined, FullscreenOutlined, FullscreenExitOutlined } from '@ant-design/icons';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { Button, Input, Avatar, Card, Badge, Segmented, Tooltip, Popover } from 'antd';
+import { MessageOutlined, SendOutlined, RobotOutlined, UserOutlined, CloseOutlined, SearchOutlined, BookOutlined, FullscreenOutlined, FullscreenExitOutlined, StopOutlined } from '@ant-design/icons';
 import Markdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { FixedSizeList as List } from 'react-window';
 import { aiApi } from '../../services/api';
 import { useResponsive } from '../../hooks/useResponsive';
 import './style.css';
 
 interface Message {
+    id: string;
     role: 'user' | 'ai';
     content: string;
     time: string;
@@ -19,6 +23,56 @@ interface ChatHistoryItem {
 
 type ChatMode = 'query' | 'knowledge';
 
+// 生成唯一ID
+const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+// Code 组件渲染
+const CodeBlock = ({ language, children }: { language?: string; children: string }) => {
+    return (
+        <SyntaxHighlighter
+            style={oneDark}
+            language={language || 'text'}
+            PreTag="div"
+            customStyle={{ borderRadius: 8, fontSize: 13, margin: '8px 0' }}
+        >
+            {children}
+        </SyntaxHighlighter>
+    );
+};
+
+// 单条消息渲染组件
+const MessageItem = React.memo(({ message }: { message: Message }) => (
+    <div className={`message-item ${message.role}`}>
+        <Avatar icon={message.role === 'ai' ? <RobotOutlined /> : <UserOutlined />} />
+        <div className="message-content">
+            <div className="message-text">
+                {message.role === 'ai' ? (
+                    <Markdown
+                        components={{
+                            code({ className, children, ...props }) {
+                                const match = /language-(\w+)/.exec(className || '');
+                                const codeString = String(children).replace(/\n$/, '');
+                                return match ? (
+                                    <CodeBlock language={match[1]}>{codeString}</CodeBlock>
+                                ) : (
+                                    <code className={className} {...props}>{children}</code>
+                                );
+                            }
+                        }}
+                    >
+                        {message.content}
+                    </Markdown>
+                ) : (
+                    message.content
+                )}
+            </div>
+            <div className="message-time">{message.time}</div>
+        </div>
+    </div>
+));
+
+MessageItem.displayName = 'MessageItem';
+
 const AIChat: React.FC = () => {
     const [visible, setVisible] = useState(false);
     const [mode, setMode] = useState<ChatMode>('query');
@@ -29,21 +83,24 @@ const AIChat: React.FC = () => {
     const [startPos, setStartPos] = useState({ x: 0, y: 0 });
     const [startDim, setStartDim] = useState({ width: 0, height: 0 });
     const [messages, setMessages] = useState<Message[]>([
-        { role: 'ai', content: '您好！我是您的 AI 助教。\n\n- 数据查询模式：可以查询班级成绩、学生情况等数据\n- 知识对话模式：可以咨询教学知识、班级管理经验等\n\n请选择对话模式开始使用。', time: new Date().toLocaleTimeString() }
+        { id: generateId(), role: 'ai', content: '您好！我是您的 AI 助教。\n\n- 数据查询模式：可以查询班级成绩、学生情况等数据\n- 知识对话模式：可以咨询教学知识、班级管理经验等\n\n请选择对话模式开始使用。', time: new Date().toLocaleTimeString() }
     ]);
     const [inputValue, setInputValue] = useState('');
     const [loading, setLoading] = useState(false);
     const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>([]);
     const chatCardRef = useRef<HTMLDivElement>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const abortRef = useRef<(() => void) | null>(null);
     const responsive = useResponsive();
 
+    // 自动滚动到底部
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages]);
 
+    // 鼠标调整大小
     const handleMouseDown = useCallback((e: React.MouseEvent, direction: string) => {
         e.preventDefault();
         e.stopPropagation();
@@ -53,12 +110,31 @@ const AIChat: React.FC = () => {
         setStartDim({ width: dimensions.width, height: dimensions.height });
     }, [dimensions]);
 
+    // 触摸调整大小（移动端支持）
+    const handleTouchStart = useCallback((e: React.TouchEvent, direction: string) => {
+        e.stopPropagation();
+        const touch = e.touches[0];
+        setIsResizing(true);
+        setResizeDirection(direction);
+        setStartPos({ x: touch.clientX, y: touch.clientY });
+        setStartDim({ width: dimensions.width, height: dimensions.height });
+    }, [dimensions]);
+
     useEffect(() => {
         const handleMouseMove = (e: MouseEvent) => {
             if (!isResizing) return;
+            handleResize(e.clientX, e.clientY);
+        };
 
-            const dx = e.clientX - startPos.x;
-            const dy = e.clientY - startPos.y;
+        const handleTouchMove = (e: TouchEvent) => {
+            if (!isResizing) return;
+            const touch = e.touches[0];
+            handleResize(touch.clientX, touch.clientY);
+        };
+
+        const handleResize = (clientX: number, clientY: number) => {
+            const dx = clientX - startPos.x;
+            const dy = clientY - startPos.y;
 
             if (resizeDirection.includes('e')) {
                 setDimensions(prev => ({
@@ -86,19 +162,23 @@ const AIChat: React.FC = () => {
             }
         };
 
-        const handleMouseUp = () => {
+        const handleEnd = () => {
             setIsResizing(false);
             setResizeDirection('');
         };
 
         if (isResizing) {
             document.addEventListener('mousemove', handleMouseMove);
-            document.addEventListener('mouseup', handleMouseUp);
+            document.addEventListener('mouseup', handleEnd);
+            document.addEventListener('touchmove', handleTouchMove);
+            document.addEventListener('touchend', handleEnd);
         }
 
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
+            document.removeEventListener('mouseup', handleEnd);
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleEnd);
         };
     }, [isResizing, resizeDirection, startPos, startDim]);
 
@@ -109,32 +189,43 @@ const AIChat: React.FC = () => {
         setIsFullscreen(!isFullscreen);
     };
 
+    // 停止生成
+    const handleStop = useCallback(() => {
+        if (abortRef.current) {
+            abortRef.current();
+            abortRef.current = null;
+            setLoading(false);
+        }
+    }, []);
+
     const handleSend = async () => {
         if (!inputValue.trim() || loading) return;
 
         const userMsg: Message = {
+            id: generateId(),
             role: 'user',
             content: inputValue,
             time: new Date().toLocaleTimeString()
         };
 
-        setMessages(prev => [...prev, userMsg]);
-        setInputValue('');
-        setLoading(true);
-
-        setMessages(prev => [...prev, {
+        const aiMsgId = generateId();
+        setMessages(prev => [...prev, userMsg, {
+            id: aiMsgId,
             role: 'ai',
             content: '',
             time: new Date().toLocaleTimeString()
         }]);
+        setInputValue('');
+        setLoading(true);
 
         let fullContent = '';
 
         try {
             const newHistory = [...chatHistory, { role: 'user', content: inputValue }];
+            let streamResult: { promise: Promise<void>; abort: () => void };
 
             if (mode === 'query') {
-                await aiApi.chatQueryStream(inputValue, {
+                streamResult = aiApi.chatQueryStream(inputValue, {
                     onChunk: (chunk) => {
                         fullContent += chunk;
                         setMessages(prev => {
@@ -146,9 +237,9 @@ const AIChat: React.FC = () => {
                         });
                     }
                 });
-                setChatHistory([...newHistory, { role: 'assistant', content: fullContent }]);
             } else {
-                await aiApi.chatKnowledgeStream(inputValue, {
+                // 知识模式：传递完整对话历史
+                streamResult = aiApi.chatKnowledgeStream(inputValue, newHistory, {
                     onChunk: (chunk) => {
                         fullContent += chunk;
                         setMessages(prev => {
@@ -160,16 +251,28 @@ const AIChat: React.FC = () => {
                         });
                     }
                 });
-                setChatHistory([...newHistory, { role: 'assistant', content: fullContent }]);
             }
-        } catch (error) {
-            setMessages(prev => [...prev, {
-                role: 'ai',
-                content: '抱歉，我现在无法处理您的请求，请稍后再试。',
-                time: new Date().toLocaleTimeString()
-            }]);
+
+            // 保存 abort 函数
+            abortRef.current = streamResult.abort;
+            await streamResult.promise;
+
+            setChatHistory([...newHistory, { role: 'assistant', content: fullContent }]);
+        } catch (error: any) {
+            // 如果是用户主动中断，不显示错误
+            if (error?.name === 'AbortError') {
+                return;
+            }
+            setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last && last.role === 'ai' && !last.content) {
+                    return [...prev.slice(0, -1), { ...last, content: '抱歉，我现在无法处理您的请求，请稍后再试。' }];
+                }
+                return prev;
+            });
         } finally {
             setLoading(false);
+            abortRef.current = null;
             window.dispatchEvent(new CustomEvent('ai-usage-update'));
         }
     };
@@ -179,6 +282,7 @@ const AIChat: React.FC = () => {
         setMode(newMode);
         setChatHistory([]);
         setMessages([{
+            id: generateId(),
             role: 'ai',
             content: newMode === 'query'
                 ? '已切换到数据查询模式。您可以问我关于班级成绩、学生情况的任何问题，例如："三年级一班的数学平均分是多少？"\n\n注意：系统会根据您上传的数据进行智能分析。'
@@ -198,6 +302,24 @@ const AIChat: React.FC = () => {
             height: dimensions.height
         };
 
+    // 虚拟列表行渲染
+    const Row = useCallback(({ index, style }: { index: number; style: React.CSSProperties }) => (
+        <div style={style}>
+            <MessageItem message={messages[index]} />
+        </div>
+    ), [messages]);
+
+    // 消息区域高度计算
+    const messageAreaHeight = useMemo(() => {
+        if (isFullscreen) {
+            return typeof window !== 'undefined' ? window.innerHeight * 0.8 - 180 : 400;
+        }
+        return dimensions.height - 180;
+    }, [isFullscreen, dimensions.height]);
+
+    // 判断是否使用虚拟列表（消息超过 50 条时启用）
+    const useVirtualList = messages.length > 50;
+
     const content = (
         <div
             className={`ai-chat-container ${isFullscreen ? 'fullscreen' : ''} ${isResizing ? 'resizing' : ''}`}
@@ -206,9 +328,21 @@ const AIChat: React.FC = () => {
         >
             {!isFullscreen && (
                 <>
-                    <div className="resize-handle resize-handle-e" onMouseDown={(e) => handleMouseDown(e, 'e')} />
-                    <div className="resize-handle resize-handle-s" onMouseDown={(e) => handleMouseDown(e, 's')} />
-                    <div className="resize-handle resize-handle-se" onMouseDown={(e) => handleMouseDown(e, 'se')} />
+                    <div
+                        className="resize-handle resize-handle-e"
+                        onMouseDown={(e) => handleMouseDown(e, 'e')}
+                        onTouchStart={(e) => handleTouchStart(e, 'e')}
+                    />
+                    <div
+                        className="resize-handle resize-handle-s"
+                        onMouseDown={(e) => handleMouseDown(e, 's')}
+                        onTouchStart={(e) => handleTouchStart(e, 's')}
+                    />
+                    <div
+                        className="resize-handle resize-handle-se"
+                        onMouseDown={(e) => handleMouseDown(e, 'se')}
+                        onTouchStart={(e) => handleTouchStart(e, 'se')}
+                    />
                 </>
             )}
             <Card
@@ -260,25 +394,20 @@ const AIChat: React.FC = () => {
                     />
                 </div>
                 <div className="ai-chat-messages" ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 16 }}>
-                    <List
-                        itemLayout="horizontal"
-                        dataSource={messages}
-                        renderItem={(item) => (
-                            <div className={`message-item ${item.role}`}>
-                                <Avatar icon={item.role === 'ai' ? <RobotOutlined /> : <UserOutlined />} />
-                                <div className="message-content">
-                                    <div className="message-text">
-                                        {item.role === 'ai' ? (
-                                            <Markdown>{item.content}</Markdown>
-                                        ) : (
-                                            item.content
-                                        )}
-                                    </div>
-                                    <div className="message-time">{item.time}</div>
-                                </div>
-                            </div>
-                        )}
-                    />
+                    {useVirtualList ? (
+                        <List
+                            height={messageAreaHeight}
+                            itemCount={messages.length}
+                            itemSize={100}
+                            width="100%"
+                        >
+                            {Row}
+                        </List>
+                    ) : (
+                        messages.map((item) => (
+                            <MessageItem key={item.id} message={item} />
+                        ))
+                    )}
                     {loading && (
                         <div className="message-item ai">
                             <Avatar icon={<RobotOutlined />} />
@@ -299,13 +428,24 @@ const AIChat: React.FC = () => {
                         onChange={e => setInputValue(e.target.value)}
                         onPressEnter={handleSend}
                         suffix={
-                            <Button
-                                type="primary"
-                                icon={<SendOutlined />}
-                                onClick={handleSend}
-                                loading={loading}
-                                size="small"
-                            />
+                            loading ? (
+                                <Tooltip title="停止生成">
+                                    <Button
+                                        type="primary"
+                                        danger
+                                        icon={<StopOutlined />}
+                                        onClick={handleStop}
+                                        size="small"
+                                    />
+                                </Tooltip>
+                            ) : (
+                                <Button
+                                    type="primary"
+                                    icon={<SendOutlined />}
+                                    onClick={handleSend}
+                                    size="small"
+                                />
+                            )
                         }
                     />
                 </div>

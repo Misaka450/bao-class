@@ -270,18 +270,22 @@ export const aiApi = {
         del(`/api/ai/comments/${id}`),
     getUsage: () =>
         get<{ used: number; total: number; remaining: number }>('/api/ai/usage'),
-    chatQueryStream: (query: string, options: { onChunk: (chunk: string) => void }) =>
-        requestStream('/api/ai/chat/query/stream', {
+    chatQueryStream: (query: string, options: { onChunk: (chunk: string) => void }) => {
+        const stream = requestStream('/api/ai/chat/query/stream', {
             method: 'POST',
             body: { query },
             ...options
-        }),
-    chatKnowledgeStream: (message: string, options: { onChunk: (chunk: string) => void }) =>
-        requestStream('/api/ai/chat/knowledge', {
+        });
+        return stream;
+    },
+    chatKnowledgeStream: (message: string, history: Array<{ role: string; content: string }>, options: { onChunk: (chunk: string) => void }) => {
+        const stream = requestStream('/api/ai/chat/knowledge', {
             method: 'POST',
-            body: { message },
+            body: { message, history },
             ...options
-        }),
+        });
+        return stream;
+    },
     getModelQuotas: () =>
         get<Array<{
             model: string;

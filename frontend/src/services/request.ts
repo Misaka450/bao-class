@@ -147,13 +147,26 @@ export async function request<T = any>(
 
 /**
  * 流式请求处理
+ * 返回一个对象包含 promise 和 abort 函数
  */
-export async function requestStream(
+export function requestStream(
     endpoint: string,
-    options: RequestOptions & { onChunk: (chunk: string) => void; onThinking?: (thinking: string) => void }
-): Promise<void> {
-    const { method = 'POST', body, headers = {}, onChunk, onThinking } = options;
+    options: RequestOptions & {
+        onChunk: (chunk: string) => void;
+        onThinking?: (thinking: string) => void;
+        signal?: AbortSignal;
+    }
+): { promise: Promise<void>; abort: () => void } {
+    const { method = 'POST', body, headers = {}, onChunk, onThinking, signal } = options;
     const token = useAuthStore.getState().token;
+
+    // 创建内部 AbortController
+    const abortController = new AbortController();
+
+    // 合并外部 signal
+    if (signal) {
+        signal.addEventListener('abort', () => abortController.abort());
+    }
 
     const config: RequestInit = {
         method,
@@ -163,53 +176,64 @@ export async function requestStream(
             ...headers,
         },
         body: body ? JSON.stringify(body) : undefined,
+        signal: abortController.signal,
     };
 
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const promise = (async () => {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw createRequestError(errorData.message || '流式请求失败', response.status);
-    }
-
-    const reader = response.body?.getReader();
-    const decoder = new TextDecoder();
-
-    if (!reader) throw new Error('无法读取响应流');
-
-    let buffer = '';
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-
-        // 处理 SSE 格式数据 (data: {...})
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || ''; // 最后一项可能不完整，保留到缓冲区
-
-        for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
-
-            const dataStr = trimmedLine.replace('data:', '').trim();
-            if (dataStr === '[DONE]') {
-                console.log('[requestStream] Stream finished');
-                break;
-            }
-
-            try {
-                const parsed = JSON.parse(dataStr);
-                if (parsed.thinking && onThinking) {
-                    onThinking(parsed.thinking);
-                } else if (parsed.content) {
-                    onChunk(parsed.content);
-                }
-            } catch (e) {
-                console.error('[requestStream] JSON parse failed for data:', dataStr, e);
-            }
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw createRequestError(errorData.message || '流式请求失败', response.status);
         }
-    }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) throw new Error('无法读取响应流');
+
+        let buffer = '';
+        try {
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // 处理 SSE 格式数据 (data: {...})
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || ''; // 最后一项可能不完整，保留到缓冲区
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine || !trimmedLine.startsWith('data:')) continue;
+
+                    const dataStr = trimmedLine.replace('data:', '').trim();
+                    if (dataStr === '[DONE]') {
+                        break;
+                    }
+
+                    try {
+                        const parsed = JSON.parse(dataStr);
+                        if (parsed.thinking && onThinking) {
+                            onThinking(parsed.thinking);
+                        } else if (parsed.content) {
+                            onChunk(parsed.content);
+                        }
+                    } catch (e) {
+                        // ignore parse errors
+                    }
+                }
+            }
+        } finally {
+            reader.releaseLock();
+        }
+    })();
+
+    return {
+        promise,
+        abort: () => abortController.abort()
+    };
 }
 
 /**
