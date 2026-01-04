@@ -9,7 +9,11 @@ interface UseExamListOptions {
 export function useExamList(options?: UseExamListOptions) {
     return useQuery({
         queryKey: ['exams', options?.classId],
-        queryFn: () => api.exam.list(options?.classId ? { class_id: options.classId } : undefined),
+        queryFn: async () => {
+            const params = options?.classId ? { class_id: Number(options.classId) } : undefined;
+            const response = await api.exam.list(params);
+            return response.data;
+        },
         staleTime: 5 * 60 * 1000,
         enabled: options?.enabled !== false,
     });

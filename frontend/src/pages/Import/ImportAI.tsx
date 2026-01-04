@@ -47,11 +47,12 @@ export default function ImportAI() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
-            setClassStudents(data);
+            const students = data.data || [];
+            setClassStudents(students);
 
             // 执行精准匹配
             const newPreviewData = aiPreviewData.map(item => {
-                const student = data.find((s: any) => s.name === item.name);
+                const student = students.find((s: any) => s.name === item.name);
                 if (student) {
                     return { ...item, studentId: student.id, matched: true };
                 }

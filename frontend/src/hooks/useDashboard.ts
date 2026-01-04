@@ -4,7 +4,10 @@ import api from '../services/api';
 export function useClasses() {
     return useQuery({
         queryKey: ['classes'],
-        queryFn: api.class.list,
+        queryFn: async () => {
+            const response = await api.class.list();
+            return response.data;
+        },
     });
 }
 
@@ -12,9 +15,9 @@ export function useExams(classId: string) {
     return useQuery({
         queryKey: ['exams', classId],
         queryFn: async () => {
-            const data = await api.exam.list({ class_id: classId });
-            // 过滤只属于当前班级的考试
-            return data.filter((e) => e.class_id.toString() === classId);
+            const response = await api.exam.list({ class_id: Number(classId) });
+            // 过滤只属于当前班级的考试，并提取 data 数组
+            return (response.data || []).filter((e) => e.class_id.toString() === classId);
         },
         enabled: !!classId,
     });

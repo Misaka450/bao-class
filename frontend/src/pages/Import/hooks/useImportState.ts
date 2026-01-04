@@ -102,7 +102,7 @@ export function useClassesAndExams() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
-            setClasses(data);
+            setClasses(data.data || []);
         } catch (error) {
             console.error('Failed to fetch classes', error);
         }
@@ -114,7 +114,7 @@ export function useClassesAndExams() {
                 headers: { Authorization: `Bearer ${token}` },
             });
             const data = await res.json();
-            setExams(data);
+            setExams(data.data || []);
         } catch (error) {
             console.error('Failed to fetch exams', error);
         }
