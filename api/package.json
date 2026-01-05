@@ -5,7 +5,9 @@
     "scripts": {
         "dev": "wrangler dev",
         "deploy": "wrangler deploy",
-        "cf-typegen": "wrangler types"
+        "cf-typegen": "wrangler types",
+        "test": "vitest",
+        "test:run": "vitest --run"
     },
     "dependencies": {
         "@bao-class/types": "^1.0.0",
@@ -17,9 +19,12 @@
         "zod": "^4.2.1"
     },
     "devDependencies": {
+        "@cloudflare/vitest-pool-workers": "^0.11.1",
         "@cloudflare/workers-types": "^4.20241112.0",
         "prettier": "^3.6.2",
         "typescript": "^5.9.3",
+        "vitest": "^2.1.9",
+        "vitest-environment-miniflare": "^2.14.4",
         "wrangler": "^4.49.0"
     }
 }
