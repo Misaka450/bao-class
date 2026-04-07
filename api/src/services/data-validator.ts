@@ -234,11 +234,15 @@ export async function validateScoresData(
 
     // 预加载有效科目
     const validCoursesResult = await db.prepare(`
-        SELECT c.name FROM courses c
+        SELECT c.name, ec.full_score FROM courses c
         JOIN exam_courses ec ON c.id = ec.course_id
         WHERE ec.exam_id = ?
     `).bind(examId).all()
     const validCourses = new Set(validCoursesResult.results.map((r: any) => r.name))
+    const courseFullScoreMap = new Map<string, number>()
+    validCoursesResult.results.forEach((r: any) => {
+        courseFullScoreMap.set(r.name, Number(r.full_score || 100))
+    })
 
     // 分析数据格式
     if (data.length === 0) {
@@ -318,17 +322,19 @@ export async function validateScoresData(
                     value: rawScore
                 })
                 hasError = true
-            } else if (score < 0 || score > 150) {
+            } else {
+                const fullScore = courseFullScoreMap.get(course) ?? 100
+                if (score < 0 || score > fullScore) {
                 warnings.push({
                     row: rowNum,
                     field: course,
-                    message: '分数超出范围（0-150）',
+                    message: `分数超出范围（0-${fullScore}）`,
                     level: 'error',
                     fixed: false,
                     value: score
                 })
                 hasError = true
-            } else {
+                } else {
                 // 限制小数位
                 const fixedScore = Math.round(score * 10) / 10
                 if (fixedScore !== score) {
@@ -342,6 +348,7 @@ export async function validateScoresData(
                         after: fixedScore
                     })
                     fixedRow[course] = fixedScore
+                }
                 }
             }
         }

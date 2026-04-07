@@ -1,10 +1,16 @@
 import { Hono } from 'hono'
+import { checkClassAccess } from '../../utils/auth'
+import { getExamContext } from '../../utils/dbHelpers'
 
 type Bindings = {
     DB: D1Database
 }
 
-const comparison = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: any
+}
+
+const comparison = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Class comparison (班级对比)
 comparison.get('/classes', async (c) => {
@@ -16,6 +22,15 @@ comparison.get('/classes', async (c) => {
     }
 
     try {
+        const user = c.get('user')
+        const examContext = await getExamContext(c.env.DB, examId)
+        if (!examContext) {
+            return c.json({ error: 'Exam not found' }, 404)
+        }
+        if (!await checkClassAccess(c.env.DB, user, examContext.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         let query: string
         let params: any[]
 
@@ -43,8 +58,8 @@ comparison.get('/classes', async (c) => {
                     cl.id,
                     cl.name,
                     AVG(total_score) as average_score,
-                    CAST(SUM(CASE WHEN total_score >= 180 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
-                    CAST(SUM(CASE WHEN total_score >= 270 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as excellent_rate
+                    CAST(SUM(CASE WHEN total_score >= ? THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as pass_rate,
+                    CAST(SUM(CASE WHEN total_score >= ? THEN 1 ELSE 0 END) * 100.0 / COUNT(*) AS REAL) as excellent_rate
                 FROM classes cl
                 JOIN students st ON cl.id = st.class_id
                 JOIN (
@@ -56,7 +71,7 @@ comparison.get('/classes', async (c) => {
                 GROUP BY cl.id, cl.name
                 ORDER BY average_score DESC
             `
-            params = [examId]
+            params = [examContext.total_full_score * 0.6, examContext.total_full_score * 0.9, examId]
         }
 
         const result = await c.env.DB.prepare(query).bind(...params).all()

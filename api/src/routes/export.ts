@@ -1,12 +1,19 @@
 import { Hono } from 'hono'
 import * as XLSX from 'xlsx'
 import { authMiddleware } from '../middleware/auth'
+import { checkClassAccess } from '../utils/auth'
+import { getExamContext } from '../utils/dbHelpers'
+import { JWTPayload } from '../types'
 
 type Bindings = {
     DB: D1Database
 }
 
-const exportRoute = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: JWTPayload
+}
+
+const exportRoute = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Apply auth middleware to all routes
 exportRoute.use('*', authMiddleware)
@@ -24,6 +31,16 @@ exportRoute.get('/class-scores/:classId', async (c) => {
     }
 
     try {
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
+        const examContext = await getExamContext(c.env.DB, Number(examId))
+        if (!examContext || examContext.class_id !== Number(classId)) {
+            return c.json({ error: 'Exam does not belong to this class' }, 400)
+        }
+
         // 获取班级信息
         const classInfo = await c.env.DB.prepare(`
             SELECT name FROM classes WHERE id = ?
@@ -192,6 +209,11 @@ exportRoute.get('/student-report/:studentId', async (c) => {
 
         if (!student) {
             return c.json({ error: 'Student not found' }, 404)
+        }
+
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, Number(student.class_id))) {
+            return c.json({ error: 'Forbidden' }, 403)
         }
 
         // 获取学生所有考试成绩
