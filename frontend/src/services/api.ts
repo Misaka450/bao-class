@@ -44,7 +44,7 @@ export const classApi = {
     delete: (id: number) => del(`/api/classes/${id}`),
 
     // Subject Teachers
-    getTeachers: (id: number) => get<any[]>(`/api/classes/${id}/teachers`),
+    getTeachers: (id: number) => get<Array<{ id: number; name: string; course_id: number; course_name: string }>>(`/api/classes/${id}/teachers`),
     assignTeacher: (id: number, data: { course_id: number; teacher_id: number }) => post(`/api/classes/${id}/teachers`, data),
     removeTeacher: (id: number, teacherId: number, courseId: number) => del(`/api/classes/${id}/teachers/${teacherId}/course/${courseId}`),
 };
@@ -100,8 +100,8 @@ export const examApi = {
         return get<{ data: Exam[]; total: number; success: boolean }>(`/api/exams${queryString}`);
     },
     getById: (id: number) => get<Exam>(`/api/exams/${id}`),
-    create: (data: any) => post<Exam>('/api/exams', data),
-    update: (id: number, data: any) => put<Exam>(`/api/exams/${id}`, data),
+    create: (data: Omit<Exam, 'id'>) => post<Exam>('/api/exams', data),
+    update: (id: number, data: Partial<Exam>) => put<Exam>(`/api/exams/${id}`, data),
     delete: (id: number) => del(`/api/exams/${id}`),
 };
 
@@ -344,8 +344,8 @@ export const aiApi = {
 // ==================== 用户管理 API ====================
 export const userApi = {
     list: () => get<User[]>('/api/users'),
-    create: (data: any) => post('/api/users', data),
-    update: (id: number, data: any) => put(`/api/users/${id}`, data),
+    create: (data: Omit<User, 'id'>) => post<User>('/api/users', data),
+    update: (id: number, data: Partial<User>) => put<User>(`/api/users/${id}`, data),
     delete: (id: number) => del(`/api/users/${id}`),
 };
 
@@ -355,8 +355,8 @@ export const lessonPrepApi = {
         post<{ success: boolean; content: string }>('/api/lesson-prep/generate', data),
     save: (data: { title: string; content: string; subject?: string; grade?: number; volume?: number; classId?: number }) =>
         post<{ success: boolean; id: number }>('/api/lesson-prep/save', data),
-    getMyPlans: () => get<any[]>('/api/lesson-prep/my-plans'),
-    getPlan: (id: number) => get<any>(`/api/lesson-prep/plans/${id}`),
+    getMyPlans: () => get<Array<{ id: number; title: string; subject: string; grade: number; created_at: string }>>('/api/lesson-prep/my-plans'),
+    getPlan: (id: number) => get<{ id: number; title: string; content: string; subject: string; grade: number; created_at: string }>(`/api/lesson-prep/plans/${id}`),
     updatePlan: (id: number, data: { title: string; content: string }) =>
         put(`/api/lesson-prep/plans/${id}`, data),
     deletePlan: (id: number) => del(`/api/lesson-prep/plans/${id}`),

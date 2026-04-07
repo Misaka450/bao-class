@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/authStore';
 
 interface RequestOptions {
     method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-    body?: any;
+    body?: unknown;
     headers?: Record<string, string>;
     skipErrorHandling?: boolean;
 }
@@ -11,7 +11,7 @@ interface RequestOptions {
 export interface RequestError extends Error {
     status?: number;
     code?: string;
-    details?: any;
+    details?: unknown;
 }
 
 /**
@@ -275,9 +275,9 @@ export function get<T = any>(endpoint: string, headers?: Record<string, string>)
 /**
  * POST 请求
  */
-export function post<T = any>(
+export function post<T = unknown>(
     endpoint: string,
-    body?: any,
+    body?: unknown,
     headers?: Record<string, string>
 ): Promise<T> {
     return request<T>(endpoint, { method: 'POST', body, headers });
@@ -286,9 +286,9 @@ export function post<T = any>(
 /**
  * PUT 请求
  */
-export function put<T = any>(
+export function put<T = unknown>(
     endpoint: string,
-    body?: any,
+    body?: unknown,
     headers?: Record<string, string>
 ): Promise<T> {
     return request<T>(endpoint, { method: 'PUT', body, headers });

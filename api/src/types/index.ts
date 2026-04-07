@@ -31,3 +31,28 @@ export interface Env {
   ENVIRONMENT?: string;
   DASHSCOPE_API_KEY?: string;
 }
+
+// ==================== 通用工具类型 ====================
+
+// API 响应基础类型
+export interface ApiResponse<T = unknown> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  error?: string;
+}
+
+// 分页响应类型
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+// 批量操作结果
+export interface BatchOperationResult {
+  success: number;
+  failed: number;
+  errors?: Array<{ index: number; error: string }>;
+}

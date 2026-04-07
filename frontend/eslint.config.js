@@ -19,5 +19,17 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // 禁止直接使用 console，使用统一的 logger 工具
+      'no-console': ['error', { 
+        allow: ['warn', 'error', 'info'] 
+      }],
+      // 类型安全相关
+      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-unused-vars': ['warn', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_' 
+      }],
+    },
   },
 ])

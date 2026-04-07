@@ -34,14 +34,14 @@ export interface UserInfo {
 }
 
 // Table Types
-export interface ProTableConfig<T = any> extends Omit<ProTableProps<T, any>, 'request'> {
+export interface ProTableConfig<T = unknown> extends Omit<ProTableProps<T, any>, 'request'> {
   request?: (params: TableRequestParams) => Promise<TableResponse<T>>;
 }
 
 export interface TableRequestParams {
   current: number;
   pageSize: number;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface TableResponse<T> {
@@ -52,7 +52,7 @@ export interface TableResponse<T> {
 
 // Form Types
 export interface ProFormConfig extends ProFormProps {
-  onFinish?: (values: any) => Promise<void>;
+  onFinish?: (values: Record<string, unknown>) => Promise<void>;
   loading?: boolean;
 }
 

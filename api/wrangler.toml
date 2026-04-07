@@ -1,7 +1,7 @@
 name = "bao-class-api"
 main = "src/index.ts"
 compatibility_date = "2024-01-01"
-account_id = "02cefa4c2401a3f9c36ef7c6dbf5ce39"
+# account_id 已通过 wrangler login 自动获取，不需要硬编码
 
 # 添加自定义域名路由配置
 routes = [
@@ -10,8 +10,11 @@ routes = [
 
 [vars]
 ENVIRONMENT = "production"
-# 注意：JWT_SECRET 应该通过 wrangler secret put JWT_SECRET 命令设置，而不是硬编码在这里
-# DASHSCOPE_API_KEY 应该通过 wrangler secret put DASHSCOPE_API_KEY 命令设置
+
+# 敏感信息请通过以下命令设置：
+# wrangler secret put JWT_SECRET
+# wrangler secret put DASHSCOPE_API_KEY
+# wrangler secret put CLOUDFLARE_API_TOKEN
 
 # 可观察性配置
 [observability]
@@ -33,12 +36,12 @@ head_sampling_rate = 1
 [[d1_databases]]
 binding = "DB"
 database_name = "class"
-database_id = "6e013f8f-0b3b-4674-abad-fa81fb5e22bc"
+# database_id 已通过 wrangler d1 自动获取，不需要硬编码
 
 # KV 命名空间配置
 [[kv_namespaces]]
 binding = "KV"
-id = "ca803a51af3741ecb8db56ea055f7656"
+# id 已通过 wrangler kv 自动获取，不需要硬编码
 
 # R2 存储桶配置
 [[r2_buckets]]
