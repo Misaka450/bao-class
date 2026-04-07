@@ -1,10 +1,15 @@
 import { Hono } from 'hono'
+import { checkClassAccess } from '../../utils/auth'
 
 type Bindings = {
     DB: D1Database
 }
 
-const profile = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: any
+}
+
+const profile = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Get comprehensive student profile
 profile.get('/:studentId', async (c) => {
@@ -21,6 +26,11 @@ profile.get('/:studentId', async (c) => {
 
         if (!student) {
             return c.json({ error: 'Student not found' }, 404)
+        }
+
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, Number(student.class_id))) {
+            return c.json({ error: 'Forbidden' }, 403)
         }
 
         // 2. Exam History (with Rank and Class Avg)
@@ -130,6 +140,12 @@ profile.get('/:studentId', async (c) => {
 
                 if (!scoreRecord) continue
 
+                const examCourse = await c.env.DB.prepare(`
+                    SELECT full_score
+                    FROM exam_courses
+                    WHERE exam_id = ? AND course_id = ?
+                `).bind(latestExam.exam_id, course.id).first<{ full_score: number }>()
+
                 // Class Stats for Z-Score
                 const stats = await c.env.DB.prepare(`
                     SELECT AVG(s.score) as avg, SUM((s.score - (SELECT AVG(score) FROM scores WHERE exam_id = ? AND course_id = ? AND student_id IN (SELECT id FROM students WHERE class_id = ?))) * (s.score - (SELECT AVG(score) FROM scores WHERE exam_id = ? AND course_id = ? AND student_id IN (SELECT id FROM students WHERE class_id = ?)))) / COUNT(s.score) as variance
@@ -162,7 +178,7 @@ profile.get('/:studentId', async (c) => {
                     score: Number(scoreRecord.score),
                     classAvg: parseFloat(avg.toFixed(2)),
                     zScore: parseFloat(zScore.toFixed(2)),
-                    fullMark: 100 // Assuming 100 for now, ideally fetch from exam_courses
+                    fullMark: Number(examCourse?.full_score || 100)
                 })
             }
         }

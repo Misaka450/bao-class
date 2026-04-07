@@ -19,6 +19,7 @@ const classes = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 classes.use('*', authMiddleware)
 
 classes.get('/', async (c) => {
+    const user = c.get('user')
     const page = Number(c.req.query('page') || '1')
     const pageSize = Number(c.req.query('pageSize') || '10')
     const name = c.req.query('name')
@@ -35,6 +36,16 @@ classes.get('/', async (c) => {
     if (grade) {
         conditions.push('grade = ?')
         params.push(Number(grade))
+    }
+
+    const authorizedClassIds = await getAuthorizedClassIds(c.env.DB, user)
+    if (authorizedClassIds !== 'ALL') {
+        if (authorizedClassIds.length === 0) {
+            return c.json({ data: [], total: 0, success: true })
+        }
+
+        conditions.push(`id IN (${authorizedClassIds.map(() => '?').join(', ')})`)
+        params.push(...authorizedClassIds)
     }
 
     if (conditions.length > 0) {

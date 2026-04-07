@@ -10,6 +10,8 @@ import {
     refreshReportSchema,
     distributionParamsSchema
 } from '../schemas/analysis.schema'
+import { checkClassAccess } from '../utils/auth'
+import { getExamContext } from '../utils/dbHelpers'
 
 const analysis = new Hono<{ Bindings: Env; Variables: { user: JWTPayload } }>()
 
@@ -19,6 +21,10 @@ analysis.use('*', authMiddleware)
 // Class Focus Group Analysis
 analysis.get('/class/focus/:classId', async (c) => {
     const { classId } = classIdSchema.parse(c.req.param())
+    const user = c.get('user')
+    if (!await checkClassAccess(c.env.DB, user, classId)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
     const service = new AnalysisService(c.env)
     const result = await service.getClassFocusGroup(classId)
     return c.json(result)
@@ -27,6 +33,14 @@ analysis.get('/class/focus/:classId', async (c) => {
 // Exam Quality Analysis
 analysis.get('/exam/quality/:examId', async (c) => {
     const { examId } = examIdSchema.parse(c.req.param())
+    const user = c.get('user')
+    const exam = await getExamContext(c.env.DB, examId)
+    if (!exam) {
+        return c.json({ error: 'Exam not found' }, 404)
+    }
+    if (!await checkClassAccess(c.env.DB, user, exam.class_id)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
     const service = new AnalysisService(c.env)
     const result = await service.getExamQuality(examId)
     return c.json(result)
@@ -35,6 +49,14 @@ analysis.get('/exam/quality/:examId', async (c) => {
 // Get or Generate Class AI Diagnostic Report
 analysis.get('/class/report/:classId/:examId', async (c) => {
     const { classId, examId } = reportParamsSchema.parse(c.req.param())
+    const user = c.get('user')
+    const exam = await getExamContext(c.env.DB, examId)
+    if (!exam || exam.class_id !== classId) {
+        return c.json({ error: 'Exam does not belong to this class' }, 400)
+    }
+    if (!await checkClassAccess(c.env.DB, user, classId)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
     const service = new AnalysisService(c.env)
     const result = await service.getClassReport(classId, examId)
     return c.json(result)
@@ -43,6 +65,14 @@ analysis.get('/class/report/:classId/:examId', async (c) => {
 // Refresh AI Diagnostic Report
 analysis.post('/class/report/refresh', async (c) => {
     const { classId, examId } = refreshReportSchema.parse(await c.req.json())
+    const user = c.get('user')
+    const exam = await getExamContext(c.env.DB, examId)
+    if (!exam || exam.class_id !== classId) {
+        return c.json({ error: 'Exam does not belong to this class' }, 400)
+    }
+    if (!await checkClassAccess(c.env.DB, user, classId)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
     const service = new AnalysisService(c.env)
     const result = await service.getClassReport(classId, examId, true)
     return c.json(result)
@@ -55,6 +85,13 @@ analysis.post('/class/report/refresh/stream', async (c) => {
         const { classId, examId } = refreshReportSchema.parse(body);
         const focusGroupData = body.focusGroupData; // 前端传入的预警数据（可选）
         const user = c.get('user');
+        const exam = await getExamContext(c.env.DB, examId)
+        if (!exam || exam.class_id !== classId) {
+            return c.json({ error: 'Exam does not belong to this class' }, 400)
+        }
+        if (!await checkClassAccess(c.env.DB, user, classId)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
         const reporterName = user?.name || '系统';
         const service = new AnalysisService(c.env);
 
@@ -130,6 +167,14 @@ analysis.post('/class/report/refresh/stream', async (c) => {
 // Get class score distribution for exam
 analysis.get('/class/:classId/exam/:examId/distribution', async (c) => {
     const { classId, examId } = distributionParamsSchema.parse(c.req.param())
+    const user = c.get('user')
+    const exam = await getExamContext(c.env.DB, examId)
+    if (!exam || exam.class_id !== classId) {
+        return c.json({ error: 'Exam does not belong to this class' }, 400)
+    }
+    if (!await checkClassAccess(c.env.DB, user, classId)) {
+        return c.json({ error: 'Forbidden' }, 403)
+    }
     const service = new AnalysisService(c.env)
     const result = await service.getScoreDistribution(classId, examId)
     return c.json(result)

@@ -1,10 +1,15 @@
 import { Hono } from 'hono'
+import { checkClassAccess } from '../../utils/auth'
 
 type Bindings = {
     DB: D1Database
 }
 
-const gradeComparison = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: any
+}
+
+const gradeComparison = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Get grade comparison data
 gradeComparison.get('/:classId/:examId?', async (c) => {
@@ -15,6 +20,11 @@ gradeComparison.get('/:classId/:examId?', async (c) => {
     const examId = examIdParam ? parseInt(examIdParam) : null
 
     try {
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, classId)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         console.log(`[API] Grade comparison request: classId=${classId}, examId=${examId}`);
         // Get class info
         const classInfo = await c.env.DB.prepare('SELECT name, grade FROM classes WHERE id = ?').bind(classId).first<{ name: string, grade: number }>()

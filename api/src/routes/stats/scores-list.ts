@@ -1,10 +1,15 @@
 import { Hono } from 'hono'
+import { checkClassAccess, getAuthorizedClassIds } from '../../utils/auth'
 
 type Bindings = {
     DB: D1Database
 }
 
-const scoresList = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: any
+}
+
+const scoresList = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Get scores list with filtering
 scoresList.get('/', async (c) => {
@@ -14,6 +19,15 @@ scoresList.get('/', async (c) => {
     const courseId = c.req.query('courseId')
 
     try {
+        const user = c.get('user')
+        const authorizedClassIds = await getAuthorizedClassIds(c.env.DB, user)
+        if (!classId && authorizedClassIds !== 'ALL') {
+            return c.json({ error: 'classId is required for non-admin users' }, 400)
+        }
+        if (classId && !await checkClassAccess(c.env.DB, user, Number(classId))) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         let query = `
             SELECT 
                 s.id as student_id,
@@ -43,6 +57,9 @@ scoresList.get('/', async (c) => {
         if (classId) {
             query += ` AND s.class_id = ?`
             params.push(classId)
+        } else if (authorizedClassIds !== 'ALL') {
+            query += ` AND s.class_id IN (${authorizedClassIds.map(() => '?').join(', ')})`
+            params.push(...authorizedClassIds)
         }
 
         if (examId) {

@@ -270,7 +270,9 @@ export class AnalysisService {
             SELECT e.id, e.name FROM exams e
             JOIN scores s ON e.id = s.exam_id
             JOIN students st ON s.student_id = st.id
-            WHERE st.class_id = ? AND e.id < ? 
+            WHERE st.class_id = ? AND e.exam_date < (
+                SELECT exam_date FROM exams WHERE id = ?
+            )
             ORDER BY e.exam_date DESC LIMIT 1
         `).bind(classId, examId).first<any>();
 

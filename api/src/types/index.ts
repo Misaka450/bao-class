@@ -10,7 +10,7 @@ export interface JWTPayload {
   userId: number;
   username: string;
   name: string;
-  role: 'admin' | 'head_teacher' | 'teacher' | 'student' | 'parent';
+  role: 'admin' | 'teacher' | 'student' | 'parent';
 }
 
 // 登录请求

@@ -1,11 +1,12 @@
 import { Hono } from 'hono'
 import * as XLSX from 'xlsx'
 import { authMiddleware, checkRole } from '../middleware/auth'
-import { checkClassAccess } from '../utils/auth'
+import { checkClassAccess, checkCourseAccess, getAuthorizedClassIds } from '../utils/auth'
 import { validateStudentsData, validateScoresData } from '../services/data-validator'
 import { JWTPayload } from '../types'
 import { extractQuotaFromHeaders, saveModelQuota } from '../utils/modelQuota'
 import { getModelForFeature } from '../utils/modelConfig'
+import { getExamContext, getExamCourseFullScore, studentBelongsToClass } from '../utils/dbHelpers'
 
 type Bindings = {
     DB: D1Database
@@ -84,14 +85,18 @@ importRoute.post('/students', checkRole(['admin', 'teacher']), async (c) => {
         const user = c.get('user')
         const errors: string[] = []
 
-        // Step 1: Preload all classes into a Map
-        // If not admin, only load classes owned by this teacher
-        let classesQuery = 'SELECT id, name FROM classes'
-        let classesParams: any[] = []
+        // Step 1: Preload all accessible classes into a Map
+        const authorizedClassIds = await getAuthorizedClassIds(c.env.DB, user)
+        if (authorizedClassIds !== 'ALL' && authorizedClassIds.length === 0) {
+            return c.json({ error: '当前账号没有可导入学生的班级权限' }, 403)
+        }
 
-        if (user.role !== 'admin') {
-            classesQuery += ' WHERE teacher_id = ?'
-            classesParams = [user.userId]
+        let classesQuery = 'SELECT id, name FROM classes'
+        const classesParams: any[] = []
+
+        if (authorizedClassIds !== 'ALL') {
+            classesQuery += ` WHERE id IN (${authorizedClassIds.map(() => '?').join(', ')})`
+            classesParams.push(...authorizedClassIds)
         }
 
         const classesResult = await c.env.DB.prepare(classesQuery).bind(...classesParams).all()
@@ -118,7 +123,7 @@ importRoute.post('/students', checkRole(['admin', 'teacher']), async (c) => {
                 }
                 continue
             }
-            const studentId = `S${String(baseCount + validStudents.length + 1).padStart(3, '0')} `
+            const studentId = `S${String(baseCount + validStudents.length + 1).padStart(3, '0')}`
             const gender = row['性别'] === '男' ? 'male' : row['性别'] === '女' ? 'female' : null
             validStudents.push({ name: row['姓名'], studentId, classId, gender, rowIndex: i })
         }
@@ -176,7 +181,7 @@ importRoute.post('/students', checkRole(['admin', 'teacher']), async (c) => {
             message: '导入完成',
             total: data.length,
             success: successCount,
-            failed: validStudents.length - successCount + errors.length,
+            failed: errors.length,
             errors: errors.slice(0, 10)
         })
     } catch (error) {
@@ -224,11 +229,11 @@ importRoute.post('/scores', async (c) => {
 
         // ---------- Preload data ----------
         // 1. Get exam's class_id
-        const examInfo = await c.env.DB.prepare('SELECT class_id FROM exams WHERE id = ?').bind(examId).first()
+        const examInfo = await getExamContext(c.env.DB, examId)
         if (!examInfo) {
             return c.json({ error: '考试不存在' }, 400)
         }
-        const classId = examInfo.class_id as number
+        const classId = examInfo.class_id
 
         // 权限检查
         if (!await checkClassAccess(c.env.DB, user, classId)) {
@@ -254,6 +259,18 @@ importRoute.post('/scores', async (c) => {
         `).bind(examId).all()
         const validCoursesMap = new Map<string, number>()
         validCoursesResult.results.forEach((r: any) => validCoursesMap.set(r.name, r.id))
+
+        const importedCourseIds = new Set<number>()
+        Object.keys(courseIndices).forEach((courseName) => {
+            const courseId = validCoursesMap.get(courseName)
+            if (courseId) importedCourseIds.add(courseId)
+        })
+
+        for (const courseId of importedCourseIds) {
+            if (!await checkCourseAccess(c.env.DB, user, classId, courseId)) {
+                return c.json({ error: 'Forbidden: 无权导入该考试包含的全部科目成绩' }, 403)
+            }
+        }
 
         const errors: string[] = []
         let successCount = 0
@@ -291,6 +308,22 @@ importRoute.post('/scores', async (c) => {
                 }
                 const courseId = validCoursesMap.get(courseName)
                 if (!courseId) continue // course not part of this exam
+                const fullScore = await getExamCourseFullScore(c.env.DB, examId, courseId)
+                if (fullScore === null) {
+                    errors.push(`第 ${i + 2} 行: "${courseName}" 不属于当前考试`)
+                    errorCount++
+                    continue
+                }
+                if (score < 0 || score > fullScore) {
+                    errors.push(`第 ${i + 2} 行: "${courseName}" 分数超出范围 0-${fullScore}`)
+                    errorCount++
+                    continue
+                }
+                if (!await studentBelongsToClass(c.env.DB, student.id, classId)) {
+                    errors.push(`第 ${i + 2} 行: 学生 "${studentName}" 不属于当前考试班级`)
+                    errorCount++
+                    continue
+                }
                 rowStudentCoursePairs.push({ studentId: student.id, courseId, score })
                 scoreCheckPairs.push(`(${student.id}, ${examId}, ${courseId})`)
             }
@@ -364,9 +397,9 @@ importRoute.post('/scores', async (c) => {
 
         return c.json({
             message: '导入完成',
-            total: rows.length,
+            total: rowStudentCoursePairs.length + errorCount,
             success: successCount,
-            failed: errorCount,
+            failed: errors.length,
             errors: errors.slice(0, 10)
         })
     } catch (error) {
@@ -455,7 +488,7 @@ importRoute.post('/validate/students', async (c) => {
 })
 
 // AI score recognition from image
-importRoute.post('/ai-scores', checkRole(['admin', 'head_teacher', 'teacher']), async (c) => {
+importRoute.post('/ai-scores', checkRole(['admin', 'teacher']), async (c) => {
     try {
         const formData = await c.req.formData()
         const file = formData.get('file') as File

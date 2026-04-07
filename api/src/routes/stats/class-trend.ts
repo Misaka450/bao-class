@@ -1,10 +1,15 @@
 import { Hono } from 'hono'
+import { checkClassAccess } from '../../utils/auth'
 
 type Bindings = {
     DB: D1Database
 }
 
-const classTrend = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: any
+}
+
+const classTrend = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Get class trend analysis
 classTrend.get('/:classId', async (c) => {
@@ -12,6 +17,11 @@ classTrend.get('/:classId', async (c) => {
     const courseId = c.req.query('courseId')
 
     try {
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         // Get class info
         const classInfo = await c.env.DB.prepare('SELECT name FROM classes WHERE id = ?').bind(classId).first()
         if (!classInfo) {

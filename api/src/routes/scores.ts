@@ -3,6 +3,7 @@ import { logAction } from '../utils/logger'
 import { JWTPayload } from '../types'
 import { authMiddleware, checkRole } from '../middleware/auth'
 import { checkClassAccess, checkCourseAccess } from '../utils/auth'
+import { getExamCourseFullScore, getExamContext, studentBelongsToClass } from '../utils/dbHelpers'
 
 
 type Bindings = {
@@ -29,6 +30,16 @@ scores.get('/', async (c) => {
     }
 
     try {
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
+        const exam = await getExamContext(c.env.DB, examId)
+        if (!exam || exam.class_id !== Number(classId)) {
+            return c.json({ error: 'Exam does not belong to the specified class' }, 400)
+        }
+
         let query = `
             SELECT 
                 s.id as student_id, 
@@ -80,12 +91,26 @@ scores.post('/batch', async (c) => {
     const user = c.get('user')
 
     // 权限校验：首先拿到 exam 对应的 class_id
-    const exam = await c.env.DB.prepare('SELECT class_id FROM exams WHERE id = ?').bind(exam_id).first<any>()
+    const exam = await getExamContext(c.env.DB, exam_id)
     if (!exam) return c.json({ error: 'Exam not found' }, 404)
 
     // 校验对该班级该科目的修改权限
     if (!await checkCourseAccess(c.env.DB, user, exam.class_id, course_id)) {
         return c.json({ error: 'Forbidden: 无法在该班级录入此科目分数' }, 403)
+    }
+
+    const fullScore = await getExamCourseFullScore(c.env.DB, exam_id, course_id)
+    if (fullScore === null) {
+        return c.json({ error: 'Course does not belong to this exam' }, 400)
+    }
+
+    for (const item of scoreList) {
+        if (!await studentBelongsToClass(c.env.DB, item.student_id, exam.class_id)) {
+            return c.json({ error: `Student ${item.student_id} does not belong to this exam class` }, 400)
+        }
+        if (item.score < 0 || item.score > fullScore) {
+            return c.json({ error: `Score must be between 0 and ${fullScore}` }, 400)
+        }
     }
 
 

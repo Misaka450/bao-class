@@ -1,10 +1,16 @@
 import { Hono } from 'hono'
+import { checkClassAccess } from '../../utils/auth'
+import { getExamContext } from '../../utils/dbHelpers'
 
 type Bindings = {
     DB: D1Database
 }
 
-const examStats = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: any
+}
+
+const examStats = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Get score distribution for an exam
 examStats.get('/:examId/distribution', async (c) => {
@@ -12,6 +18,15 @@ examStats.get('/:examId/distribution', async (c) => {
     const courseId = c.req.query('courseId')
 
     try {
+        const user = c.get('user')
+        const examContext = await getExamContext(c.env.DB, examId)
+        if (!examContext) {
+            return c.json({ error: 'Exam not found' }, 404)
+        }
+        if (!await checkClassAccess(c.env.DB, user, examContext.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         let query: string
         const params: (string | number)[] = [examId]
         let allRanges: string[]
@@ -37,11 +52,10 @@ examStats.get('/:examId/distribution', async (c) => {
             query = `
                 SELECT 
                     CASE 
-                        WHEN total_score >= 270 THEN '300-270'
-                        WHEN total_score >= 240 THEN '269-240'
-                        WHEN total_score >= 210 THEN '239-210'
-                        WHEN total_score >= 180 THEN '209-180'
-                        ELSE '0-179'
+                        WHEN total_score >= ? * 0.9 THEN '优秀'
+                        WHEN total_score >= ? * 0.8 THEN '良好'
+                        WHEN total_score >= ? * 0.6 THEN '及格'
+                        ELSE '不及格'
                     END as range,
                     COUNT(*) as count
                 FROM (
@@ -52,7 +66,9 @@ examStats.get('/:examId/distribution', async (c) => {
                 ) student_scores
                 GROUP BY range
             `
-            allRanges = ['300-270', '269-240', '239-210', '209-180', '0-179']
+            params.length = 0
+            params.push(examContext.total_full_score, examContext.total_full_score, examContext.total_full_score, examId)
+            allRanges = ['优秀', '良好', '及格', '不及格']
         }
 
         const result = await c.env.DB.prepare(query).bind(...params).all()
@@ -76,6 +92,15 @@ examStats.get('/:examId/top-students', async (c) => {
     const limit = c.req.query('limit') || '5'
 
     try {
+        const user = c.get('user')
+        const examContext = await getExamContext(c.env.DB, examId)
+        if (!examContext) {
+            return c.json({ error: 'Exam not found' }, 404)
+        }
+        if (!await checkClassAccess(c.env.DB, user, examContext.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         let query: string
         const params: (string | number)[] = []
 
@@ -130,17 +155,20 @@ examStats.get('/:examId/progress', async (c) => {
     const courseId = c.req.query('courseId')
 
     try {
-        const currentExam = await c.env.DB.prepare(`
-            SELECT class_id, exam_date FROM exams WHERE id = ?
-        `).bind(examId).first<{ class_id: string, exam_date: string }>()
+        const user = c.get('user')
+        const currentExam = await getExamContext(c.env.DB, examId)
 
         if (!currentExam) {
             return c.json({ improved: [], declined: [] })
         }
 
+        if (!await checkClassAccess(c.env.DB, user, currentExam.class_id)) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         const previousExam = await c.env.DB.prepare(`
-            SELECT id FROM exams 
-            WHERE class_id = ? AND exam_date < ?
+            SELECT e.id FROM exams e
+            WHERE e.class_id = ? AND e.exam_date < ?
             ORDER BY exam_date DESC LIMIT 1
         `).bind(currentExam.class_id, currentExam.exam_date).first<{ id: string }>()
 
@@ -171,14 +199,36 @@ examStats.get('/:examId/progress', async (c) => {
                     s.name as student_name,
                     SUM(curr.score) as current_score,
                     SUM(prev.score) as previous_score,
-                    SUM(curr.score) - SUM(prev.score) as progress
+                    (
+                        SUM(curr.score) * 1.0 / NULLIF(curr_meta.total_full_score, 0) -
+                        SUM(prev.score) * 1.0 / NULLIF(prev_meta.total_full_score, 0)
+                    ) as progress
                 FROM students s
                 JOIN scores curr ON s.id = curr.student_id AND curr.exam_id = ?
                 JOIN scores prev ON s.id = prev.student_id AND prev.exam_id = ?
+                JOIN (
+                    SELECT ? as exam_id, ? as total_full_score
+                ) curr_meta ON curr_meta.exam_id = curr.exam_id
+                JOIN (
+                    SELECT ? as exam_id, ? as total_full_score
+                ) prev_meta ON prev_meta.exam_id = prev.exam_id
                 GROUP BY s.id, s.name
-                HAVING COUNT(DISTINCT curr.course_id) > 0 AND COUNT(DISTINCT prev.course_id) > 0
+                HAVING COUNT(DISTINCT curr.course_id) = ? AND COUNT(DISTINCT prev.course_id) = ?
             `
-            params.push(examId, previousExam.id)
+            const previousExamContext = await getExamContext(c.env.DB, previousExam.id)
+            if (!previousExamContext || previousExamContext.course_count !== currentExam.course_count) {
+                return c.json({ improved: [], declined: [] })
+            }
+            params.push(
+                examId,
+                previousExam.id,
+                currentExam.id,
+                currentExam.total_full_score,
+                previousExamContext.id,
+                previousExamContext.total_full_score,
+                currentExam.course_count,
+                previousExamContext.course_count
+            )
         }
 
         const result = await c.env.DB.prepare(query).bind(...params).all()

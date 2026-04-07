@@ -29,7 +29,7 @@ export const createUserSchema = z.object({
     name: z.string()
         .min(1, '姓名不能为空')
         .max(50, '姓名不能超过50个字符'),
-    role: z.enum(['admin', 'head_teacher', 'teacher', 'student', 'parent'])
+    role: z.enum(['admin', 'teacher', 'student', 'parent'])
 });
 
 // 更新用户验证
@@ -37,7 +37,7 @@ export const updateUserSchema = z.object({
     username: z.string().min(3).max(50).optional(),
     password: z.string().min(6).optional(),
     name: z.string().min(1).max(50).optional(),
-    role: z.enum(['admin', 'head_teacher', 'teacher', 'student', 'parent']).optional()
+    role: z.enum(['admin', 'teacher', 'student', 'parent']).optional()
 });
 
 // 导出类型

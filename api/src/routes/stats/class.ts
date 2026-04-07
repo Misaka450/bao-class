@@ -1,11 +1,17 @@
 import { Hono } from 'hono'
 import { getLatestExamId } from '../../utils/dbHelpers'
+import { checkClassAccess } from '../../utils/auth'
+import { getExamContext } from '../../utils/dbHelpers'
 
 type Bindings = {
     DB: D1Database
 }
 
-const classStats = new Hono<{ Bindings: Bindings }>()
+type Variables = {
+    user: any
+}
+
+const classStats = new Hono<{ Bindings: Bindings; Variables: Variables }>()
 
 // Get class statistics
 classStats.get('/:classId', async (c) => {
@@ -14,6 +20,11 @@ classStats.get('/:classId', async (c) => {
     const examId = c.req.query('examId')
 
     try {
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         let targetExamId = examId
         let targetCourseId = courseId
 
@@ -29,6 +40,11 @@ classStats.get('/:classId', async (c) => {
                 pass_rate: 0,
                 excellent_rate: 0
             })
+        }
+
+        const examContext = await getExamContext(c.env.DB, targetExamId)
+        if (!examContext || examContext.class_id !== Number(classId)) {
+            return c.json({ error: 'Exam does not belong to this class' }, 400)
         }
 
         // Build query based on whether we're filtering by course
@@ -52,8 +68,8 @@ classStats.get('/:classId', async (c) => {
                 SELECT 
                     COUNT(*) as total_students,
                     AVG(total_score) as average_score,
-                    SUM(CASE WHEN total_score >= 180 THEN 1 ELSE 0 END) as pass_count,
-                    SUM(CASE WHEN total_score >= 270 THEN 1 ELSE 0 END) as excellent_count
+                    SUM(CASE WHEN total_score >= ? THEN 1 ELSE 0 END) as pass_count,
+                    SUM(CASE WHEN total_score >= ? THEN 1 ELSE 0 END) as excellent_count
                 FROM (
                     SELECT student_id, SUM(score) as total_score
                     FROM scores 
@@ -61,6 +77,8 @@ classStats.get('/:classId', async (c) => {
                     GROUP BY student_id
                 ) student_stats
             `
+            params.length = 0
+            params.push(examContext.total_full_score * 0.6, examContext.total_full_score * 0.9, targetExamId)
         }
 
         const stats = await c.env.DB.prepare(query).bind(...params).first()
@@ -87,11 +105,21 @@ classStats.get('/:classId/subjects', async (c) => {
     const examId = c.req.query('examId')
 
     try {
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         // 使用缓存的工具函数获取最新考试ID
         const targetExamId = examId || await getLatestExamId(c.env.DB, classId)
 
         if (!targetExamId) {
             return c.json([])
+        }
+
+        const examContext = await getExamContext(c.env.DB, targetExamId)
+        if (!examContext || examContext.class_id !== Number(classId)) {
+            return c.json({ error: 'Exam does not belong to this class' }, 400)
         }
 
         const subjectStats = await c.env.DB.prepare(`
@@ -102,9 +130,10 @@ classStats.get('/:classId/subjects', async (c) => {
             FROM courses c
             JOIN exam_courses ec ON ec.course_id = c.id
             JOIN scores s ON s.exam_id = ec.exam_id AND s.course_id = c.id
-            WHERE ec.exam_id = ?
+            JOIN students st ON s.student_id = st.id
+            WHERE ec.exam_id = ? AND st.class_id = ?
             GROUP BY c.id, c.name, ec.full_score
-        `).bind(targetExamId).all()
+        `).bind(targetExamId, classId).all()
 
         return c.json(subjectStats.results)
     } catch (error) {
@@ -119,6 +148,11 @@ classStats.get('/:classId/history', async (c) => {
     const courseId = c.req.query('courseId')
 
     try {
+        const user = c.get('user')
+        if (!await checkClassAccess(c.env.DB, user, Number(classId))) {
+            return c.json({ error: 'Forbidden' }, 403)
+        }
+
         let query = `
             SELECT 
                 e.name as exam_name,
