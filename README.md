@@ -4,6 +4,7 @@
 
 [![部署状态](https://github.com/Misaka450/bao-class/actions/workflows/deploy.yml/badge.svg)](https://github.com/Misaka450/bao-class/actions)
 [![技术栈](https://img.shields.io/badge/Tech-React%2019%20%7C%20TypeScript%20%7C%20Cloudflare-blue)](https://github.com/Misaka450/bao-class)
+[![License](https://img.shields.io/badge/License-MIT-green)](https://github.com/Misaka450/bao-class/blob/master/LICENSE)
 
 ## ✨ 核心特性
 
@@ -42,38 +43,39 @@
 ### 前端
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| **React** | 19.2.x | 现代化 UI 框架 |
-| **TypeScript** | 5.6.x | 类型安全 |
-| **Vite** | 6.x | 极速构建工具 |
-| **Ant Design** | 5.24.x | 企业级 UI 组件库 |
-| **Ant Design Pro Components** | 2.8.x | ProTable/ProLayout 企业级组件 |
-| **Recharts** | 3.4.x | 数据可视化图表 |
-| **React Query** | 5.x | 服务端状态管理 |
-| **Zustand** | 5.x | 客户端状态管理 |
-| **React Router** | 7.x | 路由管理 |
+| ⚛️ **React** | 19.2.x | 现代化 UI 框架 |
+| 📘 **TypeScript** | 5.6.x | 类型安全 |
+| ⚡ **Vite** | 6.x | 极速构建工具 |
+| 🎨 **Ant Design** | 5.24.x | 企业级 UI 组件库 |
+| 📊 **Ant Design Pro Components** | 2.8.x | ProTable/ProLayout 企业级组件 |
+| 📈 **Recharts** | 3.4.x | 数据可视化图表 |
+| 🔍 **React Query** | 5.x | 服务端状态管理 |
+| 🗃️ **Zustand** | 5.x | 客户端状态管理 |
+| 🧭 **React Router** | 7.x | 路由管理 |
 
 ### 后端
 | 技术 | 版本 | 说明 |
 |------|------|------|
-| **Hono.js** | 4.x | 轻量级 Web 框架（运行在 Cloudflare Workers） |
-| **Cloudflare D1** | - | Serverless SQLite 数据库 |
-| **Cloudflare KV** | - | 高性能分布式 Key-Value 存储 (用于评语缓存) |
-| **AI 模型** | - | DeepSeek-V3.2 (评语报告) / Qwen3-VL (OCR) |
-| **Cloudflare R2** | - | 对象存储（图片/文件） |
-| **Zod** | 4.x | 运行时类型校验 |
-| **XLSX** | 0.18.x | Excel 文件处理 |
+| 🔥 **Hono.js** | 4.x | 轻量级 Web 框架（运行在 Cloudflare Workers） |
+| 💾 **Cloudflare D1** | - | Serverless SQLite 数据库 |
+| 🔑 **Cloudflare KV** | - | 高性能分布式 Key-Value 存储 (用于评语缓存) |
+| 🤖 **AI 模型** | - | DeepSeek-V3.2 (评语报告) / Qwen3-VL (OCR) |
+| 📦 **Cloudflare R2** | - | 对象存储（图片/文件） |
+| ✅ **Zod** | 4.x | 运行时类型校验 |
+| 📊 **XLSX** | 0.18.x | Excel 文件处理 |
 
 ### 基础设施
-- **Cloudflare Workers** - 边缘计算平台（后端 API）
-- **Cloudflare Pages** - 静态网站托管（前端）
-- **Cloudflare R2** - 对象存储（相册/文件）
-- **Cloudflare Image Resizing** - 动态图片优化
-- **GitHub Actions** - CI/CD 自动化部署
+- ☁️ **Cloudflare Workers** - 边缘计算平台（后端 API）
+- 📄 **Cloudflare Pages** - 静态网站托管（前端）
+- 🗄️ **Cloudflare R2** - 对象存储（相册/文件）
+- 🖼️ **Cloudflare Image Resizing** - 动态图片优化
+- ⚙️ **GitHub Actions** - CI/CD 自动化部署
 
 ### 开发工具
 - **npm workspaces** - Monorepo 项目管理
 - **ESLint** + **Prettier** - 代码质量
 - **Vitest** - 单元测试框架
+- **TypeScript** - 严格类型检查
 
 ## 📦 项目结构
 
@@ -125,8 +127,6 @@ bao-class/                      # Monorepo 根目录
 ├── packages/                   # 共享包
 │   └── types/                 # 共享类型定义
 │
-├── scripts/                    # 开发脚本
-│
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml         # 自动部署配置
@@ -140,6 +140,7 @@ bao-class/                      # Monorepo 根目录
 
 - **Node.js** 20.x 或更高
 - **npm** 10.x 或更高
+- **Git** - 版本控制
 - **Cloudflare 账户**（用于部署）
 
 ### 本地开发
@@ -401,7 +402,38 @@ npx wrangler pages deploy dist --project-name=bao-class
 - 生产环境请修改默认密码和 JWT_SECRET
 - 建议启用 HTTPS 访问
 
+## 🧹 项目维护
+
+### 代码清理
+
+项目已清理以下无用文件：
+- ✅ 删除所有临时测试脚本（`scripts/` 目录）
+- ✅ 删除错误日志文件（`*.txt`）
+- ✅ 删除测试临时文档（`frontend/src/tests/*.md`）
+
+### 定期维护任务
+
+```bash
+# 清理依赖
+npm run clean
+
+# 重新安装依赖
+npm install
+
+# 运行类型检查
+npm run typecheck
+
+# 运行测试
+npm test
+```
+
 ## 📝 更新日志
+
+### v1.5.0 (2026-04)
+- ✅ 项目代码清理：删除所有临时测试脚本和错误日志
+- ✅ 删除无用文档文件，保持项目整洁
+- ✅ 优化项目结构，移除冗余目录
+- ✅ README 文档更新，添加项目维护说明
 
 ### v1.4.0 (2026-01)
 - ✅ AI 智能聊天助手：支持自然语言查询学生成绩、班级数据
@@ -453,9 +485,8 @@ npx wrangler pages deploy dist --project-name=bao-class
 
 1. Fork 本仓库
 2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 提交 Pull Request
+3. 提交更改并推送 (`git commit -m 'Add some AmazingFeature'`)
+4. 提交 Pull Request 到主分支
 
 ## 📄 许可证
 
